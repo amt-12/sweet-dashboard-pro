@@ -29,6 +29,8 @@ const SprinklesCursor = () => {
   const sprinklesRef = useRef<Sprinkle[]>([]);
   const animRef = useRef<number>(0);
   const lastPos = useRef({ x: 0, y: 0 });
+  const mousePos = useRef({ x: -100, y: -100 });
+  const cursorImgRef = useRef<HTMLImageElement | null>(null);
 
   const spawnSprinkles = useCallback((x: number, y: number, count: number) => {
     for (let i = 0; i < count; i++) {
@@ -54,6 +56,13 @@ const SprinklesCursor = () => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // Load cursor image
+    const img = new Image();
+    img.src = "/cake-server-cursor.png";
+    img.onload = () => {
+      cursorImgRef.current = img;
+    };
+
     const resize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
@@ -62,6 +71,7 @@ const SprinklesCursor = () => {
     window.addEventListener("resize", resize);
 
     const onMove = (e: MouseEvent) => {
+      mousePos.current = { x: e.clientX, y: e.clientY };
       const dx = e.clientX - lastPos.current.x;
       const dy = e.clientY - lastPos.current.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -78,6 +88,8 @@ const SprinklesCursor = () => {
     window.addEventListener("mousemove", onMove);
     window.addEventListener("click", onClick, true);
 
+    const CURSOR_SIZE = 36;
+
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const sprinkles = sprinklesRef.current;
@@ -86,7 +98,7 @@ const SprinklesCursor = () => {
         const s = sprinkles[i];
         s.x += s.vx;
         s.y += s.vy;
-        s.vy += 0.12; // gravity
+        s.vy += 0.12;
         s.vx *= 0.98;
         s.rotation += 0.05;
         s.life++;
@@ -108,6 +120,19 @@ const SprinklesCursor = () => {
         ctx.beginPath();
         ctx.roundRect(-s.width / 2, -s.height / 2, s.width, s.height, 2);
         ctx.fill();
+        ctx.restore();
+      }
+
+      // Draw cake server cursor
+      if (cursorImgRef.current) {
+        ctx.save();
+        ctx.drawImage(
+          cursorImgRef.current,
+          mousePos.current.x - 4,
+          mousePos.current.y - 2,
+          CURSOR_SIZE * 0.6,
+          CURSOR_SIZE
+        );
         ctx.restore();
       }
 
