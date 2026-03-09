@@ -66,6 +66,7 @@
 @layer base {
   * {
     @apply border-border;
+    cursor: url('/cake-server-cursor.png') 16 0, auto;
   }
   body {
     @apply bg-background text-foreground font-nunito;
