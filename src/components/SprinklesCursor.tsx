@@ -88,7 +88,7 @@ const SprinklesCursor = () => {
     window.addEventListener("mousemove", onMove);
     window.addEventListener("click", onClick, true);
 
-    const CURSOR_SIZE = 36;
+    const CURSOR_SIZE = 64;
 
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
