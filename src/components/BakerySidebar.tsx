@@ -1,34 +1,30 @@
 import { useState } from "react";
 import { useLocation, Link } from "react-router-dom";
 import {
-  LayoutDashboard,
   ShoppingBag,
   Package,
-  Cake,
-  Cookie,
-  Croissant,
   Users,
-  Warehouse,
-  ClipboardList,
   BarChart3,
   Settings,
   ChevronLeft,
   ChevronRight,
+  LayoutDashboard,
+  List,
+  CreditCard,
+  Truck,
 } from "lucide-react";
 import cupcakeIcon from "@/assets/cupcake-icon.png";
 
 const menuItems = [
-  { title: "Dashboard", icon: LayoutDashboard, path: "/", emoji: "🧁" },
-  { title: "Orders", icon: ShoppingBag, path: "/orders", emoji: "🛒" },
-  { title: "Products", icon: Package, path: "/products", emoji: "🍞" },
-  { title: "Cakes", icon: Cake, path: "/cakes", emoji: "🎂" },
-  { title: "Pastries", icon: Croissant, path: "/pastries", emoji: "🥐" },
-  { title: "Biscuits", icon: Cookie, path: "/biscuits", emoji: "🍪" },
-  { title: "Customers", icon: Users, path: "/customers", emoji: "👥" },
-  { title: "Inventory", icon: Warehouse, path: "/inventory", emoji: "📦" },
-  { title: "Custom Orders", icon: ClipboardList, path: "/custom-orders", emoji: "✨" },
-  { title: "Reports", icon: BarChart3, path: "/reports", emoji: "📊" },
-  { title: "Settings", icon: Settings, path: "/settings", emoji: "⚙️" },
+  { title: "Dashboard", icon: LayoutDashboard, path: "/" },
+  { title: "Orders", icon: ShoppingBag, path: "/orders" },
+  { title: "Products", icon: Package, path: "/products" },
+  { title: "Categories", icon: List, path: "/categories" },
+  { title: "Customers", icon: Users, path: "/customers" },
+  { title: "Payments", icon: CreditCard, path: "/payments" },
+  { title: "Delivery", icon: Truck, path: "/delivery" },
+  { title: "Analytics", icon: BarChart3, path: "/analytics" },
+  { title: "Settings", icon: Settings, path: "/settings" },
 ];
 
 const BakerySidebar = () => {
@@ -46,7 +42,7 @@ const BakerySidebar = () => {
         <img src={cupcakeIcon} alt="Bakery" className="w-10 h-10 animate-float-up" />
         {!collapsed && (
           <div>
-            <h1 className="font-fredoka text-xl font-bold text-gradient-bakery">
+            <h1 className="font-dancing text-xl font-bold text-gradient-bakery">
               Sweet Bake
             </h1>
             <p className="text-xs text-muted-foreground">Bakery Admin</p>
@@ -64,16 +60,16 @@ const BakerySidebar = () => {
               to={item.path}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-bakery transition-all duration-200 group cookie-bounce ${
                 isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold shadow-sm"
+                  ? "bg-chocolate text-cream font-semibold shadow-sm"
                   : "text-sidebar-foreground hover:bg-sidebar-accent/50"
               } ${collapsed ? "justify-center" : ""}`}
             >
-              <span className="text-lg">{item.emoji}</span>
+              <item.icon className={`w-5 h-5 ${isActive ? "text-cream" : "text-chocolate"}`} />
               {!collapsed && (
                 <span className="text-sm">{item.title}</span>
               )}
               {isActive && !collapsed && (
-                <span className="ml-auto w-2 h-2 rounded-full bg-sidebar-primary" />
+                <span className="ml-auto w-2 h-2 rounded-full bg-cream" />
               )}
             </Link>
           );

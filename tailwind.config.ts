@@ -16,6 +16,8 @@ export default {
       fontFamily: {
         nunito: ["Nunito", "sans-serif"],
         fredoka: ["Fredoka", "sans-serif"],
+        dancing: ["Dancing Script", "cursive"],
+        lora: ["Lora", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",

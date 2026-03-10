@@ -1,13 +1,11 @@
 import { useEffect, useCallback, useRef } from "react";
 
 const SPRINKLE_COLORS = [
+  "hsl(20, 50%, 25%)",   // chocolate
   "hsl(340, 70%, 70%)",  // pink
   "hsl(45, 80%, 65%)",   // yellow
   "hsl(160, 40%, 65%)",  // mint
   "hsl(30, 70%, 55%)",   // caramel
-  "hsl(220, 50%, 75%)",  // blueberry
-  "hsl(0, 80%, 65%)",    // red
-  "hsl(280, 50%, 70%)",  // lavender
 ];
 
 interface Sprinkle {
