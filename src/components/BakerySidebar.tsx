@@ -16,15 +16,15 @@ import {
 import cupcakeIcon from "@/assets/cupcake-icon.png";
 
 const menuItems = [
-  { title: "Dashboard", icon: LayoutDashboard, path: "/" },
-  { title: "Orders", icon: ShoppingBag, path: "/orders" },
-  { title: "Products", icon: Package, path: "/products" },
-  { title: "Categories", icon: List, path: "/categories" },
-  { title: "Customers", icon: Users, path: "/customers" },
-  { title: "Payments", icon: CreditCard, path: "/payments" },
-  { title: "Delivery", icon: Truck, path: "/delivery" },
-  { title: "Analytics", icon: BarChart3, path: "/analytics" },
-  { title: "Settings", icon: Settings, path: "/settings" },
+  { title: "Dashboard", icon: LayoutDashboard, path: "/admin" },
+  { title: "Orders", icon: ShoppingBag, path: "/admin/orders" },
+  { title: "Products", icon: Package, path: "/admin/products" },
+  { title: "Categories", icon: List, path: "/admin/categories" },
+  { title: "Customers", icon: Users, path: "/admin/customers" },
+  { title: "Payments", icon: CreditCard, path: "/admin/payments" },
+  { title: "Delivery", icon: Truck, path: "/admin/delivery" },
+  { title: "Analytics", icon: BarChart3, path: "/admin/analytics" },
+  { title: "Settings", icon: Settings, path: "/admin/settings" },
 ];
 
 const BakerySidebar = () => {
@@ -53,7 +53,11 @@ const BakerySidebar = () => {
       {/* Menu */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
         {menuItems.map((item) => {
-          const isActive = location.pathname === item.path;
+          const isActive =
+            item.path === "/admin"
+              ? location.pathname === "/admin"
+              : location.pathname.startsWith(item.path);
+
           return (
             <Link
               key={item.title}

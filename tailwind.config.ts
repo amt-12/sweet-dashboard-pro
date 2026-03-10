@@ -18,6 +18,8 @@ export default {
         fredoka: ["Fredoka", "sans-serif"],
         dancing: ["Dancing Script", "cursive"],
         lora: ["Lora", "serif"],
+        playfair: ["Playfair Display", "Georgia", "serif"],
+        inter: ["Inter", "system-ui", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -63,6 +65,13 @@ export default {
         "caramel-light": "hsl(var(--caramel-light))",
         mint: "hsl(var(--mint))",
         blueberry: "hsl(var(--blueberry))",
+        /* Panbread landing page tokens */
+        navy:    "#1A2744",
+        "navy-lt": "#2C3D6B",
+        gold:    "#C9952A",
+        parchment: "#F5EAD0",
+        "bread-brown": "#6B3A2A",
+        "bread-dark":  "#3D1F14",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -103,6 +112,30 @@ export default {
           "0%": { opacity: "0", transform: "translateY(10px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        "fade-up": {
+          "0%": { opacity: "0", transform: "translateY(30px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "float-a": {
+          "0%, 100%": { transform: "translate(-50%, -50%) rotate(-8deg) translateY(0px)" },
+          "50%":       { transform: "translate(-50%, -50%) rotate(-8deg) translateY(-18px)" },
+        },
+        "float-b": {
+          "0%, 100%": { transform: "rotate(15deg) translateY(0px)" },
+          "50%":       { transform: "rotate(15deg) translateY(-12px)" },
+        },
+        "float-c": {
+          "0%, 100%": { transform: "rotate(-12deg) translateY(0px)" },
+          "50%":       { transform: "rotate(-12deg) translateY(-10px)" },
+        },
+        "spin-slow": {
+          "from": { transform: "rotate(0deg)" },
+          "to":   { transform: "rotate(360deg)" },
+        },
+        "bob": {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%":       { transform: "translateY(-6px)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -110,6 +143,12 @@ export default {
         "cookie-bounce": "cookie-bounce 0.5s ease",
         "float-up": "float-up 3s ease-in-out infinite",
         "fade-in": "fade-in 0.5s ease-out forwards",
+        "fade-up": "fade-up 0.9s ease both",
+        "float-a": "float-a 4s ease-in-out infinite",
+        "float-b": "float-b 5s ease-in-out infinite 0.5s",
+        "float-c": "float-c 4.5s ease-in-out infinite 1s",
+        "spin-slow": "spin-slow 20s linear infinite",
+        "bob": "bob 2s ease-in-out infinite",
       },
     },
   },

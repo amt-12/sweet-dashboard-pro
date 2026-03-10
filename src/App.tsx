@@ -15,6 +15,9 @@ import Delivery from "./pages/Delivery";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 
+import Home from "./pages/Home";
+import Login from "./pages/Login";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -24,16 +27,18 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route element={<AdminLayout />}>
-            <Route path="/" element={<Index />} />
-            <Route path="/orders" element={<Orders />} />
-            <Route path="/products" element={<Products />} />
-            <Route path="/customers" element={<Customers />} />
-            <Route path="/categories" element={<Categories />} />
-            <Route path="/payments" element={<Payments />} />
-            <Route path="/delivery" element={<Delivery />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/settings" element={<Settings />} />
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<Index />} />
+            <Route path="orders" element={<Orders />} />
+            <Route path="products" element={<Products />} />
+            <Route path="customers" element={<Customers />} />
+            <Route path="categories" element={<Categories />} />
+            <Route path="payments" element={<Payments />} />
+            <Route path="delivery" element={<Delivery />} />
+            <Route path="analytics" element={<Analytics />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
