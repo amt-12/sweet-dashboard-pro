@@ -35,7 +35,7 @@ export default function HeroSection() {
 
           {/* Left word */}
           <span
-            className="font-playfair font-bold text-navy flex-shrink-0 self-start mt-6 leading-none tracking-tight"
+            className="font-playfair font-bold text-navy flex-shrink-0 self-start mt-6 leading-none tracking-tight animate-fade-up"
             style={{ fontSize: "clamp(3.5rem, 9.5vw, 9rem)" }}
           >
             Sweet
@@ -61,8 +61,8 @@ export default function HeroSection() {
 
           {/* Right word */}
           <span
-            className="font-playfair font-bold text-navy flex-shrink-0 self-end mb-6 leading-none tracking-tight"
-            style={{ fontSize: "clamp(3.5rem, 9.5vw, 9rem)" }}
+            className="font-playfair font-bold text-navy flex-shrink-0 self-end mb-6 leading-none tracking-tight animate-fade-up"
+            style={{ fontSize: "clamp(3.5rem, 9.5vw, 9rem)", animationDelay: "0.2s" }}
           >
             Donuts
           </span>

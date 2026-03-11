@@ -1,23 +1,52 @@
 import { products, useProductActions } from "./home-data";
 import { Star } from "lucide-react";
+import { motion, Variants } from "framer-motion";
 
 export default function MenuSection() {
   const { handleAddToCart, scrollTo } = useProductActions();
 
+  const container: Variants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const item: Variants = {
+    hidden: { opacity: 0, y: 50 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+  };
+
   return (
     <section id="menu" className="py-24 px-6">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-14">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+          className="text-center mb-14"
+        >
           <p className="text-[0.8rem] font-bold tracking-[0.2em] uppercase text-gold mb-3">Our Menu</p>
           <h2 className="font-playfair text-4xl md:text-5xl font-bold text-bread-dark mb-4">Made to Delight</h2>
           <p className="text-[#7A5C4F] max-w-xl mx-auto text-base leading-relaxed">
             From flaky morning croissants to celebration cakes — something for every craving.
           </p>
-        </div>
+        </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <motion.div 
+          variants={container}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: "-100px" }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-8"
+        >
           {products.slice(0, 6).map((p) => (
-            <article key={p.id}
+            <motion.article key={p.id}
+              variants={item}
               className="group relative h-[450px] rounded-3xl overflow-hidden shadow-xl"
             >
               {/* Full Background Image */}
@@ -70,18 +99,24 @@ export default function MenuSection() {
                   </button>
                 </div>
               </div>
-            </article>
+            </motion.article>
           ))}
-        </div>
+        </motion.div>
 
-        <div className="text-center mt-12">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+          viewport={{ once: true }}
+          className="text-center mt-12"
+        >
           <button
             onClick={() => scrollTo("Contact")}
             className="border-2 border-bread-brown text-bread-brown bg-transparent px-8 py-3.5 rounded-full font-semibold hover:bg-bread-brown hover:text-white transition-all duration-200 hover:-translate-y-0.5 cursor-pointer"
           >
             See Full Menu
           </button>
-        </div>
+        </motion.div>
       </div>
     </section>
   );
