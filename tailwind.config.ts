@@ -20,6 +20,7 @@ export default {
         lora: ["Lora", "serif"],
         playfair: ["Playfair Display", "Georgia", "serif"],
         inter: ["Inter", "system-ui", "sans-serif"],
+        hepta: ["Hepta Slab", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",

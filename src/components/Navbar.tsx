@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { RootState } from "../store";
+import { ShoppingBag, ChevronDown } from "lucide-react";
+import CartSheet from "./CartSheet"; // Assuming CartSheet is in the same folder
 
 const navLinks = [
   { label: "HOME",    id: "home" },
@@ -14,6 +18,9 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen]   = useState(false);
   const [active, setActive]       = useState("HOME");
   const [dropOpen, setDropOpen]   = useState(false);
+  
+  const cartItems = useSelector((state: RootState) => state.cart.items);
+  const cartItemCount = cartItems.reduce((total, item) => total + item.quantity, 0);
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 30);
@@ -32,7 +39,7 @@ export default function Navbar() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 bg-[#F5ECD7] transition-shadow duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-50 bg-[#F5ECD7] border-b border-[#D4A373]/30 transition-shadow  duration-300 font-hepta ${
         scrolled ? "shadow-md shadow-[#1A2744]/10" : ""
       }`}
     >
@@ -48,174 +55,112 @@ export default function Navbar() {
             SWEETBAKE
           </span>
           <span className="flex items-center gap-1 mt-[2px]">
-            <span className="text-[0.58rem] tracking-[0.22em] text-[#1A2744]/60 uppercase">
-              EST.
-            </span>
-            {/* Small bird / wheat icon */}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#1A2744"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="w-3 h-3 opacity-50"
-            >
-              <path d="M12 3c-1.2 1.6-2 3.6-2 6 0-2.4-.8-4.4-2-6" />
-              <path d="M12 9c1.2 1.6 2 3.6 2 6 0-2.4.8-4.4 2-6" />
-              <path d="M12 9V21" />
-            </svg>
-            <span className="text-[0.58rem] tracking-[0.22em] text-[#1A2744]/60 uppercase">
-              1984
-            </span>
+            <span className="h-[1px] w-8 bg-[#D4A373]"></span>
+            <span className="text-[0.65rem] tracking-[0.2em] text-[#8D6E63] font-medium uppercase">Est. 1984</span>
+            <span className="h-[1px] w-8 bg-[#D4A373]"></span>
           </span>
         </a>
 
-        {/* ── Centre nav links (desktop) ── */}
-        <nav className="hidden lg:flex items-center gap-1">
-          {navLinks.map((link) => (
-            <div key={link.label} className="relative">
+        {/* ── Desktop Menu ── */}
+        <nav className="hidden lg:flex items-center gap-8">
+          {navLinks.map((link) => {
+            if (link.hasDropdown) {
+              return (
+                <div 
+                  key={link.label}
+                  className="relative group"
+                  onMouseEnter={() => setDropOpen(true)}
+                  onMouseLeave={() => setDropOpen(false)}
+                >
+                  <button 
+                    className={`flex items-center gap-1 text-[0.8rem] font-bold tracking-[0.15em] transition-colors duration-300 ${
+                      active === link.label ? "text-[#D4A373]" : "text-[#1A2744] hover:text-[#D4A373]"
+                    }`}
+                  >
+                    {link.label} <ChevronDown size={14} />
+                  </button>
+                  
+                  {/* Dropdown */}
+                  <div className={`absolute top-full left-1/2 -translate-x-1/2 pt-4 transition-all duration-300 ${
+                    dropOpen ? "opacity-100 visible translate-y-0" : "opacity-0 invisible -translate-y-2"
+                  }`}>
+                    <div className="bg-white shadow-xl rounded-lg overflow-hidden min-w-[160px] py-2 border border-[#8D6E63]/10">
+                      {["Our Story", "Team", "Blog", "Gallery"].map(item => (
+                        <a 
+                          key={item} 
+                          href="#" 
+                          className="block px-4 py-2 text-sm text-[#5D4037] hover:bg-[#F5ECD7] hover:text-[#3E2723] transition-colors"
+                        >
+                          {item}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+            return (
               <button
-                onClick={() =>
-                  link.hasDropdown
-                    ? setDropOpen(!dropOpen)
-                    : scrollTo(link.id, link.label)
-                }
-                className={`
-                  text-[0.78rem] font-semibold tracking-[0.13em] uppercase
-                  bg-transparent border-none cursor-pointer
-                  px-4 py-2.5 flex items-center gap-1
-                  transition-colors duration-200
-                  ${active === link.label ? "text-[#C9952A]" : "text-[#1A2744]"}
-                  hover:text-[#C9952A]
-                `}
-                style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+                key={link.label}
+                onClick={() => scrollTo(link.id, link.label)}
+                className={`text-[0.8rem] font-bold tracking-[0.15em] transition-colors duration-300 relative after:content-[''] after:absolute after:bottom-[-4px] after:left-0 after:w-0 after:h-[2px] after:bg-[#D4A373] after:transition-all after:duration-300 hover:after:w-full ${
+                  active === link.label ? "text-[#D4A373] after:w-full" : "text-[#1A2744] hover:text-[#D4A373]"
+                }`}
               >
                 {link.label}
-                {link.hasDropdown && (
-                  <svg
-                    className={`w-3 h-3 transition-transform duration-200 ${dropOpen ? "rotate-180" : ""}`}
-                    viewBox="0 0 12 12"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M3 4.5L6 7.5L9 4.5" />
-                  </svg>
-                )}
               </button>
-
-              {/* Dropdown for PAGES */}
-              {link.hasDropdown && dropOpen && (
-                <div className="absolute top-full left-0 mt-1 bg-white rounded-lg shadow-xl shadow-[#1A2744]/15 border border-[#1A2744]/8 py-2 min-w-[160px] z-50">
-                  {["Gallery", "Our Team", "FAQ", "Blog"].map((sub) => (
-                    <button
-                      key={sub}
-                      className="w-full text-left px-4 py-2 text-[0.8rem] font-medium text-[#1A2744] hover:bg-[#F5ECD7] hover:text-[#C9952A] bg-transparent border-none cursor-pointer transition-colors"
-                      onClick={() => setDropOpen(false)}
-                    >
-                      {sub}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </nav>
 
-        {/* ── Right side: search + CTA (desktop) ── */}
-        <div className="hidden lg:flex items-center gap-5 flex-shrink-0">
-          {/* Search icon */}
-          <button
-            className="text-[#1A2744]/60 hover:text-[#1A2744] bg-transparent border-none cursor-pointer p-1 transition-colors"
-            aria-label="Search"
-          >
-            <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-          </button>
-
-          {/* Divider */}
-          <div className="w-px h-8 bg-[#1A2744]/12" />
-
-          {/* Order CTA */}
-          <Link
-            to="/login"
-            className="flex items-center gap-3 no-underline group"
-          >
-            {/* Phone circle */}
-            <span className="w-10 h-10 bg-[#1A2744] rounded-full flex items-center justify-center flex-shrink-0 group-hover:bg-[#2C3D6B] transition-colors">
-              <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1.003 1.003 0 011.01-.24c1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.24.2 2.45.57 3.57.1.31.03.66-.25 1.02l-2.2 2.2z" />
-              </svg>
-            </span>
-            {/* Text */}
-            <span className="flex flex-col leading-none">
-              <strong className="text-[0.85rem] font-bold text-[#1A2744] tracking-wide">
-                Order Now
-              </strong>
-              <span className="text-[0.7rem] text-[#1A2744]/55 mt-[3px]">
-                Call : 191 767 898
-              </span>
-            </span>
+        {/* ── Actions (Cart & Button) ── */}
+        <div className="hidden lg:flex items-center gap-6">
+          <CartSheet />
+          
+          <Link to="/customize-order" className="bg-[#3E2723] text-[#F5ECD7] border-none px-6 py-2.5 rounded-full text-xs font-bold tracking-widest hover:bg-[#5D4037] transition-all transform hover:-translate-y-0.5 shadow-lg shadow-[#3E2723]/20 no-underline">
+            CUSTOMIZE ORDER
           </Link>
         </div>
 
-        {/* ── Hamburger (mobile) ── */}
+        {/* ── Mobile Trigger ── */}
         <button
-          className="lg:hidden ml-auto flex flex-col gap-[5px] bg-transparent border-none cursor-pointer p-2"
           onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Toggle menu"
+          className="lg:hidden flex flex-col gap-[6px] w-8 h-8 justify-center z-50 focus:outline-none"
         >
-          <span
-            className={`block w-6 h-[2px] bg-[#1A2744] transition-all duration-300 origin-center ${
-              menuOpen ? "translate-y-[7px] rotate-45" : ""
-            }`}
-          />
-          <span
-            className={`block w-6 h-[2px] bg-[#1A2744] transition-all duration-300 ${
-              menuOpen ? "opacity-0" : ""
-            }`}
-          />
-          <span
-            className={`block w-6 h-[2px] bg-[#1A2744] transition-all duration-300 origin-center ${
-              menuOpen ? "-translate-y-[7px] -rotate-45" : ""
-            }`}
-          />
+          <span className={`w-full h-[2px] bg-[#1A2744] transition-all duration-300 ${menuOpen ? "rotate-45 translate-y-2" : ""}`} />
+          <span className={`w-3/4 h-[2px] bg-[#1A2744] ml-auto transition-all duration-300 ${menuOpen ? "opacity-0" : ""}`} />
+          <span className={`w-full h-[2px] bg-[#1A2744] transition-all duration-300 ${menuOpen ? "-rotate-45 -translate-y-2" : ""}`} />
         </button>
       </div>
 
-      {/* Thin bottom accent line */}
-      <div className="h-[1px] bg-[#1A2744]/8" />
-
-      {/* ── Mobile drawer ── */}
-      <div
-        className={`lg:hidden overflow-hidden transition-all duration-300 ${
-          menuOpen ? "max-h-[400px] opacity-100" : "max-h-0 opacity-0"
-        }`}
-      >
-        <div className="bg-white border-t border-[#1A2744]/8 px-6 py-4 flex flex-col gap-1 shadow-lg">
+      {/* ── Mobile Menu Overlay ── */}
+      <div className={`fixed inset-0 bg-[#F5ECD7] z-40 flex flex-col items-center justify-center transition-all duration-500 ${
+        menuOpen ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none"
+      }`}>
+        <nav className="flex flex-col items-center gap-8 text-center">
           {navLinks.map((link) => (
             <button
               key={link.label}
               onClick={() => scrollTo(link.id, link.label)}
-              className="text-left text-[#1A2744] font-medium py-3 border-b border-[#1A2744]/8 text-sm bg-transparent border-x-0 border-t-0 cursor-pointer hover:text-[#C9952A] transition-colors"
+              className="font-playfair text-3xl font-bold text-[#3E2723] hover:text-[#D4A373] transition-colors"
             >
               {link.label}
             </button>
           ))}
-          <Link
-            to="/login"
-            className="mt-3 self-start flex items-center gap-2 bg-[#1A2744] text-white no-underline px-5 py-2.5 rounded-full text-sm font-semibold"
-          >
-            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1.003 1.003 0 011.01-.24c1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.24.2 2.45.57 3.57.1.31.03.66-.25 1.02l-2.2 2.2z" />
-            </svg>
-            Order Now
-          </Link>
-        </div>
+          <div className="mt-8 flex flex-col items-center gap-6">
+             <div className="relative">
+                <ShoppingBag size={32} className="text-[#3E2723]" />
+                {cartItemCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-[#D4A373] text-white text-xs w-6 h-6 flex items-center justify-center rounded-full font-bold shadow-sm border-2 border-[#F5ECD7]">
+                    {cartItemCount}
+                  </span>
+                )}
+             </div>
+             <Link to="/customize-order" onClick={() => setMenuOpen(false)} className="bg-[#3E2723] text-[#F5ECD7] px-8 py-3 rounded-full text-sm font-bold tracking-widest no-underline">
+                CUSTOMIZE ORDER
+             </Link>
+          </div>
+        </nav>
       </div>
     </header>
   );
