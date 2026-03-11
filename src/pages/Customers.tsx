@@ -1,4 +1,4 @@
-import { Search, Mail, Phone, Users } from "lucide-react";
+import { Search, Mail, Phone, Users, Star } from "lucide-react";
 
 const customers = [
 	{
@@ -50,75 +50,100 @@ const customers = [
 
 const Customers = () => {
 	return (
-		<div className="space-y-6 animate-fade-in">
+		<div className="space-y-8 animate-fade-in font-lora">
 			<div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
 				<div>
-					<h2 className="text-2xl font-bold font-dancing text-foreground">
-						Customers 👥
+					<h2 className="text-3xl font-bold font-playfair text-[#1A2744]">
+						Our Customers{" "}
+						<span className="inline-block animate-bounce text-[#D4A373]">
+							👥
+						</span>
 					</h2>
-					<p className="text-muted-foreground">
-						Manage customer details and loyalty points.
+					<p className="text-[#8D6E63] mt-1">
+						Manage profiles, order history, and loyalty rewards.
 					</p>
 				</div>
+				<button className="px-5 py-2.5 bg-[#D4A373] text-white rounded-full font-bold shadow-md hover:bg-[#c49265] transition-all flex items-center gap-2">
+					<Users size={18} />
+					Add Customer
+				</button>
 			</div>
 
-			<div className="flex items-center gap-4 bg-card p-4 rounded-bakery shadow-sm border border-border">
+			<div className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-[#D4A373]/20">
 				<div className="relative flex-1">
-					<Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+					<Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#D4A373] w-5 h-5" />
 					<input
 						type="text"
-						placeholder="Search customers..."
-						className="w-full pl-9 pr-4 py-2 rounded-full bg-secondary text-sm outline-none focus:ring-2 focus:ring-chocolate/20 transition-all"
+						placeholder="Search by name, email, or phone..."
+						className="w-full pl-11 pr-4 py-3 rounded-xl bg-[#F5ECD7]/30 text-[#1A2744] outline-none focus:ring-2 focus:ring-[#D4A373]/50 transition-all placeholder:text-[#8D6E63]/60"
 					/>
 				</div>
 			</div>
 
-			<div className="bakery-card overflow-hidden p-0">
+			<div className="bg-white rounded-2xl border border-[#D4A373]/20 shadow-sm overflow-hidden">
 				<div className="overflow-x-auto">
 					<table className="w-full text-left">
-						<thead className="bg-secondary/50 text-muted-foreground font-medium border-b border-border">
+						<thead className="bg-[#F5ECD7]/30 text-[#8D6E63] font-bold uppercase tracking-wider text-xs border-b border-[#D4A373]/20">
 							<tr>
-								<th className="p-4 pl-6">Customer</th>
-								<th className="p-4">Contact</th>
-								<th className="p-4">Total Orders</th>
-								<th className="p-4">Total Spent</th>
-								<th className="p-4">Loyalty Points</th>
+								<th className="p-5 pl-8">Customer</th>
+								<th className="p-5">Contact Details</th>
+								<th className="p-5">Orders</th>
+								<th className="p-5">Total Spent</th>
+								<th className="p-5">Loyalty Points</th>
+								<th className="p-5 text-right pr-8">Actions</th>
 							</tr>
 						</thead>
-						<tbody className="divide-y divide-border">
+						<tbody className="divide-y divide-[#D4A373]/10">
 							{customers.map((customer) => (
 								<tr
 									key={customer.id}
-									className="hover:bg-secondary/20 transition-colors"
+									className="hover:bg-[#F5ECD7]/20 transition-colors group"
 								>
-									<td className="p-4 pl-6">
+									<td className="p-4 pl-8">
 										<div className="flex items-center gap-3">
-											<div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-chocolate font-bold">
+											<div className="w-10 h-10 rounded-full bg-[#F5ECD7] flex items-center justify-center text-[#D4A373] font-playfair font-bold text-lg border border-[#D4A373]/20 shadow-sm">
 												{customer.name.charAt(0)}
 											</div>
-											<span className="font-semibold text-foreground">
-												{customer.name}
-											</span>
+											<div className="flex flex-col">
+												<span className="font-bold text-[#1A2744]">
+													{customer.name}
+												</span>
+												<span className="text-xs text-[#8D6E63]">
+													ID: #{customer.id}
+												</span>
+											</div>
 										</div>
 									</td>
-									<td className="p-4 text-sm text-muted-foreground">
-										<div className="flex flex-col gap-1">
-											<span className="flex items-center gap-1">
-												<Mail size={12} /> {customer.email}
-											</span>
-											<span className="flex items-center gap-1">
-												<Phone size={12} /> {customer.phone}
-											</span>
+									<td className="p-4">
+										<div className="flex flex-col gap-1 text-sm text-[#6D4C41]">
+											<div className="flex items-center gap-2">
+												<Mail size={14} className="text-[#D4A373]" />
+												{customer.email}
+											</div>
+											<div className="flex items-center gap-2">
+												<Phone size={14} className="text-[#D4A373]" />
+												{customer.phone}
+											</div>
 										</div>
 									</td>
-									<td className="p-4 font-medium">{customer.orders}</td>
-									<td className="p-4 font-bold text-chocolate">
+									<td className="p-4">
+										<span className="px-3 py-1 bg-[#F5ECD7] text-[#8D6E63] rounded-full text-xs font-bold">
+											{customer.orders} Orders
+										</span>
+									</td>
+									<td className="p-4 text-[#1A2744] font-bold font-mono">
 										${customer.spent.toFixed(2)}
 									</td>
 									<td className="p-4">
-										<span className="px-2.5 py-1 rounded-full bg-mint/20 text-mint-darker text-xs font-bold border border-mint/30">
+										<div className="flex items-center gap-1.5 text-[#D4A373] font-bold">
+											<Star size={16} fill="currentColor" />
 											{customer.loyaltyPoints} pts
-										</span>
+										</div>
+									</td>
+									<td className="p-4 pr-8 text-right">
+										<button className="text-sm font-bold text-[#D4A373] hover:text-[#1A2744] transition-colors underline decoration-dotted underline-offset-4">
+											View Profile
+										</button>
 									</td>
 								</tr>
 							))}

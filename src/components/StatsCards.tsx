@@ -46,25 +46,30 @@ const StatsCards = () => {
 			{stats.map((stat, i) => (
 				<div
 					key={stat.title}
-					className="bakery-card flex items-center gap-4 animate-fade-in"
+					className="bg-white rounded-2xl p-6 border border-[#D4A373]/20 shadow-sm hover:shadow-md transition-all duration-300 group"
 					style={{ animationDelay: `${i * 100}ms` }}
 				>
-					<div
-						className={`w-14 h-14 rounded-2xl ${stat.color} flex items-center justify-center shadow-md`}
-					>
-						<stat.icon className="w-7 h-7" />
-					</div>
-					<div className="flex-1">
-						<p className="text-sm text-muted-foreground font-medium">
+                    <div className="flex items-start justify-between mb-4">
+                        <div
+                            className={`w-12 h-12 rounded-xl bg-[#F5ECD7] text-[#1A2744] flex items-center justify-center group-hover:bg-[#1A2744] group-hover:text-[#F5ECD7] transition-colors duration-300`}
+                        >
+                            <stat.icon className="w-6 h-6" />
+                        </div>
+                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                             stat.change.startsWith('+') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                        }`}>
+                            {stat.change}
+                        </span>
+                    </div>
+					
+					<div>
+						<p className="text-xs text-[#8D6E63] font-bold uppercase tracking-wider mb-1">
 							{stat.title}
 						</p>
-						<p className="text-2xl font-bold font-dancing text-foreground">
+						<h3 className="text-2xl font-playfair font-bold text-[#1A2744]">
 							{stat.value}
-						</p>
+						</h3>
 					</div>
-					<span className="text-xs font-semibold px-2 py-1 rounded-full bg-mint text-foreground">
-						{stat.change}
-					</span>
 				</div>
 			))}
 		</div>
