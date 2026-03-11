@@ -1,6 +1,7 @@
 import { products, useProductActions } from "./home-data";
 import { Star } from "lucide-react";
 import { motion, Variants } from "framer-motion";
+import { Link } from "react-router-dom"; // Import Link for navigation
 
 export default function MenuSection() {
   const { handleAddToCart, scrollTo } = useProductActions();
@@ -47,58 +48,64 @@ export default function MenuSection() {
           {products.slice(0, 6).map((p) => (
             <motion.article key={p.id}
               variants={item}
-              className="group relative h-[450px] rounded-3xl overflow-hidden shadow-xl"
+              className="group relative h-[450px] rounded-3xl overflow-hidden shadow-xl cursor-pointer" // Add cursor-pointer
             >
-              {/* Full Background Image */}
-              <div className="absolute inset-0 w-full h-full">
-                <img src={p.img} alt={p.name}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-              </div>
-              
-              {/* Gradient Overlay: Dark Bottom to Transparent Top */}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#1a0f0a] via-[#3E2723]/60 to-transparent opacity-90" />
-
-              {/* Content Section */}
-              <div className="absolute inset-0 p-6 flex flex-col justify-end text-white z-10">
-                <div className="transform transition-all duration-300 translate-y-2 group-hover:translate-y-0">
-                  <div className="flex justify-between items-end mb-2">
-                    <div className="flex flex-col gap-1">
-                      {p.badge && (
-                        <span className="w-fit px-2 py-0.5 rounded-full bg-[#D4A373] text-[#2C1810] text-[0.65rem] font-bold uppercase tracking-wider mb-1">
-                          {p.badge}
-                        </span>
-                      )}
-                      <h3 className="font-playfair text-2xl font-bold leading-tight group-hover:text-[#D4A373] transition-colors">
-                        {p.name}
-                      </h3>
-                    </div>
-                    <span className="bg-white/10 px-3 py-1 rounded-full text-md font-semibold backdrop-blur-sm border border-white/10">
-                      ${p.price.toFixed(2)}
-                    </span>
-                  </div>
-
-                  <p className="text-white/80 text-sm mb-4 line-clamp-2 opacity-0 h-0 group-hover:h-auto group-hover:opacity-100 transition-all duration-300 delay-75">
-                    Experience the taste of our premium {p.category.toLowerCase()}, baked fresh every morning with organic ingredients.
-                  </p>
-
-                  <div className="flex items-center justify-between mb-5">
-                     <div className="flex items-center gap-1.5">
-                      <Star className="w-4 h-4 fill-[#FFD700] text-[#FFD700]" />
-                      <span className="text-white text-sm font-bold">4.8</span>
-                    </div>
-                    <span className="text-white/60 text-xs font-medium uppercase tracking-widest">
-                       {p.category}
-                    </span>
-                  </div>
-
-                  <button 
-                    onClick={() => handleAddToCart(p)}
-                    className="w-full bg-white text-[#2C1810] font-bold py-3.5 rounded-full hover:bg-[#D4A373] hover:text-[#2C1810] transition-colors shadow-lg active:scale-95 duration-200"
-                  >
-                    Add to Order
-                  </button>
+              {/* Wrap the product card content with Link */}
+              <Link to={`/product/${p.id}`} className="block h-full w-full"> 
+                {/* Full Background Image */}
+                <div className="absolute inset-0 w-full h-full">
+                  <img src={p.img} alt={p.name}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                 </div>
-              </div>
+                
+                {/* Gradient Overlay: Dark Bottom to Transparent Top */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#1a0f0a] via-[#3E2723]/60 to-transparent opacity-90" />
+
+                {/* Content Section */}
+                <div className="absolute inset-0 p-6 flex flex-col justify-end text-white z-10">
+                  <div className="transform transition-all duration-300 translate-y-2 group-hover:translate-y-0">
+                    <div className="flex justify-between items-end mb-2">
+                      <div className="flex flex-col gap-1">
+                        {p.badge && (
+                          <span className="w-fit px-2 py-0.5 rounded-full bg-[#D4A373] text-[#2C1810] text-[0.65rem] font-bold uppercase tracking-wider mb-1">
+                            {p.badge}
+                          </span>
+                        )}
+                        <h3 className="font-playfair text-2xl font-bold leading-tight group-hover:text-[#D4A373] transition-colors">
+                          {p.name}
+                        </h3>
+                      </div>
+                      <span className="bg-white/10 px-3 py-1 rounded-full text-md font-semibold backdrop-blur-sm border border-white/10">
+                        ${p.price.toFixed(2)}
+                      </span>
+                    </div>
+
+                    <p className="text-white/80 text-sm mb-4 line-clamp-2 opacity-0 h-0 group-hover:h-auto group-hover:opacity-100 transition-all duration-300 delay-75">
+                      Experience the taste of our premium {p.category.toLowerCase()}, baked fresh every morning with organic ingredients.
+                    </p>
+
+                    <div className="flex items-center justify-between mb-5">
+                      <div className="flex items-center gap-1.5">
+                        <Star className="w-4 h-4 fill-[#FFD700] text-[#FFD700]" />
+                        <span className="text-white text-sm font-bold">4.8</span>
+                      </div>
+                      <span className="text-white/60 text-xs font-medium uppercase tracking-widest">
+                        {p.category}
+                      </span>
+                    </div>
+
+                    <button 
+                      onClick={(e) => {
+                        e.preventDefault(); // Prevent navigating to detail page when adding to cart
+                        handleAddToCart(p);
+                      }}
+                      className="w-full bg-white text-[#2C1810] font-bold py-3.5 rounded-full hover:bg-[#D4A373] hover:text-[#2C1810] transition-colors shadow-lg active:scale-95 duration-200"
+                    >
+                      Add to Order
+                    </button>
+                  </div>
+                </div>
+              </Link>
             </motion.article>
           ))}
         </motion.div>

@@ -14,7 +14,8 @@ import Payments from "./pages/Payments";
 import Delivery from "./pages/Delivery";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
-import CustomizeOrder from "./pages/CustomizeOrder"; // Added import
+import CustomizeOrder from "./pages/CustomizeOrder";
+import ProductDetails from "./pages/ProductDetails"; // Add ProductDetails here
 
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -29,7 +30,8 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/customize-order" element={<CustomizeOrder />} /> {/* Added route */}
+          <Route path="/product/:id" element={<ProductDetails />} /> {/* Add route for Product Details */}
+          <Route path="/customize-order" element={<CustomizeOrder />} />
           <Route path="/login" element={<Login />} />
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Index />} />

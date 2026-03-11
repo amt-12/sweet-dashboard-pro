@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom"; // Hook for correct navigation
 import { useSelector } from "react-redux";
 import { RootState } from "../store";
 import { ShoppingBag, ChevronDown } from "lucide-react";
@@ -18,6 +18,8 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen]   = useState(false);
   const [active, setActive]       = useState("HOME");
   const [dropOpen, setDropOpen]   = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
   
   const cartItems = useSelector((state: RootState) => state.cart.items);
   const cartItemCount = cartItems.reduce((total, item) => total + item.quantity, 0);
@@ -29,8 +31,17 @@ export default function Navbar() {
   }, []);
 
   const scrollTo = (id: string | null, label: string) => {
-    if (id) {
-      document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    if (location.pathname !== "/") {
+      navigate("/");
+      setTimeout(() => {
+        if (id) {
+          document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+        }
+      }, 100);
+    } else {
+      if (id) {
+        document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+      }
     }
     setActive(label);
     setMenuOpen(false);

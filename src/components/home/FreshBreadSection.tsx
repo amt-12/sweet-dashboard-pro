@@ -82,7 +82,7 @@ export default function FreshBreadSection() {
               Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
             </p>
             <button 
-              onClick={() => scrollTo("Contact")}
+              onClick={() => scrollTo("menu")} // Corrected to scroll to "menu" (lowercase) which is the id in MenuSection
               className="bg-navy text-white px-10 py-4 text-xs font-bold tracking-[0.2em] uppercase hover:bg-navy/90 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
             >
               View Menu
