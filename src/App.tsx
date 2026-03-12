@@ -18,6 +18,8 @@ import CustomizeOrder from "./pages/CustomizeOrder";
 import ProductDetails from "./pages/ProductDetails";
 import Menu from "./pages/Menu";
 import About from "./pages/About";
+import Gallery from "./pages/Gallery";
+import Contact from "./pages/Contact";
 
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -34,6 +36,8 @@ const App = () => (
           <Route path="/" element={<Home />} />
           <Route path="/menu" element={<Menu />} />
           <Route path="/about" element={<About />} />
+          <Route path="/gallery" element={<Gallery />} />
+          <Route path="/contact" element={<Contact />} />
           <Route path="/product/:id" element={<ProductDetails />} />
           <Route path="/customize-order" element={<CustomizeOrder />} />
           <Route path="/login" element={<Login />} />

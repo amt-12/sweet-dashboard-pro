@@ -11,9 +11,8 @@ const navLinks = [
   { label: "MENU",      id: "menu",    path: "/menu" },
   { label: "ABOUT",     id: null,      path: "/about" },
   { label: "CUSTOMIZE", id: null,      path: "/customize-order" },
-  { label: "OUR STORY", id: null,      path: "/about" },
-  { label: "GALLERY",   id: null,      path: null, section: "gallery" },
-  { label: "CONTACT",   id: "contact", path: null },
+  { label: "GALLERY",   id: null,      path: "/gallery", section: "gallery" },
+  { label: "CONTACT",   id: null,      path: "/contact" },
 ];
 
 const trendingSearches = ["Birthday Cake", "Croissant", "Sourdough", "Chocolate Cookies", "Muffins"];
@@ -37,6 +36,16 @@ export default function Navbar() {
   const location   = useLocation();
 
   const cartItems     = useSelector((state: RootState) => state.cart.items);
+
+  // Sync active tab with current route
+  useEffect(() => {
+    const matched = navLinks.find(link => link.path && location.pathname === link.path);
+    if (matched) {
+      setActive(matched.label);
+    } else if (location.pathname === "/") {
+      setActive("HOME");
+    }
+  }, [location.pathname]);
   const cartItemCount = cartItems.reduce((total, item) => total + item.quantity, 0);
 
   useEffect(() => {
