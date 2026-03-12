@@ -43,12 +43,12 @@ export default function MenuSection() {
           initial="hidden"
           whileInView="show"
           viewport={{ once: true, margin: "-100px" }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-8"
+          className="grid grid-cols-2 md:grid-cols-4 gap-5"
         >
-          {products.slice(0, 6).map((p) => (
+          {products.slice(0, 8).map((p) => (
             <motion.article key={p.id}
               variants={item}
-              className="group relative h-[450px] rounded-3xl overflow-hidden shadow-xl cursor-pointer" // Add cursor-pointer
+              className="group relative h-[320px] rounded-2xl overflow-hidden shadow-xl cursor-pointer"
             >
               {/* Wrap the product card content with Link */}
               <Link to={`/product/${p.id}`} className="block h-full w-full"> 
@@ -62,44 +62,40 @@ export default function MenuSection() {
                 <div className="absolute inset-0 bg-gradient-to-t from-[#1a0f0a] via-[#3E2723]/60 to-transparent opacity-90" />
 
                 {/* Content Section */}
-                <div className="absolute inset-0 p-6 flex flex-col justify-end text-white z-10">
+                <div className="absolute inset-0 p-4 flex flex-col justify-end text-white z-10">
                   <div className="transform transition-all duration-300 translate-y-2 group-hover:translate-y-0">
-                    <div className="flex justify-between items-end mb-2">
-                      <div className="flex flex-col gap-1">
+                    <div className="flex justify-between items-end mb-1.5">
+                      <div className="flex flex-col gap-0.5">
                         {p.badge && (
-                          <span className="w-fit px-2 py-0.5 rounded-full bg-[#D4A373] text-[#2C1810] text-[0.65rem] font-bold uppercase tracking-wider mb-1">
+                          <span className="w-fit px-2 py-0.5 rounded-full bg-[#D4A373] text-[#2C1810] text-[0.6rem] font-bold uppercase tracking-wider mb-0.5">
                             {p.badge}
                           </span>
                         )}
-                        <h3 className="font-playfair text-2xl font-bold leading-tight group-hover:text-[#D4A373] transition-colors">
+                        <h3 className="font-playfair text-lg font-bold leading-tight group-hover:text-[#D4A373] transition-colors">
                           {p.name}
                         </h3>
                       </div>
-                      <span className="bg-white/10 px-3 py-1 rounded-full text-md font-semibold backdrop-blur-sm border border-white/10">
+                      <span className="bg-white/10 px-2 py-0.5 rounded-full text-sm font-semibold backdrop-blur-sm border border-white/10">
                         ${p.price.toFixed(2)}
                       </span>
                     </div>
 
-                    <p className="text-white/80 text-sm mb-4 line-clamp-2 opacity-0 h-0 group-hover:h-auto group-hover:opacity-100 transition-all duration-300 delay-75">
-                      Experience the taste of our premium {p.category.toLowerCase()}, baked fresh every morning with organic ingredients.
-                    </p>
-
-                    <div className="flex items-center justify-between mb-5">
-                      <div className="flex items-center gap-1.5">
-                        <Star className="w-4 h-4 fill-[#FFD700] text-[#FFD700]" />
-                        <span className="text-white text-sm font-bold">4.8</span>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-1">
+                        <Star className="w-3 h-3 fill-[#FFD700] text-[#FFD700]" />
+                        <span className="text-white text-xs font-bold">4.8</span>
                       </div>
-                      <span className="text-white/60 text-xs font-medium uppercase tracking-widest">
+                      <span className="text-white/60 text-[0.65rem] font-medium uppercase tracking-widest">
                         {p.category}
                       </span>
                     </div>
 
                     <button 
                       onClick={(e) => {
-                        e.preventDefault(); // Prevent navigating to detail page when adding to cart
+                        e.preventDefault();
                         handleAddToCart(p);
                       }}
-                      className="w-full bg-white text-[#2C1810] font-bold py-3.5 rounded-full hover:bg-[#D4A373] hover:text-[#2C1810] transition-colors shadow-lg active:scale-95 duration-200"
+                      className="w-full bg-white text-[#2C1810] font-bold py-2.5 text-sm rounded-full hover:bg-[#D4A373] hover:text-[#2C1810] transition-colors shadow-lg active:scale-95 duration-200"
                     >
                       Add to Order
                     </button>

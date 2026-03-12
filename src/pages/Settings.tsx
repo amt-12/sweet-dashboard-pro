@@ -50,7 +50,7 @@ const Settings = () => {
               </Label>
               <Input
                 id="name"
-                defaultValue="Sweet Bake"
+                defaultValue="Hangary Sweet"
                 className="border-[#D4A373]/30 focus:border-[#D4A373] focus:ring-[#D4A373]/20 rounded-xl bg-[#F5ECD7]/10"
               />
             </div>
@@ -63,7 +63,7 @@ const Settings = () => {
               </Label>
               <Input
                 id="email"
-                defaultValue="admin@sweetbake.com"
+                defaultValue="admin@Hangary Sweet.com"
                 className="border-[#D4A373]/30 focus:border-[#D4A373] focus:ring-[#D4A373]/20 rounded-xl bg-[#F5ECD7]/10"
               />
             </div>

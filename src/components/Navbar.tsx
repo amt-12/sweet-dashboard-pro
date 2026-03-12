@@ -132,7 +132,7 @@ export default function Navbar() {
               <span className="text-[#D4A373] font-playfair font-bold text-xl -rotate-3 group-hover:-rotate-12 transition-all duration-300">S</span>
             </div>
             <div className="hidden md:flex flex-col leading-none">
-              <span className="font-playfair text-xl font-bold tracking-wider text-[#1A2744] group-hover:text-[#D4A373] transition-colors">SWEETBAKE</span>
+              <span className="font-playfair text-xl font-bold tracking-wider text-[#1A2744] group-hover:text-[#D4A373] transition-colors">Hangary Sweet</span>
               <span className="text-[0.6rem] tracking-[0.3em] text-[#8D6E63] font-medium uppercase mt-1">Est. 1984</span>
             </div>
           </Link>

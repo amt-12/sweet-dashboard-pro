@@ -43,7 +43,7 @@ const BakerySidebar = () => {
         {!collapsed && (
           <div>
             <h1 className="font-playfair text-xl font-bold text-[#1A2744] tracking-widest leading-none">
-              SWEETBAKE
+              Hangary Sweet
             </h1>
             <div className="flex items-center gap-1 mt-1">
                 <span className="h-[1px] w-4 bg-[#D4A373]"></span>
