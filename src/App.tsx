@@ -15,7 +15,9 @@ import Delivery from "./pages/Delivery";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import CustomizeOrder from "./pages/CustomizeOrder";
-import ProductDetails from "./pages/ProductDetails"; // Add ProductDetails here
+import ProductDetails from "./pages/ProductDetails";
+import Menu from "./pages/Menu";
+import About from "./pages/About";
 
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -30,7 +32,9 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/product/:id" element={<ProductDetails />} /> {/* Add route for Product Details */}
+          <Route path="/menu" element={<Menu />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/product/:id" element={<ProductDetails />} />
           <Route path="/customize-order" element={<CustomizeOrder />} />
           <Route path="/login" element={<Login />} />
           <Route path="/admin" element={<AdminLayout />}>

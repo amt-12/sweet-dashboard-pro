@@ -20,8 +20,28 @@ export default function ProductDetails() {
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(0); 
 
+  const [selectedFlavor, setSelectedFlavor] = useState("Truffle Chocolate Cake");
+  const [selectedWeightIndex, setSelectedWeightIndex] = useState(0);
+
+  const flavors = [
+    "Truffle Chocolate Cake", "Coffee Cake 2", "Butterscotch", 
+    "Butterscotch Hazelnut", "Cherry Black Forest", "Cherry Topped Black Forest Cake",
+    "Chocolate & Cherry Black Forest Cake", "Chocolate Truffle", 
+    "Elegant Yummy Vanilla Cake", "Red Velvet"
+  ];
+  
+  const weightOptions = [
+    { label: "500 g", pack: "Pack of 1", multiplier: 1 },
+    { label: "1 kg", pack: "Pack of 1", multiplier: 1.8 },
+    { label: "2 kg", pack: "Pack of 1", multiplier: 3.5 },
+    { label: "3 kg", pack: "Pack of 1", multiplier: 5.2 },
+    { label: "4 kg", pack: "Pack of 1", multiplier: 6.8 },
+  ];
+
   // Find the product based on ID
   const product = products.find((p) => p.id === Number(id));
+
+  const currentPrice = product ? product.price * weightOptions[selectedWeightIndex].multiplier : 0;
 
   if (!product) {
     return (
@@ -51,9 +71,17 @@ export default function ProductDetails() {
   };
 
   const onAddToCart = () => {
+    if (!product) return;
+    
+    const variantProduct = {
+      ...product,
+      name: `${product.name} (${selectedFlavor}, ${weightOptions[selectedWeightIndex].label})`,
+      price: currentPrice
+    };
+
     // In a real app we'd pass quantity too
     for(let i=0; i<quantity; i++) {
-        handleAddToCart(product);
+        handleAddToCart(variantProduct);
     }
   };
 
@@ -62,7 +90,7 @@ export default function ProductDetails() {
       <Navbar />
       <CartSheet />
       
-      <div className="pt-28 pb-16 px-6 max-w-7xl mx-auto">
+      <div className="pt-28 pb-16 px-6 w-full mx-auto">
         <button 
           onClick={() => navigate("/")}
           className="flex items-center gap-2 text-[#7A5C4F] hover:text-[#2C1810] mb-8 transition-colors text-sm font-medium uppercase tracking-wider group"
@@ -155,13 +183,60 @@ export default function ProductDetails() {
 
             <div className="flex items-end gap-6 mb-10">
               <span className="text-5xl font-playfair font-bold text-[#2C1810]">
-                ${(product.price * quantity).toFixed(2)}
+                ${(currentPrice * quantity).toFixed(2)}
               </span>
               {quantity > 1 && (
                  <span className="text-lg text-[#7A5C4F] font-medium mb-2">
-                    (${product.price.toFixed(2)} each)
+                    (${currentPrice.toFixed(2)} each)
                  </span>
               )}
+            </div>
+
+            {/* Flavor Selection */}
+            <div className="mb-8">
+                <p className="text-[#2C1810] font-bold mb-3">Flavour Name: <span className="font-playfair">{selectedFlavor}</span></p>
+                <div className="flex flex-wrap gap-2">
+                    {flavors.map((flavor) => (
+                        <button
+                            key={flavor}
+                            onClick={() => setSelectedFlavor(flavor)}
+                            className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
+                                selectedFlavor === flavor
+                                ? "border-[#2C1810] bg-[#2C1810] text-white shadow-md"
+                                : "border-gray-200 bg-white text-[#2C1810] hover:border-[#D4A373]"
+                            }`}
+                        >
+                            {flavor}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Size Selection */}
+            <div className="mb-10">
+                <p className="text-[#2C1810] font-bold mb-3">Size: <span className="font-playfair">{weightOptions[selectedWeightIndex].label}</span> ({weightOptions[selectedWeightIndex].pack})</p>
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+                    {weightOptions.map((option, index) => {
+                         const price = product.price * option.multiplier;
+                         const originalPrice = price * 1.5; 
+                         return (
+                            <button
+                                key={index}
+                                onClick={() => setSelectedWeightIndex(index)}
+                                className={`text-left p-3 rounded-xl border-2 transition-all ${
+                                    selectedWeightIndex === index
+                                    ? "border-[#2C1810] bg-[#F2EBE3]"
+                                    : "border-gray-100 bg-white hover:border-[#D4A373]"
+                                }`}
+                            >
+                                <div className="font-bold text-[#2C1810] text-sm mb-1">{option.label}</div>
+                                <div className="text-xs text-[#7A5C4F] mb-2">{option.pack}</div>
+                                <div className="font-bold text-[#2C1810]">${price.toFixed(2)}</div>
+                                <div className="text-xs text-gray-400 line-through">${originalPrice.toFixed(2)}</div>
+                            </button>
+                         );
+                    })}
+                </div>
             </div>
             
             {/* Quantity & Add to Cart */}
@@ -190,7 +265,7 @@ export default function ProductDetails() {
                 >
                     <span className="relative z-10 flex items-center gap-3">
                         <ShoppingBag size={22} />
-                        Add to Cart • ${(product.price * quantity).toFixed(2)}
+                        Add to Cart • ${(currentPrice * quantity).toFixed(2)}
                     </span>
                     <div className="absolute inset-0 bg-[#D4A373] translate-y-[101%] group-hover:translate-y-0 transition-transform duration-300 ease-in-out" />
                 </Button>
@@ -202,19 +277,29 @@ export default function ProductDetails() {
                     <AccordionItem value="desc" className="border-b border-[#E5DACE]">
                         <AccordionTrigger className="text-[#2C1810] font-playfair font-bold text-lg hover:no-underline hover:text-[#D4A373]">Description</AccordionTrigger>
                         <AccordionContent className="text-[#7A5C4F] leading-relaxed text-base pt-2">
-                            Our {product.name.toLowerCase()} is made using traditional methods and slow fermentation processes to ensure superior flavor and texture. We use only organic flour, natural leavening, and premium ingredients sourced from local farmers.
+                             Indulge in the rich, velvety goodness of our Tempting Truffle Chocolate Cake. Perfect for Birthdays, Anniversaries, Valentine's Day, and Mother's Day. This 0.5kg delight is crafted with premium cocoa and smooth chocolate ganache, offering a melt-in-your-mouth experience. Baked fresh daily with love!
                         </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="ingredients" className="border-b border-[#E5DACE]">
                         <AccordionTrigger className="text-[#2C1810] font-playfair font-bold text-lg hover:no-underline hover:text-[#D4A373]">Ingredients & Allergens</AccordionTrigger>
                         <AccordionContent className="text-[#7A5C4F] leading-relaxed text-base pt-2">
-                            Organic wheat flour, water, sea salt, natural yeast. Contains: Wheat, Gluten. May contain traces of nuts and dairy due to shared equipment.
+                            Organic wheat flour, dark chocolate, fresh cream, butter, sugar, cocoa powder, baking powder. Contains: Wheat, Dairy, Soy. May contain traces of nuts.
                         </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="shipping" className="border-b border-[#E5DACE]">
                         <AccordionTrigger className="text-[#2C1810] font-playfair font-bold text-lg hover:no-underline hover:text-[#D4A373]">Delivery & Shipping</AccordionTrigger>
                         <AccordionContent className="text-[#7A5C4F] leading-relaxed text-base pt-2">
-                            We deliver daily within the city limits. Orders placed before 10 AM are eligible for same-day delivery. Nationwide shipping is available for select items with 2-day express handling.
+                            Same Day Delivery available! Free delivery on orders above ₹500. Orders placed before 4 PM are eligible for same-day dispatch. Secure and contactless delivery.
+                        </AccordionContent>
+                    </AccordionItem>
+                     <AccordionItem value="offers" className="border-b border-[#E5DACE]">
+                        <AccordionTrigger className="text-[#2C1810] font-playfair font-bold text-lg hover:no-underline hover:text-[#D4A373]">Offers</AccordionTrigger>
+                        <AccordionContent className="text-[#7A5C4F] leading-relaxed text-base pt-2">
+                            <ul className="list-disc pl-5 space-y-1">
+                                <li><strong>Bank Offer:</strong> Upto ₹15.00 cashback with Amazon Pay ICICI Bank Credit Cards.</li>
+                                <li><strong>Partner Offers:</strong> Buy 2 get 3% off, Buy 3 get 4% off.</li>
+                                <li><strong>Price:</strong> ₹529.00 (69% off MRP ₹1,699).</li>
+                            </ul>
                         </AccordionContent>
                     </AccordionItem>
                 </Accordion>

@@ -29,7 +29,8 @@ import {
   MessageCircle,
   Palette,
   Check,
-  X 
+  X,
+  Phone
 } from "lucide-react";
 
 const occasions = [
@@ -73,7 +74,8 @@ export default function CustomizeOrder() {
     deliveryType: "pickup", // "pickup" | "delivery"
     deliveryDate: "",
     deliveryTime: "",
-    budget: "",
+    name: "",
+    mobile: "",
     address: "",
     pincode: "",
   });
@@ -432,26 +434,43 @@ export default function CustomizeOrder() {
               </div>
             </div>
 
-            {/* 11. Budget */}
+            {/* 11. Contact Details */}
             <div className="bg-[#FFF8F0]/50 p-6 rounded-2xl border border-[#D4A373]/20 hover:border-[#D4A373]/50 transition-colors">
                <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-full bg-[#3E2723] flex items-center justify-center text-[#F5ECD7]">
-                  <IndianRupee size={20} />
+                  <User size={20} />
                 </div>
-                <h2 className="font-playfair text-2xl font-bold text-[#3E2723]">Budget Range</h2>
+                <h2 className="font-playfair text-2xl font-bold text-[#3E2723]">Contact Details</h2>
               </div>
-              <div className="flex items-center gap-4 max-w-sm">
-                 <div className="relative w-full">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-[#3E2723]">₹</span>
-                    <Input 
-                      type="number" 
-                      placeholder="e.g. 1500" 
-                      className="text-xl pl-8 h-14 font-bold text-[#3E2723] bg-white border-[#D4A373]/30"
-                      onChange={(e) => handleInputChange("budget", e.target.value)}
-                    />
-                 </div>
+              
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                   <Label className="text-[#5D4037]">Full Name</Label>
+                   <div className="relative">
+                      <User className="absolute left-3 top-3.5 h-4 w-4 text-[#8D6E63]" />
+                      <Input 
+                        type="text" 
+                        placeholder="Your Name" 
+                        className="pl-9 bg-white border-[#D4A373]/30 h-11 focus:ring-[#3E2723]"
+                        onChange={(e) => handleInputChange("name", e.target.value)}
+                      />
+                   </div>
+                </div>
+
+                <div className="space-y-2">
+                   <Label className="text-[#5D4037]">Contact Number</Label>
+                   <div className="relative">
+                      <Phone className="absolute left-3 top-3.5 h-4 w-4 text-[#8D6E63]" />
+                      <Input 
+                        type="tel" 
+                        placeholder="Your Mobile Number" 
+                        className="pl-9 bg-white border-[#D4A373]/30 h-11 focus:ring-[#3E2723]"
+                        onChange={(e) => handleInputChange("mobile", e.target.value)}
+                      />
+                   </div>
+                </div>
               </div>
-              <p className="text-sm text-[#8D6E63] mt-3">This helps us suggest the best designs for you.</p>
+              <p className="text-sm text-[#8D6E63] mt-3">We will contact you to discuss the final price.</p>
             </div>
 
             <Button 
