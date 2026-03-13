@@ -1,10 +1,119 @@
-import { products, useProductActions } from "./home-data";
+import type { Product } from "./home-data";
+import { useProductActions } from "./home-data";
 import { Star } from "lucide-react";
 import { motion, Variants } from "framer-motion";
 import { Link } from "react-router-dom"; // Import Link for navigation
+import { useEffect, useState } from "react";
 
 export default function MenuSection() {
   const { handleAddToCart, scrollTo } = useProductActions();
+
+  // load products from backend (no local fallback)
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const controller = new AbortController();
+
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/products?limit=8`, { signal: controller.signal });
+        if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
+        const json = await res.json();
+        console.log('MenuSection API response:', json);
+        // accept either { data: [...] } or raw array response
+        const result = json && Array.isArray(json.data) ? json.data : (Array.isArray(json) ? json : null);
+        if (mounted && result) setProducts(result as Product[]);
+        else if (mounted) {
+          console.warn('MenuSection unexpected API format — not using local fallback');
+          setProducts([]);
+        }
+        
+      } catch (err) {
+        console.warn('MenuSection fetch error:', err);
+        if (mounted) setProducts([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    load();
+    return () => {
+      mounted = false;
+      controller.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    console.log('MenuSection products state:', products);
+  }, [products]);
+
+  // helper to get a stable string id for a product (supports id:number or _id:string)
+  const getProdId = (prod: Product | Record<string, unknown>) =>
+    String((prod as Product).id ?? (prod as Record<string, unknown>)['_id'] ?? '');
+
+  // Convert any product.img that is a base64 data URL into an object URL for display
+  const [imgMap, setImgMap] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const createdUrls: string[] = [];
+    const map: Record<string, string> = {};
+
+    products.forEach((p) => {
+      const id = getProdId(p);
+      try {
+        // look for a data URL in commonly used fields
+        const record = p as unknown as Record<string, unknown>;
+        const candidates: string[] = [];
+        const fields = ['img', 'imgBase64', 'image'];
+        for (const f of fields) {
+          const v = record[f];
+          if (typeof v === 'string') candidates.push(v);
+        }
+        if (Array.isArray(record['images'])) {
+          const arr = record['images'] as unknown[];
+          if (arr.length) {
+            const first = arr[0] as Record<string, unknown> | undefined;
+            if (first) {
+              const b = first['base64'];
+              const u = first['url'];
+              if (typeof b === 'string') candidates.push(b);
+              if (typeof u === 'string') candidates.push(u);
+            }
+          }
+        }
+
+        // find first candidate that is a data URL
+        const dataUrl = candidates.find((c) => typeof c === 'string' && c.startsWith('data:image')) as string | undefined;
+        if (!dataUrl) return;
+
+        const parts = dataUrl.split(',');
+        const meta = parts[0] || '';
+        const base64 = parts[1] || '';
+        const m = meta.match(/data:([^;]+);base64/);
+        const mime = m ? m[1] : 'image/png';
+        const byteString = atob(base64);
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+        const blob = new Blob([ab], { type: mime });
+        const url = URL.createObjectURL(blob);
+        if (id) map[id] = url;
+        createdUrls.push(url);
+      } catch (e) {
+        // ignore conversion errors, fallback to original string
+      }
+    });
+
+    if (Object.keys(map).length) setImgMap((prev) => ({ ...prev, ...map }));
+
+    return () => {
+      // revoke created object URLs when products change/unmount
+      createdUrls.forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, [products]);
 
   const container: Variants = {
     hidden: { opacity: 0 },
@@ -41,21 +150,29 @@ export default function MenuSection() {
         <motion.div 
           variants={container}
           initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: "-100px" }}
+          animate={loading ? "hidden" : "show"}
           className="grid grid-cols-2 md:grid-cols-4 gap-5"
         >
-          {products.slice(0, 8).map((p) => (
-            <motion.article key={p.id}
+          {loading && (
+            <div className="col-span-2 md:col-span-4 text-center py-12 text-gray-500">Loading menu…</div>
+          )}
+          {!loading && products.length === 0 && (
+            <div className="col-span-2 md:col-span-4 text-center py-12 text-gray-500">No menu items available.</div>
+          )}
+          {products.slice(0, 8).map((p, i) => (
+            <motion.article key={getProdId(p) || `prod-${i}`}
               variants={item}
               className="group relative h-[320px] rounded-2xl overflow-hidden shadow-xl cursor-pointer"
             >
               {/* Wrap the product card content with Link */}
-              <Link to={`/product/${p.id}`} className="block h-full w-full"> 
+              <Link to={`/product/${getProdId(p)}`} className="block h-full w-full"> 
                 {/* Full Background Image */}
                 <div className="absolute inset-0 w-full h-full">
-                  <img src={p.img} alt={p.name}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                  <img
+                    alt={p.name}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    src={imgMap[getProdId(p)] ?? p.img}
+                  />
                 </div>
                 
                 {/* Gradient Overlay: Dark Bottom to Transparent Top */}

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { products, useProductActions } from "../components/home/home-data";
+import { useState, useEffect } from "react";
+import { useProductActions } from "../components/home/home-data";
 import Navbar from "../components/Navbar";
 import CartSheet from "../components/CartSheet";
 import FooterSection from "../components/home/FooterSection";
@@ -30,6 +30,94 @@ export default function Menu() {
   
   const { handleAddToCart } = useProductActions();
   const navigate = useNavigate(); 
+
+  // products loaded from backend API (replace demo import)
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const controller = new AbortController();
+
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/products?limit=100`, { signal: controller.signal });
+        if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
+        const json = await res.json();
+        console.log('Menu page API response:', json);
+        const result = json && Array.isArray(json.data) ? json.data : (Array.isArray(json) ? json : null);
+        if (mounted && result) setProducts(result);
+        else if (mounted) setProducts([]);
+      } catch (e) {
+        console.warn('Menu page fetch error:', e);
+        if (mounted) setProducts([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    load();
+    return () => { mounted = false; controller.abort(); };
+  }, []);
+
+  // helper to choose image src: prefer base64/data then stored paths
+  const getImageSrc = (p: any) => {
+    if (!p) return '/placeholder.svg';
+    if (typeof p.imgBase64 === 'string' && p.imgBase64) return p.imgBase64;
+    if (typeof p.img === 'string' && p.img) return (p.img.startsWith('data:') || p.img.startsWith('http') || p.img.startsWith('/')) ? p.img : (`/${p.img}`);
+    if (Array.isArray(p.images) && p.images.length) {
+      const first = p.images[0];
+      if (first && typeof first.base64 === 'string' && first.base64) return first.base64;
+      if (first && typeof first.url === 'string' && first.url) return (first.url.startsWith('/') || first.url.startsWith('http')) ? first.url : `/${first.url}`;
+    }
+    if (typeof p.image === 'string' && p.image) return p.image;
+    return '/placeholder.svg';
+  };
+
+  // compute which of the currently selected filters a product matches
+  const getMatchedTags = (p: any) => {
+    const tags: string[] = [];
+    const pushIf = (vals: string[] | undefined) => {
+      if (!vals || vals.length === 0) return;
+      for (const v of vals) if (v && !tags.includes(v)) tags.push(v);
+    };
+
+    // category
+    if (filters.category && filters.category.length > 0 && filters.category.includes(p.category)) pushIf([p.category]);
+
+    // flavor (product may have string or array)
+    const prodFlavor = Array.isArray(p.flavor) ? p.flavor : (typeof p.flavor === 'string' ? p.flavor.split(',').map((s:string)=>s.trim()) : []);
+    const matchedFlavor = filters.flavor?.filter(f => prodFlavor.includes(f)) || [];
+    pushIf(matchedFlavor);
+
+    // type
+    const prodType = Array.isArray(p.type) ? p.type : (typeof p.type === 'string' ? p.type.split(',').map((s:string)=>s.trim()) : []);
+    const matchedType = filters.type?.filter(t => prodType.includes(t)) || [];
+    pushIf(matchedType);
+
+    // occasion
+    const prodOcc = Array.isArray(p.occasion) ? p.occasion : (typeof p.occasion === 'string' ? p.occasion.split(',').map((s:string)=>s.trim()) : []);
+    const matchedOcc = filters.occasion?.filter(o => prodOcc.includes(o)) || [];
+    pushIf(matchedOcc);
+
+    // weight
+    const prodWeight = Array.isArray(p.weight) ? p.weight : (typeof p.weight === 'string' ? p.weight.split(',').map((s:string)=>s.trim()) : []);
+    const matchedWeight = filters.weight?.filter(w => prodWeight.includes(w)) || [];
+    pushIf(matchedWeight);
+
+    // delivery, dietary, shape, theme
+    const prodDelivery = Array.isArray(p.delivery) ? p.delivery : (p.delivery ? [p.delivery] : []);
+    pushIf(filters.delivery?.filter(d => prodDelivery.includes(d)));
+
+    const prodDietary = Array.isArray(p.dietary) ? p.dietary : (p.dietary ? [p.dietary] : []);
+    pushIf(filters.dietary?.filter(d => prodDietary.includes(d)));
+
+    if (filters.shape && filters.shape.length > 0 && p.shape && filters.shape.includes(p.shape)) pushIf([p.shape]);
+    if (filters.theme && filters.theme.length > 0 && p.theme && filters.theme.includes(p.theme)) pushIf([p.theme]);
+
+    return tags.slice(0, 6);
+  };
 
   const handleFilterChange = (newFilters: FilterState) => {
     setFilters(newFilters);
@@ -184,7 +272,7 @@ export default function Menu() {
                   <div onClick={() => navigate(`/product/${p.id}`)} className="block h-full w-full"> 
                     {/* Full Background Image */}
                     <div className="absolute inset-0 w-full h-full">
-                      <img src={p.img} alt={p.name}
+                      <img src={getImageSrc(p)} alt={p.name}
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                     </div>
                     
@@ -196,15 +284,25 @@ export default function Menu() {
                       <div className="transform transition-all duration-300 translate-y-2 group-hover:translate-y-0">
                         <div className="flex justify-between items-end mb-2">
                           <div className="flex flex-col gap-1">
-                            {p.badge && (
-                              <span className="w-fit px-2 py-0.5 rounded-full bg-[#D4A373] text-[#2C1810] text-[0.65rem] font-bold uppercase tracking-wider mb-1">
-                                {p.badge}
-                              </span>
+                            <div className="flex items-center gap-2">
+                              {p.badge && (
+                                <span className="w-fit px-2 py-0.5 rounded-full bg-[#D4A373] text-[#2C1810] text-[0.65rem] font-bold uppercase tracking-wider">
+                                  {p.badge}
+                                </span>
+                              )}
+                              <h3 className="font-playfair text-2xl font-bold leading-tight group-hover:text-[#D4A373] transition-colors">
+                                {p.name}
+                              </h3>
+                            </div>
+                            {/* show which selected filters this product matches */}
+                            { (filters && (Object.values(filters).some(v => Array.isArray(v) ? v.length>0 : v !== null)) ) && (
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {getMatchedTags(p).map((t) => (
+                                  <span key={t} className="text-xs bg-white/10 px-2 py-0.5 rounded-full border border-white/20">{t}</span>
+                                ))}
+                              </div>
                             )}
-                            <h3 className="font-playfair text-2xl font-bold leading-tight group-hover:text-[#D4A373] transition-colors">
-                              {p.name}
-                            </h3>
-                          </div>
+                         </div>
                           <span className="bg-white/10 px-3 py-1 rounded-full text-md font-semibold backdrop-blur-sm border border-white/10">
                             ${p.price.toFixed(2)}
                           </span>

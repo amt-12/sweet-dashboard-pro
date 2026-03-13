@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -10,6 +10,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { X, Filter } from "lucide-react";
+import { api } from "@/services/api";
 
 export interface FilterState {
   category: string[];
@@ -39,7 +40,8 @@ const initialFilters: FilterState = {
   theme: [],
 };
 
-const filterOptions = {
+// default fallbacks used while API loads or if API fails
+const defaultFilterOptions = {
   category: ["Cakes", "Cupcakes", "Pastries", "Cookies", "Donuts", "Pies & Tarts", "Gift Hampers", "Chocolates"],
   flavor: ["Chocolate", "Vanilla", "Red Velvet", "Butterscotch", "Black Forest", "Pineapple", "Strawberry", "Coffee", "Mango"],
   type: ["Eggless", "Egg Cake", "Vegan Cake", "Sugar-Free Cake", "Gluten-Free Cake", "Designer Cake", "Photo Cake", "Fondant Cake", "Theme Cake"],
@@ -51,6 +53,54 @@ const filterOptions = {
   theme: ["Kids Theme", "Superhero Theme", "Princess Theme", "Football Theme", "Wedding Theme"],
 };
 
+// dynamic options state
+const useDynamicOptions = () => {
+  const [options, setOptions] = useState<typeof defaultFilterOptions>(defaultFilterOptions);
+
+  useEffect(() => {
+    let mounted = true;
+    // fetch multiple endpoints in parallel
+    Promise.all([
+      api.categories.getAll().catch(() => []),
+      api.flavors.getAll().catch(() => []),
+      api.weights.getAll().catch(() => []),
+      api.types.getAll().catch(() => []),
+      api.occasions.getAll().catch(() => []),
+      api.shapes.getAll().catch(() => []),
+      api.themes.getAll().catch(() => []),
+    ]).then(([cats, flvs, wts, types, occ, shp, thm]) => {
+      if (!mounted) return;
+      const toStrings = (arr: unknown[]) => (arr || []).map((it) => {
+        if (typeof it === 'string') return it;
+        if (it && typeof it === 'object') {
+          const obj = it as Record<string, unknown>;
+          const name = (typeof obj.name === 'string' && obj.name)
+            || (typeof obj.title === 'string' && obj.title)
+            || (typeof obj.label === 'string' && obj.label)
+            || (typeof obj.type === 'string' && obj.type);
+          return name || '';
+        }
+        return '';
+      }).filter(Boolean) as string[];
+      setOptions({
+        category: toStrings(cats) || defaultFilterOptions.category,
+        flavor: toStrings(flvs) || defaultFilterOptions.flavor,
+        type: toStrings(types) || defaultFilterOptions.type,
+        occasion: toStrings(occ) || defaultFilterOptions.occasion,
+        weight: toStrings(wts) || defaultFilterOptions.weight,
+        delivery: defaultFilterOptions.delivery,
+        dietary: defaultFilterOptions.dietary,
+        shape: toStrings(shp) || defaultFilterOptions.shape,
+        theme: toStrings(thm) || defaultFilterOptions.theme,
+      });
+    }).catch(() => {}).finally(() => { mounted = false; });
+
+    return () => { mounted = false; };
+  }, []);
+
+  return options;
+};
+
 interface FilterSidebarProps {
   onFilterChange?: (filters: FilterState) => void;
   className?: string;
@@ -60,6 +110,7 @@ interface FilterSidebarProps {
 
 export default function FilterSidebar({ onFilterChange, className, isOpen, onClose }: FilterSidebarProps) {
   const [filters, setFilters] = useState<FilterState>(initialFilters);
+  const options = useDynamicOptions();
 
   const handleCheckboxChange = (section: keyof FilterState, value: string) => {
     setFilters((prev) => {
@@ -128,21 +179,21 @@ export default function FilterSidebar({ onFilterChange, className, isOpen, onClo
                 className="mb-4"
               />
               <div className="flex justify-between text-sm font-bold text-[#8D6E63]">
-                <span className="bg-[#D4A373]/10 px-2 py-0.5 rounded-lg">₹{filters.priceRange[0]}</span>
-                <span className="bg-[#D4A373]/10 px-2 py-0.5 rounded-lg">₹{filters.priceRange[1]}</span>
+                <span className="bg-[#D4A373]/10 px-2 py-0.5 rounded-lg">${filters.priceRange[0]}</span>
+                <span className="bg-[#D4A373]/10 px-2 py-0.5 rounded-lg">${filters.priceRange[1]}</span>
               </div>
             </AccordionContent>
           </AccordionItem>
 
           {/* Dynamic Checkbox Sections */}
-          {Object.entries(filterOptions).map(([key, options]) => (
+          {Object.entries(options).map(([key, opts]) => (
             <AccordionItem value={key} key={key} className="border-b border-[#D4A373]/20">
               <AccordionTrigger className="capitalize text-[#3E2723] font-semibold hover:no-underline hover:text-[#D4A373] py-3">
                 {key.replace(/([A-Z])/g, ' $1').trim()}
               </AccordionTrigger>
               <AccordionContent>
                 <div className="grid grid-cols-1 gap-1.5 pt-1">
-                  {options.map((option) => (
+                  {opts.map((option) => (
                     <div
                       key={option}
                       className={`flex items-center space-x-2 px-2 py-1.5 rounded-lg transition-colors cursor-pointer ${

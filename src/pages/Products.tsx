@@ -1,8 +1,16 @@
-import { Plus, Search, Edit, Trash2, Filter, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Plus, Search, Edit, Trash2, Filter, X, Package, DollarSign, Layers, Info, Image as ImageIcon } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { setProducts, setLoading, setError } from "../store/slices/productSlice";
 import { api } from "../services/api";
+import axiosInstance from "../services/api";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "../components/ui/sheet";
+import { toast } from "sonner";
+
+interface ProductImage {
+  url: string;
+  base64?: string;
+}
 
 interface Product {
   id?: string;
@@ -11,14 +19,21 @@ interface Product {
   price: number;
   stock: number;
   image: string;
+  images?: ProductImage[]; // Multi-image support
   flavor: string[];
   ingredients: string[];
+  type?: string[];
+  weight?: string[];
+  occasion?: string[];
+  shape?: string[];
+  theme?: string[];
   tasteDescription: string;
 }
 
 interface ProductForm extends Omit<Product, 'id'> {
   imageFile?: File | null;
   imagePreview?: string | null;
+  galleryPreviews: { file?: File, url: string, base64?: string }[];
 }
 
 const emptyForm: ProductForm = {
@@ -27,11 +42,18 @@ const emptyForm: ProductForm = {
   price: 0,
   stock: 0,
   image: "",
+  images: [],
   flavor: [],
   ingredients: [],
+  type: [],
+  weight: [],
+  occasion: [],
+  shape: [],
+  theme: [],
   tasteDescription: "",
   imageFile: null,
   imagePreview: null,
+  galleryPreviews: [],
 };
 
 // TagInput: small inline tag editor for flavor/ingredients
@@ -79,6 +101,15 @@ const Products = () => {
   const dispatch = useAppDispatch();
   const { items: products, loading, error } = useAppSelector((state) => state.products);
 
+  // dropdown lists from API
+  const [categoriesList, setCategoriesList] = useState<string[]>([]);
+  const [flavorsList, setFlavorsList] = useState<string[]>([]);
+  const [weightsList, setWeightsList] = useState<string[]>([]);
+  const [typesList, setTypesList] = useState<string[]>([]);
+  const [occasionsList, setOccasionsList] = useState<string[]>([]);
+  const [shapesList, setShapesList] = useState<string[]>([]);
+  const [themesList, setThemesList] = useState<string[]>([]);
+
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -94,16 +125,37 @@ const Products = () => {
     return () => { document.body.style.overflow = ''; };
   }, [showModal]);
 
+  // helper to normalize various image representations into { url, base64 }
+  const normalizeImage = useCallback((img: any): ProductImage => {
+    if (!img) return { url: '' };
+    if (typeof img === 'string') {
+      // string may be a data URI or a path/url
+      if (img.startsWith('data:')) return { url: '', base64: img };
+      return { url: img };
+    }
+    // object: try common fields
+    return {
+      url: img.url || img.img || img.path || img.filename || '' ,
+      base64: img.base64 || img.imgBase64 || img.data || undefined,
+    };
+  }, []);
+
   // helper to normalize a single product and preserve extra fields
-  const normalizeSingle = (p: any) => ({
-    // preserve all original properties
-    ...p,
-    id: p._id || p.id,
-    image: p.img || p.image || '/placeholder.svg',
-    flavor: Array.isArray(p.flavor) ? p.flavor : (typeof p.flavor === 'string' ? p.flavor.split(',').map((s: string) => s.trim()).filter(Boolean) : []),
-    ingredients: Array.isArray(p.ingredients) ? p.ingredients : (typeof p.ingredients === 'string' ? p.ingredients.split(',').map((s: string) => s.trim()).filter(Boolean) : []),
-    tasteDescription: p.tasteDescription || p.description || '',
-  });
+  const normalizeSingle = useCallback((p: any) => {
+    const imgs = (p.images || []).map((it: any) => normalizeImage(it));
+    return {
+      // preserve all original properties
+      ...p,
+      id: p._id || p.id,
+      // normalize images array to consistent shape
+      images: imgs,
+      // prefer base64 image coming from backend (imgBase64) then first gallery base64 then fallback to stored paths
+      image: p.imgBase64 || imgs.find((i: any) => i.base64)?.base64 || p.img || imgs.find((i: any) => i.url)?.url || p.image || '/placeholder.svg',
+      flavor: Array.isArray(p.flavor) ? p.flavor : (typeof p.flavor === 'string' ? p.flavor.split(',').map((s: string) => s.trim()).filter(Boolean) : []),
+      ingredients: Array.isArray(p.ingredients) ? p.ingredients : (typeof p.ingredients === 'string' ? p.ingredients.split(',').map((s: string) => s.trim()).filter(Boolean) : []),
+      tasteDescription: p.tasteDescription || p.description || '',
+    } as any;
+  }, [normalizeImage]);
 
   useEffect(() => {
     dispatch(setLoading(true));
@@ -112,13 +164,40 @@ const Products = () => {
       .getAll()
       .then((res) => {
         // api normalizes so res should be an array, but support object wrapper
-        const raw = Array.isArray(res) ? res : (res && (res.data || res)) || [];
+        const raw: any = Array.isArray(res) ? res : (res && ((res as any).data || res)) || [];
         const normalized = (raw || []).map((p: any) => normalizeSingle(p));
         dispatch(setProducts(normalized));
       })
       .catch((err) => dispatch(setError(err?.message || 'Failed to fetch products')))
       .finally(() => dispatch(setLoading(false)));
   }, [dispatch]);
+
+  // fetch dropdown data once
+  useEffect(() => {
+    let mounted = true;
+    Promise.all([
+      api.categories.getAll().catch(() => []),
+      api.flavors.getAll().catch(() => []),
+      api.weights.getAll().catch(() => []),
+      // types endpoint may not be in api wrapper, call directly
+      axiosInstance.get('/types').then(r => r.data || []).catch(() => []),
+      api.occasions.getAll().catch(() => []),
+      api.shapes.getAll().catch(() => []),
+      api.themes.getAll().catch(() => []),
+    ]).then(([cats, flvs, wts, typesRes, occ, shp, thm]) => {
+      if (!mounted) return;
+      const toNames = (arr: any[]) => (arr || []).map((it: any) => (typeof it === 'string' ? it : it.name || it.title || it.label || it.type || ''))
+        .filter(Boolean);
+      setCategoriesList(toNames(cats));
+      setFlavorsList(toNames(flvs));
+      setWeightsList(toNames(wts));
+      setTypesList(toNames(typesRes));
+      setOccasionsList(toNames(occ));
+      setShapesList(toNames(shp));
+      setThemesList(toNames(thm));
+    }).catch(() => {}).finally(() => { mounted = false; });
+    return () => { mounted = false; };
+  }, []);
 
   const openAdd = () => {
     setForm(emptyForm);
@@ -128,17 +207,27 @@ const Products = () => {
   };
 
   const openEdit = (p: any) => {
+    const imgs = (p.images || []).map((it: any) => normalizeImage(it));
     setForm({
       name: p.name || '',
       category: p.category || 'Cakes',
       price: Number(p.price) || 0,
       stock: Number(p.stock) || 0,
-      image: p.image || p.img || '/placeholder.svg',
+      // prefer base64 preview if backend provided it, otherwise use normalized images
+      image: p.imgBase64 || imgs.find(i => i.base64)?.base64 || p.image || p.img || imgs.find(i => i.url)?.url || '/placeholder.svg',
+      images: imgs,
       flavor: p.flavor || [],
       ingredients: p.ingredients || [],
       tasteDescription: p.tasteDescription || p.description || '',
       imageFile: null,
-      imagePreview: p.image || p.img || null,
+      imagePreview: p.imgBase64 || imgs.find(i => i.base64)?.base64 || p.image || p.img || imgs.find(i => i.url)?.url || null,
+      galleryPreviews: imgs.map(im => ({ url: im.url || '', base64: im.base64 })),
+      // set dropdown values
+      type: p.type || [],
+      weight: p.weight || [],
+      occasion: p.occasion || [],
+      shape: p.shape || [],
+      theme: p.theme || [],
     });
     setErrors({});
     setEditingId(p.id);
@@ -148,7 +237,7 @@ const Products = () => {
   const closeModal = () => {
     // revoke preview URL if created
     if (form.imageFile && form.imagePreview) {
-      try { URL.revokeObjectURL(form.imagePreview); } catch (e) { }
+      try { URL.revokeObjectURL(form.imagePreview); } catch (e) { void e; }
     }
     setShowModal(false);
     setForm(emptyForm);
@@ -178,6 +267,13 @@ const Products = () => {
       price: Number(form.price) || 0,
       stock: Number(form.stock) || 0,
       img: form.image || undefined,
+      images: form.galleryPreviews.map(gp => ({ url: gp.url, base64: gp.base64 })),
+      // include dropdown selections
+      type: form.type || [],
+      weight: form.weight || [],
+      occasion: form.occasion || [],
+      shape: form.shape || [],
+      theme: form.theme || [],
       flavor: form.flavor || [],
       ingredients: form.ingredients || [],
       tasteDescription: form.tasteDescription || '',
@@ -190,9 +286,13 @@ const Products = () => {
           const updated = normalizeSingle(res || (res as any)?.data || {});
           const next = products.map((it: any) => (it.id === editingId ? { ...it, ...updated } : it));
           dispatch(setProducts(next));
+          toast.success("Product updated successfully! 🎂");
           closeModal();
         })
-        .catch((err) => dispatch(setError(err?.message || 'Failed to update product')))
+        .catch((err) => {
+          dispatch(setError(err?.message || 'Failed to update product'));
+          toast.error("Failed to update product");
+        })
         .finally(() => dispatch(setLoading(false)));
     } else {
       api.products
@@ -201,9 +301,13 @@ const Products = () => {
           const created = normalizeSingle(res || (res as any)?.data || {});
           const next = [created, ...products];
           dispatch(setProducts(next));
+          toast.success("New product added to bakery! 🥐");
           closeModal();
         })
-        .catch((err) => dispatch(setError(err?.message || 'Failed to create product')))
+        .catch((err) => {
+          dispatch(setError(err?.message || 'Failed to create product'));
+          toast.error("Failed to create product");
+        })
         .finally(() => dispatch(setLoading(false)));
     }
   };
@@ -219,6 +323,18 @@ const Products = () => {
       })
       .catch((err) => dispatch(setError(err?.message || 'Failed to delete product')))
       .finally(() => dispatch(setLoading(false)));
+  };
+
+  // resolve display src: prefer base64 then url; ensure relative upload paths are usable
+  const getImageSrc = (url?: string, base64?: string) => {
+    if (base64) return base64;
+    if (!url) return '';
+    // if url already a data URI
+    if (url.startsWith('data:')) return url;
+    // if absolute URL
+    if (url.startsWith('http') || url.startsWith('//')) return url;
+    // ensure leading slash for relative paths
+    return url.startsWith('/') ? url : `/${url}`;
   };
 
   if (loading) return <div className="p-8 text-center text-[#1A2744] font-playfair animate-pulse">Loading bakery items... 🥐</div>;
@@ -308,88 +424,348 @@ const Products = () => {
         </div>
       </div>
 
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-black/50">
-          <div className="w-full max-w-2xl bg-white rounded-2xl p-6 shadow-xl mt-6 mx-4 max-h-[calc(100vh-6rem)] overflow-y-auto">
-            <div className="flex items-start justify-between">
-              <h3 className="font-playfair text-xl font-bold mb-4">{editingId ? 'Edit Product' : 'Add Product'}</h3>
-              <button onClick={closeModal} className="text-[#1A2744]/60 hover:text-[#1A2744]">
-                <X />
-              </button>
+      <Sheet open={showModal} onOpenChange={(open) => !open && closeModal()}>
+        <SheetContent side="right" className="w-full md:w-[30vw] lg:w-[30vw] p-0 flex flex-col gap-0 bg-[#FAFBFD] border-l-[#D4A373]/20">
+          <SheetHeader className="p-6 bg-white border-b border-[#D4A373]/10">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#1A2744] flex items-center justify-center text-white">
+                <Package size={20} />
+              </div>
+              <div>
+                <SheetTitle className="font-playfair text-2xl font-bold text-[#1A2744]">
+                  {editingId ? 'Edit Product' : 'Add New Product'}
+                </SheetTitle>
+                <SheetDescription className="text-[#8D6E63] font-medium">
+                  {editingId ? 'Update the details for this bakery item.' : 'Create a new item for your bakery menu.'}
+                </SheetDescription>
+              </div>
             </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-medium text-[#1A2744]">Name</label>
-                  <input value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} className={`w-full mt-1 p-3 border rounded-lg bg-[#fffdf8] border-[#efe6d9] ${errors.name ? 'ring-1 ring-red-300' : ''}`} />
-                  {errors.name && <div className="text-xs text-red-500 mt-1">{errors.name}</div>}
+          </SheetHeader>
+
+          <form id="product-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-8">
+            {/* Basic Information */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 pb-2 border-b border-[#D4A373]/10">
+                <Info size={16} className="text-[#D4A373]" />
+                <h4 className="text-sm font-bold uppercase tracking-wider text-[#1A2744]/60">Basic Information</h4>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-[#1A2744] flex items-center gap-1.5">
+                    Product Name <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    required
+                    value={form.name} 
+                    onChange={(e) => setForm({...form, name: e.target.value})} 
+                    placeholder="e.g. Chocolate Truffle Cake"
+                    className={`w-full p-3 rounded-xl bg-white border ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-[#D4A373]/20 focus:border-[#D4A373]'} outline-none shadow-sm transition-all focus:ring-2 focus:ring-[#D4A373]/10`} 
+                  />
+                  {errors.name && <p className="text-xs font-medium text-red-500 mt-1">{errors.name}</p>}
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-[#1A2744]">Category</label>
-                  <select value={form.category} onChange={(e) => setForm({...form, category: e.target.value})} className="w-full mt-1 p-3 border rounded-lg bg-[#fffdf8] border-[#efe6d9]">
-                    <option>Cakes</option>
-                    <option>Breads</option>
-                    <option>Pastries</option>
-                    <option>Cookies</option>
-                    <option>Custom</option>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-[#1A2744]">Category</label>
+                    <select
+                      value={form.category}
+                      onChange={(e) => setForm({...form, category: e.target.value})}
+                      className="w-full p-3 rounded-xl bg-white border border-[#D4A373]/20 outline-none shadow-sm transition-all focus:ring-2 focus:ring-[#D4A373]/10"
+                    >
+                      {categoriesList && categoriesList.length > 0 ? (
+                        categoriesList.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="Cakes">Cakes</option>
+                          <option value="Breads">Breads</option>
+                          <option value="Pastries">Pastries</option>
+                          <option value="Cookies">Cookies</option>
+                          <option value="Custom">Custom</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-[#1A2744]">Price ($)</label>
+                    <div className="relative">
+                      <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1A2744]/40" />
+                      <input 
+                        type="number" 
+                        step="0.01" 
+                        value={form.price} 
+                        onChange={(e) => setForm({...form, price: e.target.value === '' ? '' as any : Number(e.target.value)})} 
+                        className={`w-full pl-9 pr-3 py-3 rounded-xl bg-white border ${errors.price ? 'border-red-500' : 'border-[#D4A373]/20'} outline-none shadow-sm transition-all focus:ring-2 focus:ring-[#D4A373]/10`} 
+                      />
+                    </div>
+                    {errors.price && <p className="text-xs font-medium text-red-500 mt-1">{errors.price}</p>}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-[#1A2744]">Initial Stock</label>
+                  <div className="relative">
+                    <Layers size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1A2744]/40" />
+                    <input 
+                      type="number" 
+                      value={form.stock} 
+                      onChange={(e) => setForm({...form, stock: e.target.value === '' ? '' as any : Number(e.target.value)})} 
+                      className={`w-full pl-9 pr-3 py-3 rounded-xl bg-white border ${errors.stock ? 'border-red-500' : 'border-[#D4A373]/20'} outline-none shadow-sm transition-all focus:ring-2 focus:ring-[#D4A373]/10`} 
+                    />
+                  </div>
+                  {errors.stock && <p className="text-xs font-medium text-red-500 mt-1">{errors.stock}</p>}
+                </div>
+              </div>
+
+              {/* Dropdowns populated from APIs */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-[#1A2744]">Flavors</label>
+                  <select
+                    multiple
+                    value={form.flavor}
+                    onChange={(e) => setForm({...form, flavor: Array.from(e.target.selectedOptions).map(o => o.value)})}
+                    className="w-full p-3 rounded-xl bg-white border border-[#D4A373]/20 outline-none shadow-sm transition-all focus:ring-2 focus:ring-[#D4A373]/10 text-sm"
+                  >
+                    {flavorsList.map((f) => (<option key={f} value={f}>{f}</option>))}
                   </select>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-[#1A2744]">Price</label>
-                  <input type="number" step="0.01" value={form.price} onChange={(e) => setForm({...form, price: e.target.value === '' ? '' as any : Number(e.target.value)})} className={`w-full mt-1 p-3 border rounded-lg bg-[#fffdf8] border-[#efe6d9] ${errors.price ? 'ring-1 ring-red-300' : ''}`} />
-                  {errors.price && <div className="text-xs text-red-500 mt-1">{errors.price}</div>}
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-[#1A2744]">Weights</label>
+                  <select
+                    value={(form.weight && form.weight[0]) || ''}
+                    onChange={(e) => setForm({...form, weight: e.target.value ? [e.target.value] : []})}
+                    className="w-full p-3 rounded-xl bg-white border border-[#D4A373]/20 outline-none shadow-sm transition-all focus:ring-2 focus:ring-[#D4A373]/10 text-sm"
+                  >
+                    <option value="">Select weight</option>
+                    {weightsList.map((w) => (<option key={w} value={w}>{w}</option>))}
+                  </select>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-[#1A2744]">Stock</label>
-                  <input type="number" value={form.stock} onChange={(e) => setForm({...form, stock: e.target.value === '' ? '' as any : Number(e.target.value)})} className={`w-full mt-1 p-3 border rounded-lg bg-[#fffdf8] border-[#efe6d9] ${errors.stock ? 'ring-1 ring-red-300' : ''}`} />
-                  {errors.stock && <div className="text-xs text-red-500 mt-1">{errors.stock}</div>}
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-[#1A2744]">Types</label>
+                  <select
+                    multiple
+                    value={form.type}
+                    onChange={(e) => setForm({...form, type: Array.from(e.target.selectedOptions).map(o => o.value)})}
+                    className="w-full p-3 rounded-xl bg-white border border-[#D4A373]/20 outline-none shadow-sm transition-all focus:ring-2 focus:ring-[#D4A373]/10 text-sm"
+                  >
+                    {typesList.map((t) => (<option key={t} value={t}>{t}</option>))}
+                  </select>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-medium text-[#1A2744]">Image (URL or upload)</label>
-                  <div className="flex gap-3 items-start mt-1">
-                    <input value={form.image} onChange={(e) => setForm({...form, image: e.target.value, imagePreview: null, imageFile: null})} className="flex-1 p-3 border rounded-lg bg-[#fffdf8] border-[#efe6d9]" placeholder="https://..." />
-                    <div className="w-28 h-20 rounded-md bg-gray-100 border overflow-hidden">
-                      <img src={form.imagePreview || form.image || '/placeholder.svg'} alt="preview" className="w-full h-full object-cover" />
-                    </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-[#1A2744]">Occasions</label>
+                  <select
+                    multiple
+                    value={form.occasion}
+                    onChange={(e) => setForm({...form, occasion: Array.from(e.target.selectedOptions).map(o => o.value)})}
+                    className="w-full p-3 rounded-xl bg-white border border-[#D4A373]/20 outline-none shadow-sm transition-all focus:ring-2 focus:ring-[#D4A373]/10 text-sm"
+                  >
+                    {occasionsList.map((o) => (<option key={o} value={o}>{o}</option>))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-[#1A2744]">Shapes</label>
+                  <select
+                    multiple
+                    value={form.shape}
+                    onChange={(e) => setForm({...form, shape: Array.from(e.target.selectedOptions).map(o => o.value)})}
+                    className="w-full p-3 rounded-xl bg-white border border-[#D4A373]/20 outline-none shadow-sm transition-all focus:ring-2 focus:ring-[#D4A373]/10 text-sm"
+                  >
+                    {shapesList.map((s) => (<option key={s} value={s}>{s}</option>))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-[#1A2744]">Themes</label>
+                  <select
+                    multiple
+                    value={form.theme}
+                    onChange={(e) => setForm({...form, theme: Array.from(e.target.selectedOptions).map(o => o.value)})}
+                    className="w-full p-3 rounded-xl bg-white border border-[#D4A373]/20 outline-none shadow-sm transition-all focus:ring-2 focus:ring-[#D4A373]/10 text-sm"
+                  >
+                    {themesList.map((t) => (<option key={t} value={t}>{t}</option>))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 pb-2 border-b border-[#D4A373]/10">
+                <ImageIcon size={16} className="text-[#D4A373]" />
+                <h4 className="text-sm font-bold uppercase tracking-wider text-[#1A2744]/60">Product Images (Gallery)</h4>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6">
+                {/* Main Image */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-[#1A2744]/60 uppercase tracking-tighter">Cover Image</label>
+                  <div className="relative group w-full aspect-video rounded-2xl border-2 border-dashed border-[#D4A373]/20 bg-[#FAF6E6]/30 overflow-hidden flex items-center justify-center">
+                    {form.imagePreview || form.image ? (
+                      <img src={getImageSrc(form.image, form.imagePreview || undefined)} alt="Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-[#1A2744]/40">
+                        <ImageIcon size={32} />
+                        <span className="text-xs font-medium">Add Cover Photo</span>
+                      </div>
+                    )}
+                    <label className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer text-white font-bold text-sm">
+                      Change Cover
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0] || null;
+                          if (f) {
+                            const url = URL.createObjectURL(f);
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              setForm({...form, imageFile: f, imagePreview: url, image: String(reader.result)});
+                            };
+                            reader.readAsDataURL(f);
+                          }
+                        }} 
+                      />
+                    </label>
                   </div>
-                  <div className="mt-2">
-                    <input type="file" accept="image/*" onChange={(e) => {
-                      const f = e.target.files?.[0] || null;
-                      if (f) {
-                        const url = URL.createObjectURL(f);
-                        setForm({...form, imageFile: f, imagePreview: url});
-                      }
-                    }} />
+                </div>
+
+                {/* Gallery */}
+                <div className="space-y-3">
+                  <label className="text-xs font-bold text-[#1A2744]/60 uppercase tracking-tighter">Gallery Photos</label>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                    {form.galleryPreviews.map((gp, idx) => (
+                      <div key={idx} className="relative aspect-square rounded-xl bg-gray-100 overflow-hidden group border border-[#D4A373]/10">
+                        <img src={getImageSrc(gp.url, gp.base64)} alt={`Gallery ${idx}`} className="w-full h-full object-cover" />
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            const next = [...form.galleryPreviews];
+                            next.splice(idx, 1);
+                            setForm({ ...form, galleryPreviews: next });
+                          }}
+                          className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                    <label className="aspect-square rounded-xl border-2 border-dashed border-[#D4A373]/20 bg-[#FAF6E6]/20 flex flex-col items-center justify-center cursor-pointer hover:bg-[#FAF6E6]/40 transition-colors group">
+                      <Plus size={20} className="text-[#D4A373] group-hover:scale-110 transition-transform" />
+                      <span className="text-[10px] font-bold text-[#D4A373] mt-1">Add</span>
+                      <input 
+                        type="file" 
+                        multiple 
+                        accept="image/*" 
+                        className="hidden"
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []);
+                          files.forEach(f => {
+                            const url = URL.createObjectURL(f);
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              setForm(prev => ({
+                                ...prev,
+                                galleryPreviews: [...prev.galleryPreviews, { file: f, url, base64: String(reader.result) }]
+                              }));
+                            };
+                            reader.readAsDataURL(f);
+                          });
+                        }}
+                      />
+                    </label>
                   </div>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-[#1A2744]">Flavor</label>
-                  <TagInput value={form.flavor} onChange={(next) => setForm({...form, flavor: next})} placeholder="Add flavor and press Enter" />
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-[#1A2744]/60 italic">Or provide a Cover Image URL</label>
+                  <input 
+                    value={form.image} 
+                    onChange={(e) => setForm({...form, image: e.target.value, imagePreview: null, imageFile: null})} 
+                    className="w-full p-2 text-xs rounded-lg bg-white border border-[#D4A373]/10"
+                    placeholder="https://example.com/image.jpg"
+                  />
                 </div>
               </div>
+            </div>
 
-              <div>
-                <label className="text-sm font-medium text-[#1A2744]">Ingredients</label>
-                <TagInput value={form.ingredients} onChange={(next) => setForm({...form, ingredients: next})} placeholder="Add ingredient and press Enter" />
+            {/* Details */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 pb-2 border-b border-[#D4A373]/10">
+                <Filter size={16} className="text-[#D4A373]" />
+                <h4 className="text-sm font-bold uppercase tracking-wider text-[#1A2744]/60">Product Details</h4>
               </div>
 
-              <div>
-                <label className="text-sm font-medium text-[#1A2744]">Taste description</label>
-                <textarea value={form.tasteDescription} onChange={(e) => setForm({...form, tasteDescription: e.target.value})} className="w-full mt-1 p-3 border rounded-lg bg-[#fffdf8] border-[#efe6d9]" rows={4} />
-                <div className="text-xs text-[#1A2744]/50 mt-1">{(form.tasteDescription || '').length}/300</div>
-              </div>
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-[#1A2744]">Flavors</label>
+                  <TagInput 
+                    value={form.flavor} 
+                    onChange={(next) => setForm({...form, flavor: next})} 
+                    placeholder="Type and press Enter (e.g. Vanilla)" 
+                  />
+                </div>
 
-              <div className="flex justify-end gap-2 pt-3">
-                <button type="button" onClick={closeModal} className="px-5 py-2 rounded bg-[#F5F5F5] text-[#333] border">Cancel</button>
-                <button type="submit" disabled={loading} className={`px-5 py-2 rounded ${loading ? 'bg-gray-400' : 'bg-[#15273b]'} text-white shadow`}>{editingId ? 'Save' : 'Create'}</button>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-[#1A2744]">Ingredients</label>
+                  <TagInput 
+                    value={form.ingredients} 
+                    onChange={(next) => setForm({...form, ingredients: next})} 
+                    placeholder="Type and press Enter (e.g. Sugar)" 
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-[#1A2744]">Taste Description</label>
+                  <textarea 
+                    value={form.tasteDescription} 
+                    onChange={(e) => setForm({...form, tasteDescription: e.target.value})} 
+                    rows={4}
+                    placeholder="Describe how it tastes..."
+                    className="w-full p-3 rounded-xl bg-white border border-[#D4A373]/20 outline-none shadow-sm transition-all focus:ring-2 focus:ring-[#D4A373]/10 resize-none"
+                  />
+                  <div className="text-right">
+                    <span className="text-[10px] font-bold text-[#D4A373]">{(form.tasteDescription || '').length}/300 characters</span>
+                  </div>
+                </div>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+          </form>
+
+          <SheetFooter className="p-6 bg-white border-t border-[#D4A373]/10 flex flex-row justify-end gap-3">
+            <button 
+              type="button" 
+              onClick={closeModal} 
+              className="px-6 py-2.5 rounded-xl text-sm font-bold text-[#1A2744] hover:bg-[#FAF6E6] border border-[#D4A373]/10 transition-colors"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              form="product-form"
+              disabled={loading} 
+              className={`px-8 py-2.5 rounded-xl text-sm font-bold text-[#F5ECD7] flex items-center gap-2 shadow-lg hover:shadow-xl transition-all ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#1A2744] hover:bg-[#D4A373] hover:text-[#1A2744]'}`}
+            >
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                editingId ? 'Save Changes' : 'Create Product'
+              )}
+            </button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
     </div>
   );

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import axios from 'axios';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || '/api';
@@ -64,6 +66,13 @@ export const api = {
     create: (occasion: object) => axiosInstance.post('/occasions', occasion).then(res => normalize(res)),
     update: (id: string | number, occasion: object) => axiosInstance.put(`/occasions/${id}`, occasion).then(res => normalize(res)),
     delete: (id: string | number) => axiosInstance.delete(`/occasions/${id}`).then(() => undefined),
+  },
+  types: {
+    getAll: (): Promise<any[]> => axiosInstance.get('/types').then(res => normalize<any[]>(res)),
+    getById: (id: string | number) => axiosInstance.get(`/types/${id}`).then(res => normalize(res)),
+    create: (typeObj: object) => axiosInstance.post('/types', typeObj).then(res => normalize(res)),
+    update: (id: string | number, typeObj: object) => axiosInstance.put(`/types/${id}`, typeObj).then(res => normalize(res)),
+    delete: (id: string | number) => axiosInstance.delete(`/types/${id}`).then(() => undefined),
   },
   orders: {
     getAll: (): Promise<any[]> => axiosInstance.get('/orders').then(res => normalize<any[]>(res)),

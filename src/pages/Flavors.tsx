@@ -1,6 +1,8 @@
-import { Plus, Search, Edit, Trash2, X } from "lucide-react";
+import { Plus, Search, Edit, Trash2, X, IceCream, FileText, Info } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../services/api";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "../components/ui/sheet";
+import { toast } from "sonner";
 
 type Flavor = {
 	id: string | number;
@@ -81,14 +83,17 @@ const Flavors = () => {
 				const res: any = await api.flavors.update(editingId, payload);
 				const f = res && (res._id || res.id) ? { id: res._id || res.id, ...res } : res && res.data ? res.data : res;
 				setFlavors((prev) => prev.map((it) => (String(it.id) === String(editingId) ? { id: f.id, name: f.name, description: f.description } : it)));
+				toast.success("Flavor updated!");
 			} else {
 				const res: any = await api.flavors.create(payload);
 				const f = res && (res._id || res.id) ? { id: res._id || res.id, ...res } : res && res.data ? res.data : res;
 				setFlavors((prev) => [{ id: f.id, name: f.name, description: f.description }, ...prev]);
+				toast.success("Flavor added!");
 			}
 			closeModal();
 		} catch (err: any) {
 			setError(err?.message || "Failed to save flavor");
+			toast.error("Failed to save flavor");
 		} finally {
 			setLoading(false);
 		}
@@ -100,8 +105,10 @@ const Flavors = () => {
 		try {
 			await api.flavors.delete(id);
 			setFlavors((prev) => prev.filter((c) => String(c.id) !== String(id)));
+			toast.success("Flavor deleted");
 		} catch (err: any) {
 			setError(err?.message || "Failed to delete flavor");
+			toast.error("Failed to delete flavor");
 		} finally {
 			setLoading(false);
 		}
@@ -145,33 +152,70 @@ const Flavors = () => {
 				))}
 			</div>
 
-			{showModal && (
-				<div className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-black/50">
-					<div className="w-full max-w-lg bg-white rounded-2xl p-6 shadow-xl mt-6 mx-4 max-h-[calc(100vh-6rem)] overflow-y-auto">
-						<div className="flex items-start justify-between">
-							<h3 className="font-playfair text-xl font-bold mb-4">{editingId ? "Edit Flavor" : "Add Flavor"}</h3>
-							<button onClick={closeModal} className="text-[#1A2744]/60 hover:text-[#1A2744]"><X /></button>
+			<Sheet open={showModal} onOpenChange={(open) => !open && closeModal()}>
+				<SheetContent side="right" className="w-full md:w-[800px] p-0 flex flex-col gap-0 bg-[#FAFBFD] border-l-[#D4A373]/20">
+					<SheetHeader className="p-6 bg-white border-b border-[#D4A373]/10">
+						<div className="flex items-center gap-3">
+							<div className="w-10 h-10 rounded-xl bg-[#D4A373] flex items-center justify-center text-white">
+								<IceCream size={20} />
+							</div>
+							<div>
+								<SheetTitle className="font-playfair text-2xl font-bold text-[#1A2744]">
+									{editingId ? "Edit Flavor" : "Add Flavor"}
+								</SheetTitle>
+								<SheetDescription className="text-[#8D6E63] font-medium">
+									{editingId ? "Modify the flavor details." : "Create a new flavor option."}
+								</SheetDescription>
+							</div>
 						</div>
-						<form onSubmit={handleSubmit} className="space-y-4">
-							<div>
-								<label className="text-sm font-medium text-[#1A2744]">Name</label>
-								<input value={form.name || ""} onChange={(e) => setForm({ ...form, name: e.target.value })} className={`w-full mt-1 p-3 border rounded-lg bg-[#fffdf8] border-[#efe6d9] ${errors.name ? "ring-1 ring-red-300" : ""}`} />
-								{errors.name && <div className="text-xs text-red-500 mt-1">{errors.name}</div>}
+					</SheetHeader>
+
+					<form id="flavor-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
+						<div className="space-y-4">
+							<div className="flex items-center gap-2 pb-2 border-b border-[#D4A373]/10">
+								<Info size={16} className="text-[#D4A373]" />
+								<h4 className="text-sm font-bold uppercase tracking-wider text-[#1A2744]/60">Flavor Details</h4>
+							</div>
+							
+							<div className="space-y-1.5">
+								<label className="text-sm font-semibold text-[#1A2744]">
+									Flavor Name <span className="text-red-500">*</span>
+								</label>
+								<input
+									required
+									value={form.name || ""}
+									onChange={(e) => setForm({ ...form, name: e.target.value })}
+									placeholder="e.g. Red Velvet"
+									className={`w-full p-3 rounded-xl bg-white border ${errors.name ? 'border-red-500' : 'border-[#D4A373]/20'} outline-none shadow-sm focus:ring-2 focus:ring-[#D4A373]/10`}
+								/>
+								{errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
 							</div>
 
-							<div>
-								<label className="text-sm font-medium text-[#1A2744]">Description</label>
-								<textarea value={form.description || ""} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full mt-1 p-3 border rounded-lg bg-[#fffdf8] border-[#efe6d9]" rows={3} />
+							<div className="space-y-1.5">
+								<label className="text-sm font-semibold text-[#1A2744]">Description</label>
+								<div className="relative">
+									<FileText size={16} className="absolute left-3 top-3 text-[#1A2744]/40" />
+									<textarea
+										value={form.description || ""}
+										onChange={(e) => setForm({ ...form, description: e.target.value })}
+										placeholder="Describe the taste profile..."
+										className="w-full pl-10 pr-3 py-3 rounded-xl bg-white border border-[#D4A373]/20 outline-none focus:ring-2 focus:ring-[#D4A373]/10 min-h-[120px] resize-none"
+									/>
+								</div>
 							</div>
+						</div>
+					</form>
 
-							<div className="flex justify-end gap-2 pt-3">
-								<button type="button" onClick={closeModal} className="px-5 py-2 rounded bg-[#F5F5F5] text-[#333] border">Cancel</button>
-								<button type="submit" disabled={loading} className={`px-5 py-2 rounded ${loading ? "bg-gray-400" : "bg-[#15273b]"} text-white shadow`}>{editingId ? "Save" : "Create"}</button>
-							</div>
-						</form>
-					</div>
-				</div>
-			)}
+					<SheetFooter className="p-6 bg-white border-t border-[#D4A373]/10 flex flex-row justify-end gap-3">
+						<button type="button" onClick={closeModal} className="px-6 py-2.5 rounded-xl text-sm font-bold text-[#1A2744] hover:bg-[#FAF6E6] border border-[#D4A373]/10">
+							Cancel
+						</button>
+						<button type="submit" form="flavor-form" disabled={loading} className="px-8 py-2.5 rounded-xl text-sm font-bold text-white bg-[#1A2744] hover:bg-[#D4A373] hover:text-[#1A2744] shadow-lg transition-all">
+							{loading ? "Processing..." : (editingId ? "Save Flavor" : "Create Flavor")}
+						</button>
+					</SheetFooter>
+				</SheetContent>
+			</Sheet>
 		</div>
 	);
 };
