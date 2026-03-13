@@ -1,8 +1,57 @@
 import { useProductActions } from "./home-data";
-import donutImage from "../../assets/GE.png";
+import { useState, useEffect } from "react";
+import cake1 from "../../assets/cake1.png";
+import cake2 from "../../assets/cake 2.png";
+import cake3 from "../../assets/cake 3.png";
+import cake4 from "../../assets/cake 4.png";
+import cake5 from "../../assets/cake 5.png";
+import cake6 from "../../assets/cake 6.png";
+import cake7 from "../../assets/cake 7.png";
+
+const cakeImages = [cake1, cake2, cake3, cake4, cake5, cake6, cake7];
+
+// Preload all images once so they are cached by the browser
+const preloadedImages: HTMLImageElement[] = cakeImages.map((src) => {
+  const img = new Image();
+  img.src = src;
+  return img;
+});
 
 export default function HeroSection() {
   const { scrollTo } = useProductActions();
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [animating, setAnimating] = useState(false);
+  const [displayIndex, setDisplayIndex] = useState(0);
+  const [imagesReady, setImagesReady] = useState(false);
+
+  // Wait until all images are fully loaded before starting the slideshow
+  useEffect(() => {
+    let loaded = 0;
+    preloadedImages.forEach((img) => {
+      if (img.complete) {
+        loaded++;
+        if (loaded === preloadedImages.length) setImagesReady(true);
+      } else {
+        img.onload = () => {
+          loaded++;
+          if (loaded === preloadedImages.length) setImagesReady(true);
+        };
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!imagesReady) return;
+    const interval = setInterval(() => {
+      setAnimating(true);
+      setTimeout(() => {
+        setDisplayIndex((prev) => (prev + 1) % cakeImages.length);
+        setCurrentIndex((prev) => (prev + 1) % cakeImages.length);
+        setAnimating(false);
+      }, 700);
+    }, 7000);
+    return () => clearInterval(interval);
+  }, [imagesReady]);
   
   return (
     <section id="home" className="relative min-h-screen bg-parchment flex flex-col justify-center overflow-hidden pt-[72px]">
@@ -38,7 +87,7 @@ export default function HeroSection() {
             className="font-playfair font-bold text-navy flex-shrink-0 self-start mt-6 leading-none tracking-tight animate-fade-up"
             style={{ fontSize: "clamp(3.5rem, 9.5vw, 9rem)" }}
           >
-            Hangay
+            Hangry
           </span>
 
           {/* Centre images */}
@@ -47,10 +96,46 @@ export default function HeroSection() {
             style={{ height: "clamp(300px, 44vw, 500px)" }}
             aria-hidden="true"
           >
-            {/* Main centre item */}
-            <img src={donutImage} alt="Delicious Donuts"
-              className="absolute object-contain drop-shadow-2xl animate-float-a z-30 pointer-events-none mix-blend-multiply"
-              style={{ width: "clamp(250px,35vw,450px)", top: "50%", left: "50%", transform: "translate(-50%, -50%)" }} />
+            {/* Main centre item — all images stacked, only active one is visible */}
+            {cakeImages.map((src, i) => {
+              const isActive = i === displayIndex;
+              return (
+                <img
+                  key={i}
+                  src={src}
+                  alt={`Cake ${i + 1}`}
+                  className="absolute object-contain drop-shadow-2xl pointer-events-none mix-blend-multiply"
+                  style={{
+                    width: "clamp(250px,35vw,450px)",
+                    top: "50%",
+                    left: "50%",
+                    opacity: isActive ? (animating ? 0 : 1) : 0,
+                    filter: isActive ? (animating ? "blur(8px)" : "blur(0px)") : "blur(4px)",
+                    transform: isActive
+                      ? animating
+                        ? "translate(-50%, -40%) scale(0.85)"
+                        : "translate(-50%, -50%) scale(1)"
+                      : "translate(-50%, -60%) scale(0.8)",
+                    transition: isActive
+                      ? animating
+                        ? "opacity 0.4s ease-in, transform 0.4s ease-in, filter 0.4s ease-in"
+                        : "opacity 0.6s cubic-bezier(0.34,1.56,0.64,1), transform 0.6s cubic-bezier(0.34,1.56,0.64,1), filter 0.6s ease-out"
+                      : "opacity 0.4s ease-in, transform 0.4s ease-in, filter 0.4s ease-in",
+                    zIndex: isActive ? 30 : 20,
+                    animation: isActive && !animating ? "floatBob 3s ease-in-out infinite" : "none",
+                  }}
+                />
+              );
+            })}
+
+            {/* Float bob keyframes */}
+            <style>{`
+              @keyframes floatBob {
+                0%   { transform: translate(-50%, -50%) scale(1) translateY(0px); }
+                50%  { transform: translate(-50%, -50%) scale(1) translateY(-14px); }
+                100% { transform: translate(-50%, -50%) scale(1) translateY(0px); }
+              }
+            `}</style>
 
             {/* Seed dots */}
             <span className="absolute w-2.5 h-2.5 rounded-full bg-gold/60" style={{ top: "20%", left: "22%" }} />
