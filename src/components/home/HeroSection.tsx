@@ -59,7 +59,7 @@ export default function HeroSection() {
       <div
         aria-hidden="true"
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[52%] font-playfair font-extrabold tracking-widest text-navy/[0.04] whitespace-nowrap select-none pointer-events-none"
-        style={{ fontSize: "clamp(8rem, 20vw, 20rem)" }}
+        style={{ fontSize: "clamp(6rem, 16vw, 16rem)" }}
       >
         BAKERY
       </div>
@@ -85,7 +85,7 @@ export default function HeroSection() {
           {/* Left word */}
           <span
             className="font-playfair font-bold text-navy flex-shrink-0 self-start mt-6 leading-none tracking-tight animate-fade-up"
-            style={{ fontSize: "clamp(3.5rem, 9.5vw, 9rem)" }}
+            style={{ fontSize: "clamp(2.8rem, 6.5vw, 5rem)" }}
           >
             Hangry?
           </span>
@@ -106,16 +106,16 @@ export default function HeroSection() {
                   alt={`Cake ${i + 1}`}
                   className="absolute object-contain drop-shadow-2xl pointer-events-none mix-blend-multiply"
                   style={{
-                    width: "clamp(250px,35vw,450px)",
+                    width: "clamp(350px,45vw,700px)",
                     top: "50%",
                     left: "50%",
                     opacity: isActive ? (animating ? 0 : 1) : 0,
                     filter: isActive ? (animating ? "blur(8px)" : "blur(0px)") : "blur(4px)",
                     transform: isActive
                       ? animating
-                        ? "translate(-50%, -40%) scale(0.85)"
-                        : "translate(-50%, -50%) scale(1)"
-                      : "translate(-50%, -60%) scale(0.8)",
+                        ? "translate(-50%, -45%) scale(0.95)"
+                        : "translate(-50%, -50%) scale(1.05)"
+                      : "translate(-50%, -60%) scale(0.85)",
                     transition: isActive
                       ? animating
                         ? "opacity 0.4s ease-in, transform 0.4s ease-in, filter 0.4s ease-in"
@@ -147,7 +147,7 @@ export default function HeroSection() {
           {/* Right word */}
           <span
             className="font-playfair font-bold text-navy flex-shrink-0 self-end mb-6 leading-none tracking-tight animate-fade-up"
-            style={{ fontSize: "clamp(3.5rem, 9.5vw, 9rem)", animationDelay: "0.2s" }}
+            style={{ fontSize: "clamp(2.8rem, 6.5vw, 5rem)", animationDelay: "0.2s" }}
           >
             Sweet!
           </span>
