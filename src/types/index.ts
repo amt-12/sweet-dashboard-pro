@@ -1,10 +1,15 @@
 export interface Product {
-  id: number;
+  id: string;
   name: string;
   category: string;
   price: number;
   stock: number;
   image: string;
+  // optional fields that may come from backend
+  rating?: number;
+  flavor?: string[];
+  ingredients?: string[];
+  tasteDescription?: string;
 }
 
 export interface Order {

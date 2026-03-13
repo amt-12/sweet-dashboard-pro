@@ -1,4 +1,4 @@
-import React, { useState, FormEvent, ChangeEvent } from "react";
+import React, { useState, FormEvent, ChangeEvent, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,6 +59,7 @@ const frostings = [
 
 export default function CustomizeOrder() {
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   // Form State
   const [formData, setFormData] = useState({
     occasion: "",
@@ -81,14 +82,121 @@ export default function CustomizeOrder() {
   });
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: FormEvent) => {
+  // Basic client-side validation
+  const validateForm = () => {
+    // Name
+    if (!formData.name || formData.name.trim().length < 2) {
+      toast({ title: 'Invalid Name', description: 'Please enter your full name.' });
+      return false;
+    }
+
+    // Mobile number (accepts digits; require at least 10 digits)
+    const digits = formData.mobile ? formData.mobile.replace(/\D/g, '') : '';
+    if (!digits || digits.length < 10) {
+      toast({ title: 'Invalid Mobile Number', description: 'Please enter a valid 10-digit mobile number.' });
+      return false;
+    }
+
+    // If delivery selected, require address and 6-digit pincode
+    if (formData.deliveryType === 'delivery') {
+      if (!formData.address || formData.address.trim().length < 5) {
+        toast({ title: 'Address Required', description: 'Please enter a delivery address.' });
+        return false;
+      }
+      const pin = formData.pincode ? formData.pincode.replace(/\D/g, '') : '';
+      if (!pin || pin.length !== 6) {
+        toast({ title: 'Invalid Pincode', description: 'Please enter a 6-digit pincode for delivery.' });
+        return false;
+      }
+    }
+
+    // Serving count if provided should be numeric
+    if (formData.servingCount && !/^\d+$/.test(formData.servingCount)) {
+      toast({ title: 'Invalid Serving Count', description: 'Estimated guests should be a number.' });
+      return false;
+    }
+
+    // Delivery date must not be in the past
+    if (formData.deliveryDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const sel = new Date(formData.deliveryDate);
+      if (sel < today) {
+        toast({ title: 'Invalid Date', description: 'Delivery date cannot be in the past.' });
+        return false;
+      }
+    }
+
+    // Message length limit
+    if (formData.message && formData.message.length > 200) {
+      toast({ title: 'Message Too Long', description: 'Please keep cake message under 200 characters.' });
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    console.log("Order submitted:", formData);
-    toast({
-      title: "Order Request Received!",
-      description: "We'll contact you shortly to confirm options within your budget.",
-    });
+    // Validate before sending
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
+    try {
+      const data = new FormData();
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value === null || value === undefined) return;
+        // image is handled separately
+        if (key === 'image') return;
+        data.append(key, String(value));
+      });
+      // image is a File in formData.image
+      if (formData.image) data.set('image', formData.image);
+
+      const base = (import.meta.env.VITE_API_URL as string) || '';
+      const url = base ? `${base.replace(/\/$/, '')}/api/orders` : '/api/orders';
+      const res = await fetch(url, {
+        method: 'POST',
+        body: data,
+      });
+
+      if (!res.ok) throw new Error('Failed to submit order');
+
+      const json = await res.json();
+      console.log('Order created', json);
+      toast({ title: 'Order Request Received!', description: "We'll contact you shortly to confirm options within your budget." });
+
+      // Reset form
+      setFormData({
+        occasion: "",
+        weight: "",
+        servingCount: "",
+        flavor: "",
+        shape: "",
+        designTheme: "",
+        image: null,
+        message: "",
+        frosting: "",
+        isEggless: "egg",
+        deliveryType: "pickup",
+        deliveryDate: "",
+        deliveryTime: "",
+        name: "",
+        mobile: "",
+        address: "",
+        pincode: "",
+      });
+      setImagePreview(null);
+      // clear native file input
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Error', description: 'Could not submit order. Please try again.' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -153,6 +261,7 @@ export default function CustomizeOrder() {
                    <Label className="text-[#5D4037] text-base">Got an inspiration photo?</Label>
                    <div className="relative group">
                      <Input 
+                        ref={fileInputRef}
                         type="file" 
                         accept="image/*" 
                         onChange={handleImageChange} 
@@ -233,7 +342,7 @@ export default function CustomizeOrder() {
                     <div className="space-y-4">
                         <div className="space-y-2">
                            <Label className="text-[#5D4037]">Cake Weight</Label>
-                           <Select onValueChange={(val) => handleInputChange("weight", val)}>
+                           <Select value={formData.weight} onValueChange={(val) => handleInputChange("weight", val)}>
                             <SelectTrigger className="bg-white border-[#D4A373]/30 h-12">
                               <SelectValue placeholder="Select weight" />
                             </SelectTrigger>
@@ -268,7 +377,7 @@ export default function CustomizeOrder() {
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <Label className="text-[#5D4037]">Flavor</Label>
-                            <Select onValueChange={(val) => handleInputChange("flavor", val)}>
+                            <Select value={formData.flavor} onValueChange={(val) => handleInputChange("flavor", val)}>
                               <SelectTrigger className="bg-white border-[#D4A373]/30 h-12">
                                 <SelectValue placeholder="Select flavor" />
                               </SelectTrigger>
@@ -281,7 +390,7 @@ export default function CustomizeOrder() {
                         </div>
                          <div className="space-y-2">
                             <Label className="text-[#5D4037]">Shape</Label>
-                            <Select onValueChange={(val) => handleInputChange("shape", val)}>
+                            <Select value={formData.shape} onValueChange={(val) => handleInputChange("shape", val)}>
                               <SelectTrigger className="bg-white border-[#D4A373]/30 h-12">
                                 <SelectValue placeholder="Select shape" />
                               </SelectTrigger>
@@ -305,6 +414,7 @@ export default function CustomizeOrder() {
               <div className="grid gap-2">
                  <Label className="text-[#5D4037]">Describe your vision (Color, Cartoon, Minimalist, etc.)</Label>
                  <Textarea 
+                   value={formData.designTheme}
                    placeholder="e.g. I want a Blue and Gold theme with an elephant topper. Please write 'Happy Birthday' in gold cursive."
                    className="min-h-[100px] bg-white border-[#D4A373]/30 text-base resize-none focus:ring-1 focus:ring-[#3E2723]"
                    onChange={(e) => handleInputChange("designTheme", e.target.value)}
@@ -319,6 +429,7 @@ export default function CustomizeOrder() {
                 <h2 className="font-playfair text-xl font-bold text-[#3E2723]">Message on Cake</h2>
               </div>
               <Input 
+                value={formData.message}
                 placeholder="e.g. Happy Birthday Aman" 
                 className="text-lg py-6 bg-white border-[#D4A373]/30 font-playfair text-center italic placeholder:not-italic"
                 onChange={(e) => handleInputChange("message", e.target.value)}
@@ -349,7 +460,7 @@ export default function CustomizeOrder() {
                      <Heart className="text-[#3E2723]" />
                      <h2 className="font-playfair text-xl font-bold text-[#3E2723]">Preference</h2>
                   </div>
-                  <RadioGroup defaultValue="egg" onValueChange={(val) => handleInputChange("isEggless", val)} className="flex items-center gap-4 mt-2">
+                  <RadioGroup value={formData.isEggless} onValueChange={(val) => handleInputChange("isEggless", val)} className="flex items-center gap-4 mt-2">
                     <label className={`flex-1 flex items-center justify-center space-x-2 border rounded-xl p-3 cursor-pointer transition-colors ${formData.isEggless === 'egg' ? 'bg-white border-[#3E2723] shadow-sm' : 'border-transparent hover:bg-white'}`}>
                       <RadioGroupItem value="egg" id="r-egg" />
                       <Label htmlFor="r-egg" className="font-medium cursor-pointer">With Egg</Label>
@@ -371,7 +482,7 @@ export default function CustomizeOrder() {
                 <h2 className="font-playfair text-2xl font-bold text-[#3E2723]">Delivery Details</h2>
               </div>
               
-              <RadioGroup defaultValue="pickup" onValueChange={(val) => handleInputChange("deliveryType", val)} className="flex flex-col sm:flex-row gap-4 mb-8">
+              <RadioGroup value={formData.deliveryType} onValueChange={(val) => handleInputChange("deliveryType", val)} className="flex flex-col sm:flex-row gap-4 mb-8">
                  <label className={`flex-1 flex items-center gap-4 border-2 rounded-xl px-6 py-4 cursor-pointer transition-all ${formData.deliveryType === 'pickup' ? 'border-[#3E2723] bg-white shadow-md' : 'border-dashed border-[#D4A373]/50 hover:bg-white'}`}>
                     <RadioGroupItem value="pickup" id="d-pickup" />
                     <div>
@@ -397,6 +508,7 @@ export default function CustomizeOrder() {
                   <div>
                     <Label className="text-[#5D4037] mb-2 block">Delivery Address</Label>
                     <Textarea 
+                      value={formData.address}
                       placeholder="Enter complete address (House No, Street, Landmark...)" 
                       className="bg-white border-[#D4A373]/30 min-h-[80px] focus:ring-[#3E2723]"
                       onChange={(e) => handleInputChange("address", e.target.value)}
@@ -406,6 +518,7 @@ export default function CustomizeOrder() {
                   <div className="max-w-[200px]">
                      <Label className="text-[#5D4037] mb-2 block">Pincode</Label>
                      <Input 
+                      value={formData.pincode}
                       type="text" 
                       placeholder="e.g. 110001" 
                       className="bg-white border-[#D4A373]/30 focus:ring-[#3E2723]"
@@ -421,14 +534,14 @@ export default function CustomizeOrder() {
                   <Label className="text-[#5D4037]">Date</Label>
                   <div className="relative">
                       <Calendar className="absolute left-3 top-3 h-4 w-4 text-[#8D6E63]" />
-                      <Input type="date" className="pl-9 bg-white border-[#D4A373]/30 h-11" onChange={(e) => handleInputChange("deliveryDate", e.target.value)} />
+                      <Input value={formData.deliveryDate} type="date" className="pl-9 bg-white border-[#D4A373]/30 h-11" onChange={(e) => handleInputChange("deliveryDate", e.target.value)} />
                   </div>
                 </div>
                 <div className="grid gap-2">
                   <Label className="text-[#5D4037]">Time</Label>
                    <div className="relative">
                       <Clock className="absolute left-3 top-3 h-4 w-4 text-[#8D6E63]" />
-                      <Input type="time" className="pl-9 bg-white border-[#D4A373]/30 h-11" onChange={(e) => handleInputChange("deliveryTime", e.target.value)} />
+                      <Input value={formData.deliveryTime} type="time" className="pl-9 bg-white border-[#D4A373]/30 h-11" onChange={(e) => handleInputChange("deliveryTime", e.target.value)} />
                    </div>
                 </div>
               </div>
@@ -449,6 +562,7 @@ export default function CustomizeOrder() {
                    <div className="relative">
                       <User className="absolute left-3 top-3.5 h-4 w-4 text-[#8D6E63]" />
                       <Input 
+                        value={formData.name}
                         type="text" 
                         placeholder="Your Name" 
                         className="pl-9 bg-white border-[#D4A373]/30 h-11 focus:ring-[#3E2723]"
@@ -462,6 +576,7 @@ export default function CustomizeOrder() {
                    <div className="relative">
                       <Phone className="absolute left-3 top-3.5 h-4 w-4 text-[#8D6E63]" />
                       <Input 
+                        value={formData.mobile}
                         type="tel" 
                         placeholder="Your Mobile Number" 
                         className="pl-9 bg-white border-[#D4A373]/30 h-11 focus:ring-[#3E2723]"
@@ -476,8 +591,10 @@ export default function CustomizeOrder() {
             <Button 
               type="submit" 
               className="w-full bg-[#3E2723] hover:bg-[#5D4037] text-[#F5ECD7] text-xl font-bold py-8 rounded-xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 mt-8 group flex items-center justify-center gap-3"
+              disabled={isSubmitting}
             >
-              SEND ENQUIRY <Check className="w-6 h-6 group-hover:scale-125 transition-transform" />
+              {isSubmitting ? 'SENDING...' : 'SEND ENQUIRY'} 
+              {!isSubmitting && <Check className="w-6 h-6 group-hover:scale-125 transition-transform" />}
             </Button>
 
           </form>

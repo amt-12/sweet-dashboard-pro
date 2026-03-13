@@ -1,66 +1,78 @@
-import { Product, Order, Customer } from '../types';
+import axios from 'axios';
 
-// Using mock data for now, but structured to easily switch to real API calls
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || '/api';
 
-const MOCK_PRODUCTS: Product[] = [
-  { id: 1, name: "Chocolate Fudge Cake", category: "Cakes", price: 25.00, stock: 12, image: "/placeholder.svg" },
-  { id: 2, name: "Vanilla Bean Cupcake", category: "Cupcakes", price: 3.50, stock: 45, image: "/placeholder.svg" },
-  { id: 3, name: "Sourdough Loaf", category: "Breads", price: 6.00, stock: 8, image: "/placeholder.svg" },
-  { id: 4, name: "Macaron Box (12)", category: "Pastries", price: 18.00, stock: 20, image: "/placeholder.svg" },
-  { id: 5, name: "Croissant", category: "Pastries", price: 4.00, stock: 30, image: "/placeholder.svg" },
-];
+export const axiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  headers: { 'Content-Type': 'application/json' },
+  timeout: 10000,
+});
 
-const MOCK_ORDERS: Order[] = [
-  { id: "ORD-001", customerId: 101, customerName: "Alice Baker", items: "Chocolate Cake, 6 Cupcakes", total: 46.00, status: "Delivered", date: "2023-10-25", paymentStatus: "Paid" },
-  { id: "ORD-002", customerId: 102, customerName: "Bob Candy", items: "Sourdough Loaf", total: 6.00, status: "Processing", date: "2023-10-26", paymentStatus: "Paid" },
-  { id: "ORD-003", customerId: 103, customerName: "Charlie Dough", items: "Macaron Box", total: 18.00, status: "Pending", date: "2023-10-26", paymentStatus: "Pending" },
-];
-
-const API_BASE_URL = '/api'; // Placeholder
+function normalize<T>(res: any): T {
+  if (!res) return res as T;
+  if (res.data && res.data.data !== undefined) return res.data.data as T;
+  if (res.data !== undefined) return res.data as T;
+  return res as T;
+}
 
 export const api = {
   products: {
-    getAll: async (): Promise<Product[]> => {
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return [...MOCK_PRODUCTS];
-    },
-    getById: async (id: number): Promise<Product | null> => {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      return MOCK_PRODUCTS.find(p => p.id === id) || null;
-    },
-    create: async (product: Omit<Product, 'id'>): Promise<Product> => {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const newProduct = { ...product, id: Math.floor(Math.random() * 1000) + 100 };
-      MOCK_PRODUCTS.push(newProduct);
-      return newProduct;
-    },
-    update: async (id: number, product: Partial<Product>): Promise<Product> => {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const index = MOCK_PRODUCTS.findIndex(p => p.id === id);
-      if (index !== -1) {
-        MOCK_PRODUCTS[index] = { ...MOCK_PRODUCTS[index], ...product };
-        return MOCK_PRODUCTS[index];
-      }
-      throw new Error("Product not found");
-    },
-    delete: async (id: number): Promise<void> => {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const index = MOCK_PRODUCTS.findIndex(p => p.id === id);
-      if (index !== -1) {
-        MOCK_PRODUCTS.splice(index, 1);
-      }
-    }
+    getAll: (): Promise<any[]> => axiosInstance.get('/products').then(res => normalize<any[]>(res)),
+    getById: (id: string | number) => axiosInstance.get(`/products/${id}`).then(res => normalize(res)),
+    create: (product: object) => axiosInstance.post('/products', product).then(res => normalize(res)),
+    update: (id: string | number, product: object) => axiosInstance.put(`/products/${id}`, product).then(res => normalize(res)),
+    delete: (id: string | number) => axiosInstance.delete(`/products/${id}`).then(() => undefined),
+  },
+  categories: {
+    getAll: (): Promise<any[]> => axiosInstance.get('/categories').then(res => normalize<any[]>(res)),
+    getById: (id: string | number) => axiosInstance.get(`/categories/${id}`).then(res => normalize(res)),
+    create: (category: object) => axiosInstance.post('/categories', category).then(res => normalize(res)),
+    update: (id: string | number, category: object) => axiosInstance.put(`/categories/${id}`, category).then(res => normalize(res)),
+    delete: (id: string | number) => axiosInstance.delete(`/categories/${id}`).then(() => undefined),
+  },
+  flavors: {
+    getAll: (): Promise<any[]> => axiosInstance.get('/flavors').then(res => normalize<any[]>(res)),
+    getById: (id: string | number) => axiosInstance.get(`/flavors/${id}`).then(res => normalize(res)),
+    create: (flavor: object) => axiosInstance.post('/flavors', flavor).then(res => normalize(res)),
+    update: (id: string | number, flavor: object) => axiosInstance.put(`/flavors/${id}`, flavor).then(res => normalize(res)),
+    delete: (id: string | number) => axiosInstance.delete(`/flavors/${id}`).then(() => undefined),
+  },
+  weights: {
+    getAll: (): Promise<any[]> => axiosInstance.get('/weights').then(res => normalize<any[]>(res)),
+    getById: (id: string | number) => axiosInstance.get(`/weights/${id}`).then(res => normalize(res)),
+    create: (weight: object) => axiosInstance.post('/weights', weight).then(res => normalize(res)),
+    update: (id: string | number, weight: object) => axiosInstance.put(`/weights/${id}`, weight).then(res => normalize(res)),
+    delete: (id: string | number) => axiosInstance.delete(`/weights/${id}`).then(() => undefined),
+  },
+  shapes: {
+    getAll: (): Promise<any[]> => axiosInstance.get('/shapes').then(res => normalize<any[]>(res)),
+    getById: (id: string | number) => axiosInstance.get(`/shapes/${id}`).then(res => normalize(res)),
+    create: (shape: object) => axiosInstance.post('/shapes', shape).then(res => normalize(res)),
+    update: (id: string | number, shape: object) => axiosInstance.put(`/shapes/${id}`, shape).then(res => normalize(res)),
+    delete: (id: string | number) => axiosInstance.delete(`/shapes/${id}`).then(() => undefined),
+  },
+  themes: {
+    getAll: (): Promise<any[]> => axiosInstance.get('/themes').then(res => normalize<any[]>(res)),
+    getById: (id: string | number) => axiosInstance.get(`/themes/${id}`).then(res => normalize(res)),
+    create: (theme: object) => axiosInstance.post('/themes', theme).then(res => normalize(res)),
+    update: (id: string | number, theme: object) => axiosInstance.put(`/themes/${id}`, theme).then(res => normalize(res)),
+    delete: (id: string | number) => axiosInstance.delete(`/themes/${id}`).then(() => undefined),
+  },
+  occasions: {
+    getAll: (): Promise<any[]> => axiosInstance.get('/occasions').then(res => normalize<any[]>(res)),
+    getById: (id: string | number) => axiosInstance.get(`/occasions/${id}`).then(res => normalize(res)),
+    create: (occasion: object) => axiosInstance.post('/occasions', occasion).then(res => normalize(res)),
+    update: (id: string | number, occasion: object) => axiosInstance.put(`/occasions/${id}`, occasion).then(res => normalize(res)),
+    delete: (id: string | number) => axiosInstance.delete(`/occasions/${id}`).then(() => undefined),
   },
   orders: {
-    getAll: async (): Promise<Order[]> => {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return [...MOCK_ORDERS];
-    }
+    getAll: (): Promise<any[]> => axiosInstance.get('/orders').then(res => normalize<any[]>(res)),
+    getById: (id: string | number) => axiosInstance.get(`/orders/${id}`).then(res => normalize(res)),
+    delete: (id: string | number) => axiosInstance.delete(`/orders/${id}`).then(() => undefined),
   },
   customers: {
-    getAll: async (): Promise<Customer[]> => {
-      return [];
-    }
+    getAll: (): Promise<any[]> => axiosInstance.get('/customers').then(res => normalize<any[]>(res)),
   }
 };
+
+export default axiosInstance;

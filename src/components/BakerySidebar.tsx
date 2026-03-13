@@ -12,14 +12,25 @@ import {
   List,
   CreditCard,
   Truck,
+  IceCream,
+  Heart,
+  Star,
+  Edit3,
 } from "lucide-react";
 import cupcakeIcon from "@/assets/cupcake-icon.png";
 
 const menuItems = [
   { title: "Dashboard", icon: LayoutDashboard, path: "/admin" },
   { title: "Orders", icon: ShoppingBag, path: "/admin/orders" },
+  { title: "Customize Order", icon: Edit3, path: "/admin/customize-order" },
   { title: "Products", icon: Package, path: "/admin/products" },
   { title: "Categories", icon: List, path: "/admin/categories" },
+  { title: "Flavors", icon: IceCream, path: "/admin/flavors" },
+  { title: "Weights", icon: IceCream, path: "/admin/weights" },
+  { title: "Types", icon: IceCream, path: "/admin/types" },
+  { title: "Occasions", icon: IceCream, path: "/admin/occasions" },
+  { title: "Shapes", icon: Heart, path: "/admin/shapes" },
+  { title: "Themes", icon: Star, path: "/admin/themes" },
   { title: "Customers", icon: Users, path: "/admin/customers" },
   { title: "Payments", icon: CreditCard, path: "/admin/payments" },
   { title: "Delivery", icon: Truck, path: "/admin/delivery" },

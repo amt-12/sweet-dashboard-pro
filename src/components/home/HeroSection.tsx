@@ -87,7 +87,7 @@ export default function HeroSection() {
             className="font-playfair font-bold text-navy flex-shrink-0 self-start mt-6 leading-none tracking-tight animate-fade-up"
             style={{ fontSize: "clamp(3.5rem, 9.5vw, 9rem)" }}
           >
-            Hangry
+            Hangry?
           </span>
 
           {/* Centre images */}
@@ -149,7 +149,7 @@ export default function HeroSection() {
             className="font-playfair font-bold text-navy flex-shrink-0 self-end mb-6 leading-none tracking-tight animate-fade-up"
             style={{ fontSize: "clamp(3.5rem, 9.5vw, 9rem)", animationDelay: "0.2s" }}
           >
-            Sweet
+            Sweet!
           </span>
         </h1>
       </div>

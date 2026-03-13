@@ -20,6 +20,13 @@ import Menu from "./pages/Menu";
 import About from "./pages/About";
 import Gallery from "./pages/Gallery";
 import Contact from "./pages/Contact";
+import Types from "./pages/Types";
+import Flavors from "./pages/Flavors";
+import Occasions from "./pages/Occasions";
+import Weights from "./pages/Weights";
+import Shapes from "./pages/Shapes";
+import Themes from "./pages/Themes";
+import CustomizeOrderAdmin from "./pages/CustomizeOrderAdmin";
 
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -50,6 +57,13 @@ const App = () => (
             <Route path="payments" element={<Payments />} />
             <Route path="delivery" element={<Delivery />} />
             <Route path="analytics" element={<Analytics />} />
+            <Route path="flavors" element={<Flavors />} />
+            <Route path="weights" element={<Weights />} />
+            <Route path="shapes" element={<Shapes />} />
+            <Route path="themes" element={<Themes />} />
+            <Route path="types" element={<Types />} />
+            <Route path="occasions" element={<Occasions />} />
+            <Route path="customize-order" element={<CustomizeOrderAdmin />} />
             <Route path="settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<NotFound />} />
