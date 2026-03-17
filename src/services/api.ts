@@ -81,7 +81,14 @@ export const api = {
   },
   customers: {
     getAll: (): Promise<any[]> => axiosInstance.get('/customers').then(res => normalize<any[]>(res)),
-  }
+  },
+  gallery: {
+    getAll: (): Promise<any[]> => axiosInstance.get('/gallery').then(res => normalize<any[]>(res)),
+    getById: (id: string | number) => axiosInstance.get(`/gallery/${id}`).then(res => normalize(res)),
+    create: (item: object) => axiosInstance.post('/gallery', item).then(res => normalize(res)),
+    update: (id: string | number, item: object) => axiosInstance.put(`/gallery/${id}`, item).then(res => normalize(res)),
+    delete: (id: string | number) => axiosInstance.delete(`/gallery/${id}`).then(() => undefined),
+  },
 };
 
 export default axiosInstance;

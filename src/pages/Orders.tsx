@@ -3,6 +3,18 @@ import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { setOrders, setLoading, setError } from "../store/slices/orderSlice";
 import { api } from "../services/api";
+import type { Order as OrderType } from "../types";
+
+// Define a minimal Order shape used by this component
+type Order = {
+  id: string | number;
+  customerName: string;
+  items: string;
+  total: number;
+  status: string;
+  date: string;
+  [key: string]: unknown;
+};
 
 const getStatusColor = (status: string) => {
     // Basic status mapping, falling back for custom statuses if needed
@@ -26,13 +38,28 @@ const getStatusIcon = (status: string) => {
 const Orders = () => {
   const dispatch = useAppDispatch();
   const { orders, loading, error } = useAppSelector((state) => state.orders);
+  
+  // Helper to normalize various API/Redux shapes into an array safely
+  const normalizeToArray = (payload: unknown): OrderType[] => {
+    if (Array.isArray(payload)) return payload as unknown as OrderType[];
+    if (payload && typeof payload === "object") {
+      const p = payload as Record<string, unknown>;
+      if (Array.isArray(p.data)) return p.data as unknown as OrderType[];
+      if (Array.isArray(p.orders)) return p.orders as unknown as OrderType[];
+    }
+    return [];
+  };
+  
+  const orderList = normalizeToArray(orders);
 
   useEffect(() => {
     const fetchOrders = async () => {
       dispatch(setLoading(true));
       try {
         const data = await api.orders.getAll();
-        dispatch(setOrders(data));
+        // Normalize API response to always store an array in the slice
+        const normalized = normalizeToArray(data);
+        dispatch(setOrders(normalized));
       } catch (err) {
         dispatch(setError("Failed to fetch orders"));
       } finally {
@@ -90,7 +117,7 @@ const Orders = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#D4A373]/10">
-              {orders.map((order) => (
+              {orderList.map((order) => (
                 <tr key={order.id} className="hover:bg-[#F5ECD7]/20 transition-colors group">
                   <td className="p-5 pl-6 text-[#1A2744] font-bold font-mono text-sm">{order.id}</td>
                   <td className="p-5">
@@ -118,10 +145,10 @@ const Orders = () => {
                 </tr>
               ))}
             </tbody>
-          </table>
-           {orders.length === 0 && (
-            <div className="text-center p-8 text-muted-foreground">No orders found.</div>
-          )}
+           </table>
+           {orderList.length === 0 && (
+             <div className="text-center p-8 text-muted-foreground">No orders found.</div>
+           )}
         </div>
       </div>
     </div>

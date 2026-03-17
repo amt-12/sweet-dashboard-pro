@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, Link, NavLink } from "react-router-dom";
 import {
   ShoppingBag,
   Package,
@@ -31,6 +31,7 @@ const menuItems = [
   { title: "Occasions", icon: IceCream, path: "/admin/occasions" },
   { title: "Shapes", icon: Heart, path: "/admin/shapes" },
   { title: "Themes", icon: Star, path: "/admin/themes" },
+  { title: "Gallery", icon: Star, path: "/admin/gallery" },
   { title: "Customers", icon: Users, path: "/admin/customers" },
   { title: "Payments", icon: CreditCard, path: "/admin/payments" },
   { title: "Delivery", icon: Truck, path: "/admin/delivery" },

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { products, useProductActions } from "../components/home/home-data";
+import { useProductActions } from "../components/home/home-data";
+import { api } from "@/services/api";
 import Navbar from "@/components/Navbar";
 import CartSheet from "@/components/CartSheet";
 import { ArrowLeft, Star, ShoppingBag, Truck, ShieldCheck, Heart, Share2, Plus, Minus } from "lucide-react";
@@ -19,30 +20,102 @@ export default function ProductDetails() {
   const { handleAddToCart } = useProductActions();
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(0); 
+  const [product, setProduct] = useState<any | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const [selectedFlavor, setSelectedFlavor] = useState("Truffle Chocolate Cake");
+  const [selectedFlavor, setSelectedFlavor] = useState<string | null>(null);
   const [selectedWeightIndex, setSelectedWeightIndex] = useState(0);
 
-  const flavors = [
-    "Truffle Chocolate Cake", "Coffee Cake 2", "Butterscotch", 
-    "Butterscotch Hazelnut", "Cherry Black Forest", "Cherry Topped Black Forest Cake",
-    "Chocolate & Cherry Black Forest Cake", "Chocolate Truffle", 
-    "Elegant Yummy Vanilla Cake", "Red Velvet"
-  ];
-  
-  const weightOptions = [
+  // Use backend-provided flavors/weights when available, fall back to defaults
+  const [flavors, setFlavors] = useState<string[]>([
+    "Truffle Chocolate Cake", "Coffee Cake 2", "Butterscotch",
+  ]);
+
+  const [weightOptions, setWeightOptions] = useState<Array<{label:string; pack:string; multiplier:number}>>([
     { label: "500 g", pack: "Pack of 1", multiplier: 1 },
     { label: "1 kg", pack: "Pack of 1", multiplier: 1.8 },
-    { label: "2 kg", pack: "Pack of 1", multiplier: 3.5 },
-    { label: "3 kg", pack: "Pack of 1", multiplier: 5.2 },
-    { label: "4 kg", pack: "Pack of 1", multiplier: 6.8 },
-  ];
+  ]);
 
-  // Find the product based on ID
-  const product = products.find((p) => p.id === Number(id));
+  useEffect(() => {
+    // Guard against invalid route params (missing, empty or the literal 'undefined')
+    if (!id || id === 'undefined' || String(id).trim() === '') {
+      setError('Invalid product id.');
+      return;
+    }
+    let mounted = true;
+    setError(null);
+    setLoading(true);
+    // Ensure we pass a string id to the API
+    api.products.getById(String(id))
+      .then((res) => { 
+        if (!mounted) return; 
+        // Response shape from api is dynamic; allow explicit any here with a targeted eslint exception
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const p = res as any;
+        setProduct(p);
+        // hydrate flavors from backend
+        if (Array.isArray(p?.flavor) && p.flavor.length > 0) {
+          setFlavors(p.flavor as string[]);
+          setSelectedFlavor(String(p.flavor[0]));
+        }
+        // hydrate weight options from backend (try to parse numeric values)
+        if (Array.isArray(p?.weight) && p.weight.length > 0) {
+          const parsed = (p.weight as string[]).map((w: string, idx: number) => {
+            // try to extract number (kg or g)
+            const match = w.match(/([0-9]+(?:\.[0-9]+)?)/);
+            let multiplier = 1;
+            if (match) {
+              const num = Number(match[1]);
+              // if label contains 'kg' assume base 0.5kg -> multiplier = (kg*1000)/500
+              if (/kg/i.test(w)) multiplier = (num * 1000) / 500;
+              else if (/g/i.test(w)) multiplier = num / 500;
+              else multiplier = idx === 0 ? 1 : 1 + idx; // fallback
+            }
+            return { label: w, pack: 'Pack of 1', multiplier };
+          });
+          setWeightOptions(parsed);
+          setSelectedWeightIndex(0);
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        if (!mounted) return;
+        // Prefer server-provided message, fall back to generic text
+        const status = (err as unknown as { response?: { status?: number } })?.response?.status;
+        if (status === 404) setError('Product not found.');
+        else if (status === 500) setError('Server error while fetching product.');
+        else setError((err as Error)?.message || 'Failed to load product');
+      })
+      .finally(() => { if (!mounted) return; setLoading(false); });
+    return () => { mounted = false; };
+  }, [id]);
 
-  const currentPrice = product ? product.price * weightOptions[selectedWeightIndex].multiplier : 0;
+  // Use backend-provided price for the selected weight if available.
+  // If backend exposes a prices list (e.g. product.pricesByWeight), prefer that; otherwise use product.price as-is.
+  const currentPrice = product
+    ? (Array.isArray(product.pricesByWeight) && product.pricesByWeight[selectedWeightIndex] !== undefined)
+      ? product.pricesByWeight[selectedWeightIndex]
+      : product.price
+    : 0;
 
+  // Format price as Canadian dollars
+  const formatCurrency = (v: number) => new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(v);
+
+  // Keep backend price display unchanged unless quantity > 1 (then show calculated CAD total)
+  // We'll compute mainPriceDisplay after product is available to avoid showing a formatted value over the raw backend value.
+  // Fall back to formatted price if backend price is missing
+  let backendPriceRaw: number | null = null;
+  let mainPriceDisplay = '';
+  if (product) {
+    backendPriceRaw = product.price || null;
+    mainPriceDisplay = quantity > 1
+      ? formatCurrency(currentPrice)
+      : (backendPriceRaw !== undefined && backendPriceRaw !== null ? String(backendPriceRaw) : formatCurrency(currentPrice));
+  }
+
+  if (loading) return <div className="p-6">Loading product...</div>;
+  if (error) return <div className="p-6 text-red-500">Error: {error}</div>;
   if (!product) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFBF7]">
@@ -57,12 +130,12 @@ export default function ProductDetails() {
     );
   }
 
-  // Mock multiple images for gallery effect
+  // Build gallery images using common fields from API
   const productImages = [
-    product.img,
-    // Add same image for demo purposes, in real app these would be different views
-    product.img, 
-    product.img,
+    product.imgBase64 || product.img || (product.images && product.images[0] && (product.images[0].base64 || product.images[0].url)) || '/placeholder.svg',
+    // product.images entries are dynamic objects from the API; allow any for compact mapping
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ...(product.images || []).slice(0,2).map((it: any) => it.base64 || it.url).filter(Boolean),
   ];
 
   const handleQuantityChange = (type: "inc" | "dec") => {
@@ -165,11 +238,21 @@ export default function ProductDetails() {
           >
             <div className="flex items-center gap-3 mb-6">
               <span className="px-3 py-1 bg-[#F2EBE3] rounded-full text-[#D4A373] font-bold text-xs tracking-widest uppercase">{product.category}</span>
-              <div className="flex items-center gap-1">
-                {[...Array(5)].map((_, i) => (
-                    <Star key={i} size={14} className={`${i < 4 ? "fill-[#FFD700] text-[#FFD700]" : "text-gray-300"}`} />
-                ))}
-                <span className="text-[#2C1810] text-sm font-bold ml-2 underline cursor-pointer">128 reviews</span>
+              <div className="flex items-center gap-2">
+                {(() => {
+                  const rating = Number(product.rating) || 0;
+                  return [...Array(5)].map((_, i) => {
+                    const filled = rating >= i + 1;
+                    return (
+                      <Star
+                        key={i}
+                        size={14}
+                        className={filled ? "fill-[#FFD700] text-[#FFD700]" : "text-gray-300"}
+                      />
+                    );
+                  });
+                })()}
+                <span className="text-[#2C1810] text-sm font-bold ml-2">{Number(product.rating).toFixed(1)}{product.reviewsCount ? ` • ${product.reviewsCount} reviews` : ''}</span>
               </div>
             </div>
 
@@ -177,17 +260,16 @@ export default function ProductDetails() {
               {product.name}
             </h1>
 
-            <p className="text-[#7A5C4F] text-lg leading-relaxed mb-8 max-w-lg">
-              Hand-crafted with the finest organic ingredients, baked fresh daily. Experience the perfect balance of texture and flavor in every bite.
-            </p>
+            
+           
 
             <div className="flex items-end gap-6 mb-10">
               <span className="text-5xl font-playfair font-bold text-[#2C1810]">
-                ${(currentPrice * quantity).toFixed(2)}
+                {quantity > 1 ? formatCurrency(currentPrice * quantity) : formatCurrency(currentPrice)}
               </span>
               {quantity > 1 && (
                  <span className="text-lg text-[#7A5C4F] font-medium mb-2">
-                    (${currentPrice.toFixed(2)} each)
+                    ({formatCurrency(currentPrice)} each)
                  </span>
               )}
             </div>
@@ -217,9 +299,12 @@ export default function ProductDetails() {
                 <p className="text-[#2C1810] font-bold mb-3">Size: <span className="font-playfair">{weightOptions[selectedWeightIndex].label}</span> ({weightOptions[selectedWeightIndex].pack})</p>
                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
                     {weightOptions.map((option, index) => {
-                         const price = product.price * option.multiplier;
-                         const originalPrice = price * 1.5; 
-                         return (
+                         // Prefer backend price per weight if provided, else fall back to product.price
+                         const optionPrice = Array.isArray(product.pricesByWeight) && product.pricesByWeight[index] !== undefined
+                           ? product.pricesByWeight[index]
+                           : product.price;
+                         const originalPrice = optionPrice * 1.5;
+                          return (
                             <button
                                 key={index}
                                 onClick={() => setSelectedWeightIndex(index)}
@@ -231,13 +316,13 @@ export default function ProductDetails() {
                             >
                                 <div className="font-bold text-[#2C1810] text-sm mb-1">{option.label}</div>
                                 <div className="text-xs text-[#7A5C4F] mb-2">{option.pack}</div>
-                                <div className="font-bold text-[#2C1810]">${price.toFixed(2)}</div>
-                                <div className="text-xs text-gray-400 line-through">${originalPrice.toFixed(2)}</div>
+                                <div className="font-bold text-[#2C1810]">{formatCurrency(optionPrice)}</div>
+                                <div className="text-xs text-gray-400 line-through">{formatCurrency(originalPrice)}</div>
                             </button>
                          );
                     })}
-                </div>
-            </div>
+                 </div>
+             </div>
             
             {/* Quantity & Add to Cart */}
             <div className="flex flex-col sm:flex-row gap-6 mb-12">
@@ -265,7 +350,7 @@ export default function ProductDetails() {
                 >
                     <span className="relative z-10 flex items-center gap-3">
                         <ShoppingBag size={22} />
-                        Add to Cart • ${(currentPrice * quantity).toFixed(2)}
+                        Add to Cart • {quantity > 1 ? formatCurrency(currentPrice * quantity) : formatCurrency(currentPrice)}
                     </span>
                     <div className="absolute inset-0 bg-[#D4A373] translate-y-[101%] group-hover:translate-y-0 transition-transform duration-300 ease-in-out" />
                 </Button>
@@ -277,29 +362,47 @@ export default function ProductDetails() {
                     <AccordionItem value="desc" className="border-b border-[#E5DACE]">
                         <AccordionTrigger className="text-[#2C1810] font-playfair font-bold text-lg hover:no-underline hover:text-[#D4A373]">Description</AccordionTrigger>
                         <AccordionContent className="text-[#7A5C4F] leading-relaxed text-base pt-2">
-                             Indulge in the rich, velvety goodness of our Tempting Truffle Chocolate Cake. Perfect for Birthdays, Anniversaries, Valentine's Day, and Mother's Day. This 0.5kg delight is crafted with premium cocoa and smooth chocolate ganache, offering a melt-in-your-mouth experience. Baked fresh daily with love!
+                            {product.tasteDescription || product.description || 'No description available.'}
                         </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="ingredients" className="border-b border-[#E5DACE]">
                         <AccordionTrigger className="text-[#2C1810] font-playfair font-bold text-lg hover:no-underline hover:text-[#D4A373]">Ingredients & Allergens</AccordionTrigger>
                         <AccordionContent className="text-[#7A5C4F] leading-relaxed text-base pt-2">
-                            Organic wheat flour, dark chocolate, fresh cream, butter, sugar, cocoa powder, baking powder. Contains: Wheat, Dairy, Soy. May contain traces of nuts.
+                            {((product.ingredients || []) as string[]).length > 0 ? (
+                                <div>
+                                    <p className="mb-2">{(product.ingredients || []).join(', ')}</p>
+                                    {product.allergens ? (
+                                        <p className="text-sm text-[#8D6E63]">Contains: {(product.allergens || []).join(', ')}</p>
+                                    ) : (
+                                        <p className="text-sm text-[#8D6E63]">May contain common allergens (eggs, nuts, dairy) — check with bakery for specifics.</p>
+                                    )}
+                                </div>
+                            ) : (
+                                <p>No ingredients information provided.</p>
+                            )}
                         </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="shipping" className="border-b border-[#E5DACE]">
                         <AccordionTrigger className="text-[#2C1810] font-playfair font-bold text-lg hover:no-underline hover:text-[#D4A373]">Delivery & Shipping</AccordionTrigger>
                         <AccordionContent className="text-[#7A5C4F] leading-relaxed text-base pt-2">
-                            Same Day Delivery available! Free delivery on orders above ₹500. Orders placed before 4 PM are eligible for same-day dispatch. Secure and contactless delivery.
+                            {Array.isArray(product.delivery) && product.delivery.length > 0 ? (
+                                // delivery items are flexible shapes from the API; allow any here
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                <ul className="list-disc pl-5 space-y-1">{product.delivery.map((d: any, i: number) => <li key={i}>{typeof d === 'string' ? d : (d.text || JSON.stringify(d))}</li>)}</ul>
+                            ) : (
+                                <p>Same Day Delivery available where applicable. Delivery charges and slots depend on location and order time.</p>
+                            )}
                         </AccordionContent>
                     </AccordionItem>
                      <AccordionItem value="offers" className="border-b border-[#E5DACE]">
-                        <AccordionTrigger className="text-[#2C1810] font-playfair font-bold text-lg hover:no-underline hover:text-[#D4A373]">Offers</AccordionTrigger>
+                        <AccordionTrigger className="text-[#2C1810] font-playfair font-bold text-lg hover:no-underline hover:text-[#D4A373]">Product Details</AccordionTrigger>
                         <AccordionContent className="text-[#7A5C4F] leading-relaxed text-base pt-2">
-                            <ul className="list-disc pl-5 space-y-1">
-                                <li><strong>Bank Offer:</strong> Upto ₹15.00 cashback with Amazon Pay ICICI Bank Credit Cards.</li>
-                                <li><strong>Partner Offers:</strong> Buy 2 get 3% off, Buy 3 get 4% off.</li>
-                                <li><strong>Price:</strong> ₹529.00 (69% off MRP ₹1,699).</li>
-                            </ul>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                                <div><strong className="text-[#8D6E63]">Types:</strong> {(product.type || []).join(', ') || '—'}</div>
+                                <div><strong className="text-[#8D6E63]">Occasions:</strong> {(product.occasion || []).join(', ') || '—'}</div>
+                                <div><strong className="text-[#8D6E63]">Shape:</strong> {product.shape || '—'}</div>
+                                <div><strong className="text-[#8D6E63]">Theme:</strong> {product.theme || '—'}</div>
+                            </div>
                         </AccordionContent>
                     </AccordionItem>
                 </Accordion>

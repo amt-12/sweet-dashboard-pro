@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, Link } from "react-router-dom";
-import Navbar from "@/components/Navbar";
 import { api } from "@/services/api";
 import { Trash2 } from "lucide-react";
 
@@ -80,7 +79,6 @@ export default function CustomizeOrderAdmin() {
 
   return (
     <div className="min-h-screen bg-[#FFF8F0] font-lora">
-      <Navbar />
       <main className="max-w-4xl mx-auto p-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-playfair font-bold text-[#1A2744]">Customize Order Details</h1>

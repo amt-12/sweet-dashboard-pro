@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -9,15 +9,18 @@ import chocolateJpg from "../assets/choclate.jpg";
 import pastryJpg    from "../assets/pastery.jpg";
 import doJpg        from "../assets/DO.jpg";
 import GEpng        from "../assets/GE.png";
+import { api } from "@/services/api";
 
 /* ─────────────────── types ─────────────────── */
 interface GalleryItem {
-  id: number;
-  src: string;
-  alt: string;
-  category: string;
-  title: string;
-  desc: string;
+  id: number | string;
+  _id?: string;
+  imgBase64?: string;
+  src?: string;
+  alt?: string;
+  category?: string;
+  title?: string;
+  desc?: string;
   badge?: string;
   price?: string;
 }
@@ -55,21 +58,98 @@ const cardV = {
 /* ═══════════════════════════════════════════════════════ */
 export default function Gallery() {
   const [activeFilter, setActiveFilter] = useState("All");
-  const [lightbox,     setLightbox]     = useState<number | null>(null);
+  const [lightbox,     setLightbox]     = useState<number | string | null>(null);
+  // use items state fetched from backend; start with static seed
+  const [items, setItems] = useState<GalleryItem[]>(galleryItems);
+  const objectUrlsRef = useRef<string[]>([]);
   const navigate = useNavigate();
 
-  const filtered = activeFilter === "All"
-    ? galleryItems
-    : galleryItems.filter(i => i.category === activeFilter);
+  useEffect(() => {
+    let mounted = true;
+    const fetchItems = async () => {
+      try {
+        const res = await api.gallery.getAll() as any;
+        const data = Array.isArray(res) ? res : (res && (res.data || res)) || [];
 
+        // revoke previously created URLs
+        objectUrlsRef.current.forEach(u => { try { URL.revokeObjectURL(u); } catch (e) { /* ignore revoke error */ } });
+        objectUrlsRef.current = [];
+
+        const normalized = (data as unknown[]).map(itRaw => {
+          const it = itRaw as Record<string, unknown>;
+          const id = (it._id as string) || (it.id as string) || Math.random().toString();
+
+          // prefer imgBase64 field when backend provides full data URI or base64
+          const imgBase64 = it.imgBase64 as unknown;
+          const srcVal = it.src as unknown;
+          let src: string | undefined;
+
+          if (typeof imgBase64 === 'string' && imgBase64.trim()) {
+            src = imgBase64;
+            if (!src.startsWith('data:')) src = `data:image/png;base64,${src}`;
+          } else if (typeof srcVal === 'string') {
+            src = srcVal;
+            if (!src.startsWith('data:') && !src.startsWith('/') && !src.startsWith('http')) {
+              src = `data:image/png;base64,${src}`;
+            }
+          } else if (srcVal && typeof srcVal === 'object') {
+            const maybe = srcVal as { data?: number[] };
+            if (Array.isArray(maybe.data)) {
+              try {
+                const u8 = new Uint8Array(maybe.data);
+                const blob = new Blob([u8], { type: 'image/png' });
+                const url = URL.createObjectURL(blob);
+                objectUrlsRef.current.push(url);
+                src = url;
+              } catch (e) { src = undefined; }
+            }
+          }
+
+          return {
+            id,
+            _id: it._id as string | undefined,
+            imgBase64: typeof imgBase64 === 'string' ? imgBase64 : undefined,
+            src,
+            alt: it.alt as string | undefined,
+            category: it.category as string | undefined,
+            title: it.title as string | undefined,
+            desc: it.desc as string | undefined,
+            badge: it.badge as string | undefined,
+            price: it.price as string | undefined,
+          } as GalleryItem;
+        });
+
+        if (mounted) setItems(normalized.length ? normalized : galleryItems);
+      } catch (e) {
+        // keep static fallback
+        setItems(galleryItems);
+      }
+    };
+    fetchItems();
+    return () => {
+      mounted = false;
+      objectUrlsRef.current.forEach(u => { try { URL.revokeObjectURL(u); } catch (e) { /* ignore revoke error */ } });
+      objectUrlsRef.current = [];
+    };
+  }, []);
+  
+  // compute category counts from current items and show only categories present
+  const categoryCounts = items.reduce((acc: Record<string, number>, it) => {
+    const c = (it.category || 'Misc') as string;
+    acc[c] = (acc[c] || 0) + 1;
+    return acc;
+  }, {});
+
+  const availableCategories = ['All', ...Object.keys(categoryCounts).filter(c => categoryCounts[c] > 0)];
+
+  const filtered = activeFilter === "All" ? items : items.filter(i => i.category === activeFilter);
   const lbIdx  = lightbox !== null ? filtered.findIndex(i => i.id === lightbox) : -1;
   const lbItem = lbIdx !== -1 ? filtered[lbIdx] : null;
 
-  const openLb  = useCallback((id: number) => setLightbox(id), []);
+  const openLb  = useCallback((id: number | string) => setLightbox(id), []);
   const closeLb = useCallback(() => setLightbox(null), []);
   const prevLb  = () => lbIdx > 0 && setLightbox(filtered[lbIdx - 1].id);
   const nextLb  = () => lbIdx < filtered.length - 1 && setLightbox(filtered[lbIdx + 1].id);
-
   const handleLbKey = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowLeft")  prevLb();
     if (e.key === "ArrowRight") nextLb();
@@ -131,22 +211,26 @@ export default function Gallery() {
       <div className="sticky top-[72px] z-30 bg-parchment/95 backdrop-blur-sm border-y border-gold/20">
         <div className="max-w-6xl mx-auto px-6 py-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap gap-2">
-            {CATEGORIES.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setActiveFilter(cat)}
-                className={`px-5 py-2 rounded-full text-xs font-bold tracking-[0.15em] uppercase transition-all duration-300 ${
-                  activeFilter === cat
-                    ? "bg-bread-brown text-white shadow-lg shadow-bread-brown/25"
-                    : "bg-white text-navy border border-gold/30 hover:border-bread-brown hover:text-bread-brown"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+            {availableCategories.map(cat => {
+              const count = cat === 'All' ? items.length : (categoryCounts[cat] || 0);
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setActiveFilter(cat)}
+                  className={`px-4 py-2 rounded-full text-sm font-bold tracking-[0.12em] uppercase transition-all duration-300 flex items-center gap-2 ${
+                    activeFilter === cat
+                      ? "bg-bread-brown text-white shadow-md shadow-bread-brown/20 ring-1 ring-bread-brown/30"
+                      : "bg-white text-navy border border-gold/20 hover:border-bread-brown hover:text-bread-brown"
+                  }`}
+                >
+                  <span className="inline-block w-2 h-2 rounded-full bg-gold/80" />
+                  {cat} {count > 0 ? <span className="text-xs opacity-80">({count})</span> : null}
+                </button>
+              );
+            })}
           </div>
           <p className="text-xs text-[#7A5C4F]">
-            <span className="font-bold text-navy">{filtered.length}</span> items
+            <span className="font-bold text-navy">{filtered.length}</span> item{filtered.length === 1 ? '' : 's'}
           </p>
         </div>
       </div>
@@ -168,33 +252,33 @@ export default function Gallery() {
                 animate="show"
                 exit="exit"
                 onClick={() => openLb(item.id)}
-                /* exact same card class as MenuSection */
-                className="group relative h-[420px] rounded-3xl overflow-hidden shadow-xl cursor-pointer"
+                className="group relative h-[420px] rounded-3xl overflow-hidden shadow-lg cursor-pointer transform transition-all duration-500 hover:scale-105 hover:shadow-2xl border border-transparent hover:border-white/10"
               >
                 {/* full-bleed background image */}
                 <div className="absolute inset-0 w-full h-full">
                   <img
                     src={item.src}
                     alt={item.alt}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    className="w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-110"
                     loading="lazy"
                   />
                 </div>
 
-                {/* gradient overlay — identical to MenuSection */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#1a0f0a] via-[#3E2723]/60 to-transparent opacity-90" />
+                {/* gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#1a0f0a] via-[#3E2723]/40 to-transparent opacity-60" />
 
-                {/* content — identical layout to MenuSection */}
+                {/* content — always visible with smooth transitions */}
                 <div className="absolute inset-0 p-6 flex flex-col justify-end text-white z-10">
-                  <div className="transform transition-all duration-300 translate-y-2 group-hover:translate-y-0">
+                  <div className="transform transition-all duration-300 translate-y-0">
                     <div className="flex justify-between items-end mb-2">
                       <div className="flex flex-col gap-1">
                         {item.badge && (
-                          <span className="w-fit px-2 py-0.5 rounded-full bg-[#D4A373] text-[#2C1810] text-[0.65rem] font-bold uppercase tracking-wider mb-1">
+                          <span className="inline-flex items-center gap-2 px-3 py-0.5 rounded-full bg-[#D4A373] text-[#2C1810] text-[0.7rem] font-bold uppercase tracking-wider mb-1 shadow-sm">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#2C1810]" />
                             {item.badge}
                           </span>
                         )}
-                        <h3 className="font-playfair text-xl font-bold leading-tight group-hover:text-[#D4A373] transition-colors">
+                        <h3 className="font-playfair text-xl font-bold leading-tight transition-colors">
                           {item.title}
                         </h3>
                       </div>
@@ -204,20 +288,20 @@ export default function Gallery() {
                         </span>
                       )}
                     </div>
-                    <p className="text-white/70 text-sm leading-relaxed mb-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <p className="text-white/80 text-sm leading-relaxed mb-3 transition-opacity duration-300">
                       {item.desc}
                     </p>
-                    <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <div className="flex items-center gap-3 transition-opacity duration-300">
                       <div className="flex gap-0.5">
                         {[...Array(5)].map((_, i) => (
                           <Star key={i} size={11} className="text-gold fill-gold" />
                         ))}
                       </div>
-                      <span className="text-white/60 text-xs">{item.category}</span>
+                      <span className="text-white/70 text-xs">{item.category}</span>
                     </div>
                   </div>
                 </div>
-              </motion.article>
+               </motion.article>
             ))}
           </AnimatePresence>
         </motion.div>

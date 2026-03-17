@@ -9,7 +9,9 @@ import { ShoppingBag, Star, Filter, X, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom"; 
 
-const categories = ["All", "Cakes", "Pastries", "Breads", "Cookies", "Muffins"];
+// derive categories dynamically from loaded products; include 'All' as first option
+// default fallback to common categories until products load
+const defaultCategories = ["Cakes", "Pastries", "Breads", "Cookies", "Muffins"];
 
 export default function Menu() {
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -60,6 +62,32 @@ export default function Menu() {
     load();
     return () => { mounted = false; controller.abort(); };
   }, []);
+
+  // derive dynamic categories from products
+  const categories = (() => {
+    try {
+      const set = new Set<string>();
+      for (const p of products) {
+        const cat = p?.category;
+        if (!cat) continue;
+        if (Array.isArray(cat)) {
+          for (const c of cat) if (c) set.add(String(c));
+        } else if (typeof cat === 'string') {
+          set.add(cat);
+        }
+      }
+      const arr = Array.from(set);
+      return ['All', ...(arr.length ? arr : defaultCategories)];
+    } catch (e) {
+      return ['All', ...defaultCategories];
+    }
+  })();
+
+  // keep selectedCategory valid if products (and derived categories) change
+  useEffect(() => {
+    if (selectedCategory === 'All') return;
+    if (!categories.includes(selectedCategory)) setSelectedCategory('All');
+  }, [categories]);
 
   // helper to choose image src: prefer base64/data then stored paths
   const getImageSrc = (p: any) => {
@@ -121,14 +149,41 @@ export default function Menu() {
 
   const handleFilterChange = (newFilters: FilterState) => {
     setFilters(newFilters);
+    // If sidebar category filter selects exactly one category, mirror it to the top tab
+    if (Array.isArray(newFilters.category) && newFilters.category.length === 1) {
+      setSelectedCategory(newFilters.category[0]);
+    } else if (Array.isArray(newFilters.category) && newFilters.category.length === 0) {
+      setSelectedCategory("All");
+    } else if (Array.isArray(newFilters.category) && newFilters.category.length > 1) {
+      // When multiple categories are selected, clear the top tab selection to 'All' to avoid conflict
+      setSelectedCategory("All");
+    }
+  };
+
+  // helper to compare tags (case-insensitive and tolerant to simple singular/plural mismatch)
+  const matches = (a?: string | null, b?: string | null) => {
+    if (!a || !b) return false;
+    const A = String(a).toLowerCase().trim();
+    const B = String(b).toLowerCase().trim();
+    if (A === B) return true;
+    if (A === B + 's' || B === A + 's') return true;
+    return false;
+  };
+
+  const fieldMatchesAny = (fieldValue: any, filtersArr: string[]) => {
+    if (!filtersArr || filtersArr.length === 0) return true;
+    if (Array.isArray(fieldValue)) {
+      return filtersArr.some(f => fieldValue.some((v: any) => matches(v, f)));
+    }
+    return filtersArr.some(f => matches(fieldValue, f));
   };
 
   const filteredProducts = products.filter(p => {
     // 1. Category Filter (Top tabs)
-    if (selectedCategory !== "All" && p.category !== selectedCategory) return false;
+    if (selectedCategory !== "All" && !matches(p.category, selectedCategory)) return false;
 
-    // 2. Sidebar Category Filter (if selected in sidebar, it overrides or adds to tabs? Lets say intersection for now, or just another filter)
-    if (filters.category.length > 0 && !filters.category.includes(p.category)) return false;
+    // 2. Sidebar Category Filter
+    if (filters.category.length > 0 && !filters.category.some(c => matches(p.category, c))) return false;
 
     // 3. Price Range
     if (p.price < filters.priceRange[0] || p.price > filters.priceRange[1]) return false;
@@ -137,16 +192,14 @@ export default function Menu() {
     if (filters.rating && (p.rating || 0) < filters.rating) return false;
 
     // 5. Dynamic Filters (Flavor, Type, Occasion, etc.)
-    // Note: In real app, these would match against array properties in Product
-    // For demo, we do simple checks or assume product has these fields
-    if (filters.flavor.length > 0 && !filters.flavor.some(f => p.flavor?.includes(f))) return false;
-    if (filters.type.length > 0 && !filters.type.some(t => p.type?.includes(t))) return false;
-    if (filters.occasion.length > 0 && !filters.occasion.some(o => p.occasion?.includes(o))) return false;
-    if (filters.weight.length > 0 && !filters.weight.some(w => p.weight?.includes(w))) return false;
-    if (filters.delivery.length > 0 && !filters.delivery.some(d => p.delivery?.includes(d))) return false;
-    if (filters.dietary.length > 0 && !filters.dietary.some(d => p.dietary?.includes(d))) return false;
-    if (filters.shape.length > 0 && !filters.shape.some(s => p.shape === s)) return false; 
-    if (filters.theme.length > 0 && !filters.theme.some(t => p.theme === t)) return false;
+    if (filters.flavor.length > 0 && !fieldMatchesAny(p.flavor, filters.flavor)) return false;
+    if (filters.type.length > 0 && !fieldMatchesAny(p.type, filters.type)) return false;
+    if (filters.occasion.length > 0 && !fieldMatchesAny(p.occasion, filters.occasion)) return false;
+    if (filters.weight.length > 0 && !fieldMatchesAny(p.weight, filters.weight)) return false;
+    if (filters.delivery.length > 0 && !fieldMatchesAny(p.delivery, filters.delivery)) return false;
+    if (filters.dietary.length > 0 && !fieldMatchesAny(p.dietary, filters.dietary)) return false;
+    if (filters.shape.length > 0 && !filters.shape.some(s => matches(p.shape, s))) return false;
+    if (filters.theme.length > 0 && !filters.theme.some(t => matches(p.theme, t))) return false;
 
     return true;
   });
@@ -239,11 +292,15 @@ export default function Menu() {
                 {categories.map((cat) => (
                   <button
                     key={cat}
-                    onClick={() => setSelectedCategory(cat)}
+                    onClick={() => {
+                      setSelectedCategory(cat);
+                      // keep sidebar filters in sync: selecting a top category applies it as the sidebar category filter
+                      setFilters(prev => ({ ...prev, category: cat === 'All' ? [] : [cat] }));
+                    }}
                     className={`whitespace-nowrap px-6 py-2.5 rounded-2xl text-sm font-bold tracking-wide transition-all duration-300 border-2 select-none ${
                       selectedCategory === cat
                         ? "bg-[#3E2723] text-[#F5ECD7] border-[#3E2723] shadow-lg shadow-[#3E2723]/20 transform -translate-y-0.5"
-                        : "bg-white text-[#8D6E63] border-transparent hover:border-[#D4A373]/30 hover:text-[#3E2723] hover:bg-white shadow-sm"
+                        : "bg.white text-[#8D6E63] border-transparent hover:border-[#D4A373]/30 hover:text-[#3E2723] hover:bg-white shadow-sm"
                     }`}
                   >
                     {cat}
@@ -269,7 +326,14 @@ export default function Menu() {
                    exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
                   className="group relative h-[450px] w-full rounded-3xl overflow-hidden shadow-xl cursor-pointer" // Add cursor-pointer
                 >
-                  <div onClick={() => navigate(`/product/${p.id}`)} className="block h-full w-full"> 
+                  <div onClick={() => {
+                    const prodId = (p && (p._id ?? p.id ?? '')) || '';
+                    if (!prodId) {
+                      console.warn('Product missing id, not navigating to detail:', p);
+                      return;
+                    }
+                    navigate(`/product/${prodId}`);
+                  }} className="block h-full w-full"> 
                     {/* Full Background Image */}
                     <div className="absolute inset-0 w-full h-full">
                       <img src={getImageSrc(p)} alt={p.name}

@@ -6,6 +6,7 @@ import { api } from "../services/api";
 import axiosInstance from "../services/api";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "../components/ui/sheet";
 import { toast } from "sonner";
+import { Link } from 'react-router-dom';
 
 interface ProductImage {
   url: string;
@@ -382,36 +383,23 @@ const Products = () => {
             <tbody className="divide-y divide-[#D4A373]/10">
               {products.map((product: any) => (
                 <tr key={product.id} className="hover:bg-[#FAF6E6]/50 transition-colors group">
-                  <td className="p-4 pl-6 flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-lg bg-[#FAF6E6] flex items-center justify-center text-xl border border-[#D4A373]/10 overflow-hidden">
-                        <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="font-bold text-[#1A2744] font-playfair">{product.name}</span>
-                      <div className="flex gap-2 mt-1 flex-wrap">
-                        {(product.flavor || []).map((f: string, i: number) => (
-                          <span key={i} className="text-xs bg-[#FFF6E8] px-2 py-0.5 rounded-full border border-[#F0D2B2]">{f}</span>
-                        ))}
+                  <td className="p-4 pl-6">
+                    <div className="flex items-center gap-3">
+                      <img src={getImageSrc(product.image, product.images?.[0]?.base64)} alt={product.name} className="w-12 h-12 rounded-md object-cover" />
+                      <div className="text-sm">
+                        <div className="font-medium text-[#1A2744]">{product.name}</div>
+                        <div className="text-xs text-[#8D6E63] truncate max-w-[240px]">{product.tasteDescription}</div>
                       </div>
-                      <div className="text-xs text-[#1A2744]/60 mt-1">{(product.ingredients || []).slice(0,4).join(', ')}{(product.ingredients || []).length > 4 ? '...' : ''}</div>
-                      {product.tasteDescription && <small className="text-xs text-[#1A2744]/60 italic mt-1">{product.tasteDescription}</small>}
                     </div>
                   </td>
-                  <td className="p-4 text-sm text-[#1A2744]/70 font-medium">{product.category}</td>
-                  <td className="p-4 font-bold text-[#1A2744] font-mono">${product.price.toFixed(2)}</td>
-                  <td className="p-4">
-                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide border ${product.stock > 10 ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-                      {product.stock} in stock
-                    </span>
-                  </td>
+                  <td className="p-4 text-sm text-[#5D4037]">{product.category}</td>
+                  <td className="p-4 text-sm text-[#D4A373] font-bold">${(Number(product.price) || 0).toFixed(2)}</td>
+                  <td className="p-4 text-sm text-[#5D4037]">{product.stock ?? '—'}</td>
                   <td className="p-4 pr-6 text-right">
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                       <button onClick={() => openEdit(product)} className="p-2 hover:bg-[#1A2744] hover:text-[#F5ECD7] rounded-lg text-[#1A2744] transition-colors">
-                        <Edit size={16} />
-                      </button>
-                      <button onClick={() => handleDelete(product.id)} className="p-2 hover:bg-red-500 hover:text-white rounded-lg text-red-400 transition-colors">
-                        <Trash2 size={16} />
-                      </button>
+                    <div className="flex justify-end gap-2">
+                      <Link to={`/product/${product.id}`} className="text-xs text-[#D4A373] underline">View</Link>
+                      <button onClick={() => openEdit(product)} className="text-xs text-[#1A2744]">Edit</button>
+                      <button onClick={() => handleDelete(product.id)} className="text-xs text-red-500">Delete</button>
                     </div>
                   </td>
                 </tr>

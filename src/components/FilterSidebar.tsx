@@ -20,8 +20,8 @@ export interface FilterState {
   priceRange: [number, number];
   weight: string[];
   delivery: string[];
-  rating: number | null;
   dietary: string[];
+  rating: number | null;
   shape: string[];
   theme: string[];
 }
@@ -31,11 +31,11 @@ const initialFilters: FilterState = {
   flavor: [],
   type: [],
   occasion: [],
-  priceRange: [200, 2000],
+  priceRange: [0, 2000],
   weight: [],
   delivery: [],
-  rating: null,
   dietary: [],
+  rating: null,
   shape: [],
   theme: [],
 };
@@ -47,8 +47,8 @@ const defaultFilterOptions = {
   type: ["Eggless", "Egg Cake", "Vegan Cake", "Sugar-Free Cake", "Gluten-Free Cake", "Designer Cake", "Photo Cake", "Fondant Cake", "Theme Cake"],
   occasion: ["Birthday", "Anniversary", "Valentine's Day", "Baby Shower", "Graduation", "Christmas", "Diwali", "Party"],
   weight: ["500g", "1 Kg", "1.5 Kg", "2 Kg", "3 Kg+"],
-  delivery: ["Same Day Delivery", "Midnight Delivery", "Express Delivery", "Schedule Delivery"],
-  dietary: ["Eggless", "Vegan", "Sugar-Free", "Gluten-Free"],
+  delivery: [],
+  dietary: [],
   shape: ["Round", "Heart Shape", "Square", "Cartoon Shape", "Number Cake"],
   theme: ["Kids Theme", "Superhero Theme", "Princess Theme", "Football Theme", "Wedding Theme"],
 };
@@ -59,41 +59,105 @@ const useDynamicOptions = () => {
 
   useEffect(() => {
     let mounted = true;
-    // fetch multiple endpoints in parallel
-    Promise.all([
-      api.categories.getAll().catch(() => []),
-      api.flavors.getAll().catch(() => []),
-      api.weights.getAll().catch(() => []),
-      api.types.getAll().catch(() => []),
-      api.occasions.getAll().catch(() => []),
-      api.shapes.getAll().catch(() => []),
-      api.themes.getAll().catch(() => []),
-    ]).then(([cats, flvs, wts, types, occ, shp, thm]) => {
-      if (!mounted) return;
-      const toStrings = (arr: unknown[]) => (arr || []).map((it) => {
-        if (typeof it === 'string') return it;
-        if (it && typeof it === 'object') {
-          const obj = it as Record<string, unknown>;
-          const name = (typeof obj.name === 'string' && obj.name)
-            || (typeof obj.title === 'string' && obj.title)
-            || (typeof obj.label === 'string' && obj.label)
-            || (typeof obj.type === 'string' && obj.type);
-          return name || '';
+    (async () => {
+      try {
+        const requests = [
+          api.categories.getAll().catch(() => []),
+          api.flavors.getAll().catch(() => []),
+          api.weights.getAll().catch(() => []),
+          api.types.getAll().catch(() => []),
+          api.occasions.getAll().catch(() => []),
+          api.shapes.getAll().catch(() => []),
+          api.themes.getAll().catch(() => []),
+        ];
+
+        const results = await Promise.all(requests);
+
+        if (!mounted) return;
+
+        const normalizeResp = (r: any) => {
+          if (!r) return [] as any[];
+          if (Array.isArray(r)) return r;
+          // handle { data: [...] } or { data: { ... } }
+          if (r && typeof r === 'object' && r.data !== undefined) {
+            return Array.isArray(r.data) ? r.data : [r.data];
+          }
+          // single object -> wrap
+          if (typeof r === 'object') return [r];
+          return [] as any[];
+        };
+
+        const toStrings = (arr: any[]) => (arr || []).map((it) => {
+          if (typeof it === 'string') return it;
+          if (it && typeof it === 'object') {
+            const obj = it as Record<string, unknown>;
+            return (typeof obj.name === 'string' && obj.name)
+              || (typeof obj.title === 'string' && obj.title)
+              || (typeof obj.label === 'string' && obj.label)
+              || (typeof obj.type === 'string' && obj.type)
+              || (typeof obj._id === 'string' && String(obj._id))
+              || '';
+          }
+          return '';
+        }).filter(Boolean) as string[];
+
+        const [cats, flvs, wts, types, occ, shp, thm] = results.map(normalizeResp);
+
+        let built = {
+          category: toStrings(cats),
+          flavor: toStrings(flvs),
+          type: toStrings(types),
+          occasion: toStrings(occ),
+          weight: toStrings(wts),
+          shape: toStrings(shp),
+          theme: toStrings(thm),
+        } as Record<string, string[]>;
+
+        // If backend endpoints returned unexpected shapes (empty), fall back to scanning products to build filter lists
+        const allEmpty = Object.values(built).every(arr => !arr || arr.length === 0);
+        if (allEmpty) {
+          try {
+            const prodsRaw = await api.products.getAll().catch(() => []);
+            const prods = normalizeResp(prodsRaw);
+            const extract = (key: string) => {
+              const set = new Set<string>();
+              for (const p of prods) {
+                const val = p?.[key];
+                if (Array.isArray(val)) val.forEach((v: any) => v && set.add(String(v)));
+                else if (typeof val === 'string' && val) set.add(val);
+              }
+              return Array.from(set);
+            };
+            built = {
+              category: extract('category'),
+              flavor: extract('flavor'),
+              type: extract('type'),
+              occasion: extract('occasion'),
+              weight: extract('weight'),
+              shape: extract('shape'),
+              theme: extract('theme'),
+            };
+          } catch (e) {
+            // ignore fallback errors
+          }
         }
-        return '';
-      }).filter(Boolean) as string[];
-      setOptions({
-        category: toStrings(cats) || defaultFilterOptions.category,
-        flavor: toStrings(flvs) || defaultFilterOptions.flavor,
-        type: toStrings(types) || defaultFilterOptions.type,
-        occasion: toStrings(occ) || defaultFilterOptions.occasion,
-        weight: toStrings(wts) || defaultFilterOptions.weight,
-        delivery: defaultFilterOptions.delivery,
-        dietary: defaultFilterOptions.dietary,
-        shape: toStrings(shp) || defaultFilterOptions.shape,
-        theme: toStrings(thm) || defaultFilterOptions.theme,
-      });
-    }).catch(() => {}).finally(() => { mounted = false; });
+
+        // merge with defaults where empty
+        setOptions({
+          category: built.category.length ? built.category : defaultFilterOptions.category,
+          flavor: built.flavor.length ? built.flavor : defaultFilterOptions.flavor,
+          type: built.type.length ? built.type : defaultFilterOptions.type,
+          occasion: built.occasion.length ? built.occasion : defaultFilterOptions.occasion,
+          weight: built.weight.length ? built.weight : defaultFilterOptions.weight,
+          shape: built.shape.length ? built.shape : defaultFilterOptions.shape,
+          theme: built.theme.length ? built.theme : defaultFilterOptions.theme,
+        });
+      } catch (e) {
+        // noop
+      } finally {
+        mounted = false;
+      }
+    })();
 
     return () => { mounted = false; };
   }, []);
@@ -170,7 +234,7 @@ export default function FilterSidebar({ onFilterChange, className, isOpen, onClo
             <AccordionTrigger className="text-[#3E2723] font-semibold hover:no-underline hover:text-[#D4A373] py-3">Price Range</AccordionTrigger>
             <AccordionContent className="pt-4 px-2">
               <Slider
-                defaultValue={[200, 2000]}
+                defaultValue={[0, 2000]}
                 max={5000}
                 min={0}
                 step={50}
