@@ -18,6 +18,7 @@ import {
   Edit3,
 } from "lucide-react";
 import cupcakeIcon from "@/assets/cupcake-icon.png";
+import { getRole } from '@/services/auth';
 
 const menuItems = [
   { title: "Dashboard", icon: LayoutDashboard, path: "/admin" },
@@ -32,6 +33,7 @@ const menuItems = [
   { title: "Shapes", icon: Heart, path: "/admin/shapes" },
   { title: "Themes", icon: Star, path: "/admin/themes" },
   { title: "Gallery", icon: Star, path: "/admin/gallery" },
+  { title: "Admins", icon: Users, path: "/admin/admins" },
   { title: "Customers", icon: Users, path: "/admin/customers" },
   { title: "Payments", icon: CreditCard, path: "/admin/payments" },
   { title: "Delivery", icon: Truck, path: "/admin/delivery" },
@@ -42,6 +44,8 @@ const menuItems = [
 const BakerySidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const role = getRole();
+  const visibleMenu = menuItems.filter(i => i.title !== 'Admins' || role === 'superadmin');
 
   return (
     <aside
@@ -68,7 +72,7 @@ const BakerySidebar = () => {
 
       {/* Menu */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1 custom-scrollbar">
-        {menuItems.map((item) => {
+        {visibleMenu.map((item) => {
           const isActive =
             item.path === "/admin"
               ? location.pathname === "/admin"

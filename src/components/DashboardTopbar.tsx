@@ -1,6 +1,26 @@
 import { Bell, Search, Plus } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { logout, getRole } from "@/services/auth";
 
 const DashboardTopbar = () => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   return (
     <header className="h-16 border-b border-[#D4A373]/30 bg-[#F5ECD7]/80 backdrop-blur-sm flex items-center justify-between px-6 sticky top-0 z-10 font-hepta">
       <div>
@@ -34,9 +54,18 @@ const DashboardTopbar = () => {
           <span className="absolute top-1 right-1 w-2 h-2 bg-[#D4A373] rounded-full ring-2 ring-white"></span>
         </button>
 
-        {/* Avatar */}
-        <div className="w-9 h-9 rounded-lg bg-[#D4A373] flex items-center justify-center text-lg font-bold font-playfair text-[#1A2744] shadow-md border-2 border-[#FAF6E6] cursor-pointer hover:scale-105 transition-transform">
-          B
+        {/* Avatar & menu */}
+        <div ref={menuRef} className="relative">
+          <button onClick={() => setMenuOpen(s => !s)} className="w-9 h-9 rounded-lg bg-[#D4A373] flex items-center justify-center text-lg font-bold font-playfair text-[#1A2744] shadow-md border-2 border-[#FAF6E6] cursor-pointer hover:scale-105 transition-transform">
+            B
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 mt-2 w-40 bg-white border border-[#E5E7EB] rounded-lg shadow-lg p-2 z-20">
+              <div className="text-xs text-[#6B7280] px-2 py-1">Role: {getRole() || '—'}</div>
+              <div className="border-t my-1" />
+              <button onClick={handleLogout} className="w-full text-left px-2 py-2 text-red-500 hover:bg-[#F9FAFB] rounded">Logout</button>
+            </div>
+          )}
         </div>
       </div>
     </header>

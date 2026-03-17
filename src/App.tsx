@@ -4,9 +4,10 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Navigate } from "react-router-dom";
+import { getToken, getRole } from "@/services/auth";
 
 // Lazy-loaded pages and admin layout
-
 
 const AdminLayout = lazy(() => import("./components/AdminLayout"));
 const Index = lazy(() => import("./pages/Index"));
@@ -26,9 +27,34 @@ const Weights = lazy(() => import("./pages/Weights"));
 const Shapes = lazy(() => import("./pages/Shapes"));
 const Themes = lazy(() => import("./pages/Themes"));
 const GalleryAdmin = lazy(() => import("./pages/GalleryAdmin"));
+const Admins = lazy(() => import("./pages/Admins"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const AdminLogin = lazy(() => import("./components/AdminLogin"));
 
 const queryClient = new QueryClient();
+
+const isAuthenticated = () => {
+  try {
+    return !!getToken();
+  } catch (e) {
+    return false;
+  }
+};
+
+const RequireAuth: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  return isAuthenticated() ? children : <Navigate to="/login" replace />;
+};
+
+// Require a specific role (e.g. superadmin). If role doesn't match, redirect to /admin (or login if not authenticated).
+const RequireRole: React.FC<{ role: string; children: React.ReactElement }> = ({ role, children }) => {
+  try {
+    if (!isAuthenticated()) return <Navigate to="/login" replace />;
+    const r = getRole();
+    return r === role ? children : <Navigate to="/admin" replace />;
+  } catch (e) {
+    return <Navigate to="/login" replace />;
+  }
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -42,7 +68,9 @@ const App = () => (
           }
         >
           <Routes>
-            <Route path="/admin" element={<AdminLayout />}>
+            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/login" element={<AdminLogin />} />
+            <Route path="/admin" element={<RequireAuth><AdminLayout /></RequireAuth>}>
               <Route index element={<Index />} />
               <Route path="orders" element={<Orders />} />
               <Route path="products" element={<Products />} />
@@ -58,6 +86,7 @@ const App = () => (
               <Route path="types" element={<Types />} />
               <Route path="occasions" element={<Occasions />} />
               <Route path="gallery" element={<GalleryAdmin />} />
+              <Route path="admins" element={<RequireRole role="superadmin"><Admins /></RequireRole>} />
               <Route path="customize-order" element={<CustomizeOrderAdmin />} />
               <Route path="settings" element={<Settings />} />
             </Route>
