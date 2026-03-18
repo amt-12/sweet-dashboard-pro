@@ -1,4 +1,4 @@
-import { Plus, Search, Edit, Trash2, Filter, X, Package, DollarSign, Layers, Info, Image as ImageIcon } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Filter, X, Package, DollarSign, Layers, Info, Image as ImageIcon, Eye } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { setProducts, setLoading, setError } from "../store/slices/productSlice";
@@ -338,79 +338,202 @@ const Products = () => {
     return url.startsWith('/') ? url : `/${url}`;
   };
 
-  if (loading) return <div className="p-8 text-center text-[#1A2744] font-playfair animate-pulse">Loading bakery items... 🥐</div>;
-  if (error) return <div className="p-8 text-center text-red-500 font-inter">Error: {error}</div>;
+  // ── Loading full-panel ────────────────────────────────────────
+  if (loading) return (
+    <div className="bg-white rounded-2xl border border-[#D4A373]/20 shadow-sm p-20 flex flex-col items-center justify-center gap-4">
+      <div className="w-12 h-12 border-4 border-[#D4A373]/20 border-t-[#D4A373] rounded-full animate-spin" />
+      <p className="text-[#8D6E63] font-semibold animate-pulse">Loading bakery items… 🥐</p>
+    </div>
+  );
+
+  if (error) return (
+    <div className="bg-red-50 border border-red-200 rounded-2xl p-10 text-center text-red-600 font-medium">
+      ⚠️ {error}
+    </div>
+  );
 
   return (
     <div className="space-y-6 animate-fade-in font-inter">
+
+      {/* ── Page Header ───────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold font-playfair text-[#1A2744]">Product Management</h2>
-          <p className="text-sm text-[#8D6E63] font-medium mt-1">Manage your bakery items, prices, and stock.</p>
+          <h2 className="text-3xl font-bold font-playfair text-[#1A2744]">
+            Product Management{" "}
+            <span className="inline-block animate-bounce text-[#D4A373]">🥐</span>
+          </h2>
+          <p className="text-sm text-[#8D6E63] font-medium mt-1">
+            Manage your bakery items, prices, and stock.
+          </p>
         </div>
-        <button onClick={openAdd} className="px-5 py-2.5 bg-[#1A2744] text-[#F5ECD7] rounded-xl flex items-center gap-2 shadow-lg hover:shadow-xl hover:bg-[#D4A373] hover:text-[#1A2744] transition-all duration-300 group">
-          <Plus size={18} className="group-hover:rotate-90 transition-transform"/>
-          <span className="font-bold text-xs uppercase tracking-wider">Add New Product</span>
-        </button>
+        <div className="flex items-center gap-3">
+          {products.length > 0 && (
+            <div className="px-4 py-2 rounded-xl bg-[#1A2744]/5 border border-[#1A2744]/10 text-sm font-bold text-[#1A2744] flex items-center gap-2">
+              <Package size={15} className="text-[#D4A373]" />
+              {products.length} {products.length === 1 ? 'Item' : 'Items'}
+            </div>
+          )}
+          <button
+            onClick={openAdd}
+            className="px-5 py-2.5 bg-[#1A2744] text-[#F5ECD7] rounded-xl flex items-center gap-2 shadow-lg hover:shadow-xl hover:bg-[#D4A373] hover:text-[#1A2744] transition-all duration-300 group"
+          >
+            <Plus size={18} className="group-hover:rotate-90 transition-transform" />
+            <span className="font-bold text-xs uppercase tracking-wider">Add New Product</span>
+          </button>
+        </div>
       </div>
 
+      {/* ── Search Bar ────────────────────────────────────────────── */}
       <div className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-[#D4A373]/20">
         <div className="relative flex-1 group">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1A2744]/40 group-focus-within:text-[#D4A373] transition-colors w-4 h-4" />
-          <input 
-            type="text" 
-            placeholder="Search products by name or category..." 
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-[#FAF6E6] border border-transparent focus:border-[#D4A373]/30 text-sm text-[#1A2744] placeholder-[#1A2744]/40 outline-none focus:ring-0 focus:bg-white transition-all"
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#1A2744]/40 group-focus-within:text-[#D4A373] transition-colors w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Search products by name or category…"
+            className="w-full pl-11 pr-4 py-3 rounded-xl bg-[#FAF6E6] border border-transparent focus:border-[#D4A373]/30 focus:bg-white text-sm text-[#1A2744] placeholder:text-[#1A2744]/40 outline-none transition-all"
           />
         </div>
-        <button className="p-2.5 bg-[#FAF6E6] rounded-xl text-[#1A2744] hover:bg-[#D4A373] hover:text-white transition-colors border border-transparent hover:border-[#D4A373]/30">
-          <Filter size={18} />
+        <button className="p-3 bg-[#FAF6E6] rounded-xl text-[#1A2744] hover:bg-[#D4A373] hover:text-white transition-colors border border-transparent hover:border-[#D4A373]/30">
+          <Filter size={17} />
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-[#D4A373]/20 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-[#FAF6E6] border-b border-[#D4A373]/20">
-              <tr>
-                <th className="p-4 pl-6 text-xs font-bold text-[#8D6E63] uppercase tracking-wider">Product</th>
-                <th className="p-4 text-xs font-bold text-[#8D6E63] uppercase tracking-wider">Category</th>
-                <th className="p-4 text-xs font-bold text-[#8D6E63] uppercase tracking-wider">Price</th>
-                <th className="p-4 text-xs font-bold text-[#8D6E63] uppercase tracking-wider">Stock</th>
-                <th className="p-4 text-xs font-bold text-[#8D6E63] uppercase tracking-wider text-right pr-6">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#D4A373]/10">
-              {products.map((product: any) => (
-                <tr key={product.id} className="hover:bg-[#FAF6E6]/50 transition-colors group">
-                  <td className="p-4 pl-6">
-                    <div className="flex items-center gap-3">
-                      <img src={getImageSrc(product.image, product.images?.[0]?.base64)} alt={product.name} className="w-12 h-12 rounded-md object-cover" />
-                      <div className="text-sm">
-                        <div className="font-medium text-[#1A2744]">{product.name}</div>
-                        <div className="text-xs text-[#8D6E63] truncate max-w-[240px]">{product.tasteDescription}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-4 text-sm text-[#5D4037]">{product.category}</td>
-                  <td className="p-4 text-sm text-[#D4A373] font-bold">${(Number(product.price) || 0).toFixed(2)}</td>
-                  <td className="p-4 text-sm text-[#5D4037]">{product.stock ?? '—'}</td>
-                  <td className="p-4 pr-6 text-right">
-                    <div className="flex justify-end gap-2">
-                      <Link to={`/product/${product.id}`} className="text-xs text-[#D4A373] underline">View</Link>
-                      <button onClick={() => openEdit(product)} className="text-xs text-[#1A2744]">Edit</button>
-                      <button onClick={() => handleDelete(product.id)} className="text-xs text-red-500">Delete</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {products.length === 0 && (
-            <div className="text-center p-8 text-muted-foreground">No products found.</div>
-          )}
+      {/* ── Product Cards Grid ────────────────────────────────────── */}
+      {products.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-[#D4A373]/20 shadow-sm p-20 flex flex-col items-center gap-4">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#D4A373]/20 to-[#D4A373]/5 flex items-center justify-center">
+            <Package size={36} className="text-[#D4A373]" />
+          </div>
+          <div className="text-center">
+            <p className="text-lg font-bold font-playfair text-[#1A2744]">No Products Yet</p>
+            <p className="text-sm text-[#8D6E63] mt-1">Add your first bakery item using the button above.</p>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          {products.map((product: any) => {
+            const imgSrc = getImageSrc(product.image, product.images?.[0]?.base64);
+            const stock = Number(product.stock) || 0;
+            const stockLow = stock > 0 && stock <= 5;
+            const stockOut = stock === 0;
+            return (
+              <div
+                key={product.id}
+                className="bg-white rounded-2xl border border-[#D4A373]/20 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group flex flex-col relative"
+              >
+                {/* Top accent */}
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#D4A373] via-[#F5ECD7] to-[#D4A373] opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                {/* Cover image */}
+                <div className="relative w-full h-44 bg-[#FAF6E6] overflow-hidden">
+                  {imgSrc ? (
+                    <img
+                      src={imgSrc}
+                      alt={product.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Package size={32} className="text-[#D4A373]/40" />
+                    </div>
+                  )}
+
+                  {/* Category badge overlay */}
+                  {product.category && (
+                    <div className="absolute top-3 left-3">
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/90 text-[#1A2744] shadow-sm border border-[#D4A373]/20">
+                        {product.category}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Stock badge overlay */}
+                  <div className="absolute top-3 right-3">
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm ${
+                      stockOut
+                        ? 'bg-red-500 text-white'
+                        : stockLow
+                        ? 'bg-amber-400 text-white'
+                        : 'bg-emerald-500 text-white'
+                    }`}>
+                      {stockOut ? 'Out of stock' : stockLow ? `Low: ${stock}` : `In stock`}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div className="flex flex-col flex-1 p-4 gap-3">
+                  {/* Name + price */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-[#1A2744] text-sm leading-snug truncate group-hover:text-[#D4A373] transition-colors">
+                        {product.name}
+                      </h3>
+                      {product.tasteDescription && (
+                        <p className="text-[11px] text-[#8D6E63] mt-0.5 line-clamp-2 font-medium">
+                          {product.tasteDescription}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex-shrink-0 text-right">
+                      <p className="text-base font-bold text-[#D4A373] leading-none">
+                        ₹{(Number(product.price) || 0).toFixed(0)}
+                      </p>
+                      <p className="text-[10px] text-[#8D6E63] mt-0.5">{stock} units</p>
+                    </div>
+                  </div>
+
+                  {/* Flavour tags */}
+                  {Array.isArray(product.flavor) && product.flavor.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {product.flavor.slice(0, 3).map((f: string, i: number) => (
+                        <span
+                          key={i}
+                          className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FAF6E6] text-[#8D6E63] border border-[#D4A373]/15"
+                        >
+                          {f}
+                        </span>
+                      ))}
+                      {product.flavor.length > 3 && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FAF6E6] text-[#8D6E63] border border-[#D4A373]/15">
+                          +{product.flavor.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Spacer */}
+                  <div className="flex-1" />
+
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-2 pt-3 border-t border-[#D4A373]/10">
+                    <Link
+                      to={`/product/${product.id}`}
+                      className="flex-1 px-3 py-2 rounded-xl text-xs font-bold text-[#D4A373] bg-[#D4A373]/10 hover:bg-[#D4A373] hover:text-white transition-all flex items-center justify-center gap-1.5 border border-[#D4A373]/20"
+                    >
+                      <Eye size={12} />
+                      View
+                    </Link>
+                    <button
+                      onClick={() => openEdit(product)}
+                      className="flex-1 px-3 py-2 rounded-xl text-xs font-bold text-[#1A2744] bg-[#1A2744]/5 hover:bg-[#1A2744] hover:text-white transition-all flex items-center justify-center gap-1.5 border border-[#1A2744]/10"
+                    >
+                      <Edit size={12} />
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(product.id)}
+                      className="px-3 py-2 rounded-xl text-xs font-bold text-red-500 bg-red-50 hover:bg-red-500 hover:text-white transition-all flex items-center gap-1 border border-red-100"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <Sheet open={showModal} onOpenChange={(open) => !open && closeModal()}>
         <SheetContent side="right" className="w-full md:w-[30vw] lg:w-[30vw] p-0 flex flex-col gap-0 bg-[#FAFBFD] border-l-[#D4A373]/20">

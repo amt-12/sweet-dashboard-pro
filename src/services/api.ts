@@ -90,6 +90,7 @@ export const api = {
   },
   customers: {
     getAll: (): Promise<any[]> => axiosInstance.get('/customers').then(res => normalize<any[]>(res)),
+    create: (customer: object) => axiosInstance.post('/customers/register', customer).then(res => normalize(res)),
   },
   gallery: {
     getAll: (): Promise<any[]> => axiosInstance.get('/gallery').then(res => normalize<any[]>(res)),
