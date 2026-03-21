@@ -1,11 +1,98 @@
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { User, Bell, Lock, Globe, Save } from "lucide-react";
+import axiosInstance from "@/services/api";
+import { getRole, login as authLogin } from "@/services/auth";
 
 const Settings = () => {
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [profile, setProfile] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    currency: "USD ($)",
+    timezone: "(GMT-05:00) Eastern Time",
+  });
+  const [userRole, setUserRole] = useState(null);
+
+  const canEdit = userRole === 'superadmin';
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  useEffect(() => {
+    fetchProfile();
+    // determine role from auth service/localStorage
+    try {
+      const role = getRole();
+      setUserRole(role || null);
+    } catch (err) {
+      console.warn("Unable to get role", err);
+    }
+  }, []);
+
+  const fetchProfile = async () => {
+    setLoading(true);
+    try {
+      const res = await axiosInstance.get('/store');
+      const data = res.data || {};
+      if (data.profile) setProfile((p) => ({ ...p, ...data.profile }));
+    } catch (err) {
+      console.error(err);
+      alert('Unable to load store profile. Check backend.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveProfile = async () => {
+    setSaving(true);
+    try {
+      // axiosInstance injects token from auth.getToken via interceptor
+      const res = await axiosInstance.put('/store', profile);
+      const data = res.data || {};
+      setProfile((p) => ({ ...p, ...data.profile }));
+      alert('Profile saved successfully.');
+    } catch (err: unknown) {
+      console.error(err);
+      let status: number | undefined;
+      if (typeof err === 'object' && err !== null) {
+        const maybe = err as { response?: { status?: number } };
+        status = maybe.response?.status;
+      }
+      if (status === 401) alert('Not authenticated. Please log in.');
+      else if (status === 403) alert('Forbidden: only a superadmin can update the store profile.');
+      else alert('Failed to save profile. Ensure backend is reachable and you have superadmin rights.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLogin = async () => {
+    setLoginLoading(true);
+    try {
+      const data = await authLogin(loginEmail, loginPassword);
+      // authLogin stores token and role in localStorage via service
+      const role = data.role || getRole();
+      setUserRole(role || null);
+      alert('Logged in successfully');
+      // refetch profile now that token is available
+      await fetchProfile();
+    } catch (err: unknown) {
+      console.error(err);
+      const message = err instanceof Error ? err.message : 'Login failed';
+      alert(message);
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-8 animate-fade-in max-w-5xl mx-auto pb-12 font-lora">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -18,10 +105,41 @@ const Settings = () => {
             Manage your account settings and preferences.
           </p>
         </div>
-        <Button className="bg-[#D4A373] hover:bg-[#c49265] text-white rounded-full px-6 font-bold shadow-md transition-all flex items-center gap-2">
-          <Save size={18} /> Save All Changes
-        </Button>
+        <div className="flex flex-col items-end gap-2">
+          <Button
+            onClick={saveProfile}
+            disabled={saving || !canEdit}
+            className="bg-[#D4A373] hover:bg-[#c49265] text-white rounded-full px-6 font-bold shadow-md transition-all flex items-center gap-2"
+          >
+            <Save size={18} /> {saving ? "Saving..." : "Save All Changes"}
+          </Button>
+          {!canEdit && (
+            <div className="text-xs text-[#8D6E63]">Only a superadmin can update the store profile. Log in with a superadmin account.</div>
+          )}
+        </div>
       </div>
+
+      {/* Login box for superadmin (visible if not superadmin) */}
+      {!canEdit && (
+        <div className="bg-white p-4 rounded-md shadow-sm border border-[#E5E7EB] max-w-md mx-auto">
+          <h4 className="font-bold mb-2">Superadmin Login</h4>
+          <div className="grid gap-2">
+            <Input placeholder="Email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
+            <Input placeholder="Password" type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
+            <div className="flex items-center justify-end">
+              <Button onClick={handleLogin} disabled={loginLoading || !loginEmail || !loginPassword}>
+                {loginLoading ? 'Logging in...' : 'Login as Superadmin'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!canEdit && (
+        <div className="rounded-md p-3 bg-yellow-50 border border-yellow-200 text-sm text-yellow-800">
+          You can view store profile but only a superadmin may edit it. Authenticate as a superadmin to enable editing.
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Profile Section */}
@@ -50,8 +168,11 @@ const Settings = () => {
               </Label>
               <Input
                 id="name"
-                defaultValue="Hangary? Sweet."
-                className="border-[#D4A373]/30 focus:border-[#D4A373] focus:ring-[#D4A373]/20 rounded-xl bg-[#F5ECD7]/10"
+                value={profile.name}
+                onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                className={`border-[#D4A373]/30 focus:border-[#D4A373] focus:ring-[#D4A373]/20 rounded-xl bg-[#F5ECD7]/10 ${!canEdit ? 'opacity-70 cursor-not-allowed' : ''}`}
+                placeholder={loading ? "Loading..." : "Your bakery name"}
+                disabled={!canEdit}
               />
             </div>
             <div className="space-y-2">
@@ -63,8 +184,11 @@ const Settings = () => {
               </Label>
               <Input
                 id="email"
-                defaultValue="admin@Hangary? Sweet..com"
-                className="border-[#D4A373]/30 focus:border-[#D4A373] focus:ring-[#D4A373]/20 rounded-xl bg-[#F5ECD7]/10"
+                value={profile.email}
+                onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                className={`border-[#D4A373]/30 focus:border-[#D4A373] focus:ring-[#D4A373]/20 rounded-xl bg-[#F5ECD7]/10 ${!canEdit ? 'opacity-70 cursor-not-allowed' : ''}`}
+                placeholder="admin@yourbakery.com"
+                disabled={!canEdit}
               />
             </div>
             <div className="space-y-2">
@@ -76,8 +200,10 @@ const Settings = () => {
               </Label>
               <Input
                 id="phone"
-                defaultValue="+1 234 567 890"
-                className="border-[#D4A373]/30 focus:border-[#D4A373] focus:ring-[#D4A373]/20 rounded-xl bg-[#F5ECD7]/10"
+                value={profile.phone}
+                onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                className={`border-[#D4A373]/30 focus:border-[#D4A373] focus:ring-[#D4A373]/20 rounded-xl bg-[#F5ECD7]/10 ${!canEdit ? 'opacity-70 cursor-not-allowed' : ''}`}
+                disabled={!canEdit}
               />
             </div>
             <div className="space-y-2">
@@ -89,8 +215,10 @@ const Settings = () => {
               </Label>
               <Input
                 id="address"
-                defaultValue="123 Baker Street, London"
-                className="border-[#D4A373]/30 focus:border-[#D4A373] focus:ring-[#D4A373]/20 rounded-xl bg-[#F5ECD7]/10"
+                value={profile.address}
+                onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+                className={`border-[#D4A373]/30 focus:border-[#D4A373] focus:ring-[#D4A373]/20 rounded-xl bg-[#F5ECD7]/10 ${!canEdit ? 'opacity-70 cursor-not-allowed' : ''}`}
+                disabled={!canEdit}
               />
             </div>
           </div>
@@ -122,10 +250,7 @@ const Settings = () => {
                   Receive notifications for new orders.
                 </p>
               </div>
-              <Switch
-                defaultChecked
-                className="data-[state=checked]:bg-[#D4A373]"
-              />
+              <Switch defaultChecked className="data-[state=checked]:bg-[#D4A373]" />
             </div>
             <div className="flex items-center justify-between p-3 rounded-xl hover:bg-[#F5ECD7]/20 transition-colors">
               <div className="space-y-0.5">
@@ -136,10 +261,7 @@ const Settings = () => {
                   Get notified when ingredients are running low.
                 </p>
               </div>
-              <Switch
-                defaultChecked
-                className="data-[state=checked]:bg-[#D4A373]"
-              />
+              <Switch defaultChecked className="data-[state=checked]:bg-[#D4A373]" />
             </div>
             <div className="flex items-center justify-between p-3 rounded-xl hover:bg-[#F5ECD7]/20 transition-colors">
               <div className="space-y-0.5">
@@ -226,7 +348,7 @@ const Settings = () => {
               </Label>
               <Input
                 id="currency"
-                defaultValue="USD ($)"
+                value={profile.currency}
                 disabled
                 className="bg-[#F5ECD7]/10 cursor-not-allowed"
               />
@@ -240,7 +362,7 @@ const Settings = () => {
               </Label>
               <Input
                 id="timezone"
-                defaultValue="(GMT-05:00) Eastern Time"
+                value={profile.timezone}
                 disabled
                 className="bg-[#F5ECD7]/10 cursor-not-allowed"
               />
