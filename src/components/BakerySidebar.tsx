@@ -24,6 +24,7 @@ const menuItems = [
   { title: "Dashboard", icon: LayoutDashboard, path: "/admin" },
   { title: "Orders", icon: ShoppingBag, path: "/admin/orders" },
   { title: "Customize Order", icon: Edit3, path: "/admin/customize-order" },
+  { title: "Contacts", icon: Users, path: "/admin/contacts" },
   { title: "Products", icon: Package, path: "/admin/products" },
   { title: "Categories", icon: List, path: "/admin/categories" },
   { title: "Flavors", icon: IceCream, path: "/admin/flavors" },

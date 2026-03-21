@@ -11,11 +11,15 @@ import { getRole, login as authLogin } from "@/services/auth";
 const Settings = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  // keep currency/timezone defaults but do not seed any contact dummy data
   const [profile, setProfile] = useState({
     name: "",
     email: "",
     phone: "",
     address: "",
+    openingTime: "",
+    closingTime: "",
+    hours: "",
     currency: "USD ($)",
     timezone: "(GMT-05:00) Eastern Time",
   });
@@ -42,7 +46,22 @@ const Settings = () => {
     try {
       const res = await axiosInstance.get('/store');
       const data = res.data || {};
-      if (data.profile) setProfile((p) => ({ ...p, ...data.profile }));
+      if (data.profile) {
+        // merge returned profile (may contain openingTime/closingTime/hours)
+        setProfile((p) => ({ ...p, ...data.profile }));
+      } else {
+        // no profile on backend -- clear contact fields but keep regional defaults
+        setProfile((p) => ({
+          ...p,
+          name: '',
+          email: '',
+          phone: '',
+          address: '',
+          openingTime: '',
+          closingTime: '',
+          hours: '',
+        }));
+      }
     } catch (err) {
       console.error(err);
       alert('Unable to load store profile. Check backend.');
@@ -220,6 +239,19 @@ const Settings = () => {
                 className={`border-[#D4A373]/30 focus:border-[#D4A373] focus:ring-[#D4A373]/20 rounded-xl bg-[#F5ECD7]/10 ${!canEdit ? 'opacity-70 cursor-not-allowed' : ''}`}
                 disabled={!canEdit}
               />
+            </div>
+            {/* Opening/Closing times and hours */}
+            <div className="space-y-2">
+              <Label htmlFor="openingTime" className="text-[#1A2744] font-bold">Opening Time</Label>
+              <Input id="openingTime" value={profile.openingTime} onChange={(e) => setProfile({ ...profile, openingTime: e.target.value })} placeholder="e.g. 7:00 AM" disabled={!canEdit} className={`border-[#D4A373]/30 focus:border-[#D4A373] focus:ring-[#D4A373]/20 rounded-xl bg-[#F5ECD7]/10 ${!canEdit ? 'opacity-70 cursor-not-allowed' : ''}`} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="closingTime" className="text-[#1A2744] font-bold">Closing Time</Label>
+              <Input id="closingTime" value={profile.closingTime} onChange={(e) => setProfile({ ...profile, closingTime: e.target.value })} placeholder="e.g. 8:00 PM" disabled={!canEdit} className={`border-[#D4A373]/30 focus:border-[#D4A373] focus:ring-[#D4A373]/20 rounded-xl bg-[#F5ECD7]/10 ${!canEdit ? 'opacity-70 cursor-not-allowed' : ''}`} />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="hours" className="text-[#1A2744] font-bold">Opening Hours (friendly)</Label>
+              <Input id="hours" value={profile.hours} onChange={(e) => setProfile({ ...profile, hours: e.target.value })} placeholder={"Mon – Sat: 7 AM – 8 PM; Sun: 8 AM – 5 PM"} disabled={!canEdit} className={`border-[#D4A373]/30 focus:border-[#D4A373] focus:ring-[#D4A373]/20 rounded-xl bg-[#F5ECD7]/10 ${!canEdit ? 'opacity-70 cursor-not-allowed' : ''}`} />
             </div>
           </div>
         </div>

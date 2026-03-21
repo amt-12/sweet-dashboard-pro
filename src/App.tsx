@@ -28,6 +28,7 @@ const Shapes = lazy(() => import("./pages/Shapes"));
 const Themes = lazy(() => import("./pages/Themes"));
 const GalleryAdmin = lazy(() => import("./pages/GalleryAdmin"));
 const Admins = lazy(() => import("./pages/Admins"));
+const Contacts = lazy(() => import("./pages/Contacts"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AdminLogin = lazy(() => import("./components/AdminLogin"));
 
@@ -76,6 +77,7 @@ const App = () => (
               <Route path="products" element={<Products />} />
               <Route path="customers" element={<Customers />} />
               <Route path="categories" element={<Categories />} />
+              <Route path="contacts" element={<Contacts />} />
               <Route path="payments" element={<Payments />} />
               <Route path="delivery" element={<Delivery />} />
               <Route path="analytics" element={<Analytics />} />
