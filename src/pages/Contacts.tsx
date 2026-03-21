@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api } from '@/services/api';
 import axiosInstance from '@/services/api';
 import { Trash, Check } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 type Contact = {
   _id: string;
@@ -19,6 +20,8 @@ const Contacts = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const { toast } = useToast();
+
   const fetchContacts = async () => {
     setLoading(true);
     try {
@@ -30,11 +33,13 @@ const Contacts = () => {
     } catch (err) {
       console.error(err);
       setError('Failed to load contacts');
+      toast({ title: 'Failed to load contacts', description: (err as any)?.message || 'Please try again later.' });
     } finally {
       setLoading(false);
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchContacts(); }, []);
 
   const markRead = async (id: string) => {
@@ -44,7 +49,9 @@ const Contacts = () => {
       };
       await contactsApi.markRead(id);
       setContacts((c) => c.map((it) => it._id === id ? { ...it, read: true } : it));
-    } catch (err) { console.error(err); alert('Unable to mark message read'); }
+      toast({ title: 'Marked read', description: 'Message marked as read.' });
+    } catch (err) { console.error(err); 
+      toast({ title: 'Unable to mark message', description: (err as any)?.message || 'Please try again.' }); }
   };
 
   const remove = async (id: string) => {
@@ -56,10 +63,11 @@ const Contacts = () => {
       };
       await contactsApi.delete(id);
       setContacts((c) => c.filter((it) => it._id !== id));
+      toast({ title: 'Message deleted', description: 'The message was deleted successfully.' });
     } catch (err: any) {
       console.error('Delete contact failed', err);
       const serverMsg = err?.response?.data?.error || err?.response?.data?.message || err.message;
-      alert('Failed to delete message: ' + (serverMsg || 'Unknown error'));
+      toast({ title: 'Failed to delete message', description: serverMsg || 'Unknown error' });
     } finally {
       setDeletingId(null);
     }
