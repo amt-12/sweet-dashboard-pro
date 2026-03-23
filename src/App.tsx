@@ -31,6 +31,8 @@ const Admins = lazy(() => import("./pages/Admins"));
 const Contacts = lazy(() => import("./pages/Contacts"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AdminLogin = lazy(() => import("./components/AdminLogin"));
+const OriginStoryEditor = lazy(() => import("./pages/admin/OriginStoryEditor"));
+const ValuesAdmin = lazy(() => import("./pages/admin/ValuesAdmin"));
 
 const queryClient = new QueryClient();
 
@@ -88,6 +90,8 @@ const App = () => (
               <Route path="types" element={<Types />} />
               <Route path="occasions" element={<Occasions />} />
               <Route path="gallery" element={<GalleryAdmin />} />
+              <Route path="about/origin-story" element={<RequireRole role="superadmin"><OriginStoryEditor /></RequireRole>} />
+              <Route path="about/values" element={<RequireRole role="superadmin"><ValuesAdmin /></RequireRole>} />
               <Route path="admins" element={<RequireRole role="superadmin"><Admins /></RequireRole>} />
               <Route path="customize-order" element={<CustomizeOrderAdmin />} />
               <Route path="settings" element={<Settings />} />

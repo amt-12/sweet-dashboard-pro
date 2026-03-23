@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, Link, NavLink } from "react-router-dom";
 import {
   ShoppingBag,
@@ -16,6 +16,8 @@ import {
   Heart,
   Star,
   Edit3,
+  ChevronDown,
+  Info,
 } from "lucide-react";
 import cupcakeIcon from "@/assets/cupcake-icon.png";
 import { getRole } from '@/services/auth';
@@ -24,16 +26,35 @@ const menuItems = [
   { title: "Dashboard", icon: LayoutDashboard, path: "/admin" },
   { title: "Orders", icon: ShoppingBag, path: "/admin/orders" },
   { title: "Customize Order", icon: Edit3, path: "/admin/customize-order" },
-  { title: "Contacts", icon: Users, path: "/admin/contacts" },
-  { title: "Products", icon: Package, path: "/admin/products" },
-  { title: "Categories", icon: List, path: "/admin/categories" },
-  { title: "Flavors", icon: IceCream, path: "/admin/flavors" },
-  { title: "Weights", icon: IceCream, path: "/admin/weights" },
-  { title: "Types", icon: IceCream, path: "/admin/types" },
-  { title: "Occasions", icon: IceCream, path: "/admin/occasions" },
-  { title: "Shapes", icon: Heart, path: "/admin/shapes" },
-  { title: "Themes", icon: Star, path: "/admin/themes" },
   { title: "Gallery", icon: Star, path: "/admin/gallery" },
+  { title: "Contacts", icon: Users, path: "/admin/contacts" },
+  // About parent with children (moved Gallery and Contacts here)
+  {
+    title: "About",
+    icon: Info,
+    path: "/admin/about",
+    children: [
+      { title: "About Us", icon: Info, path: "/admin/about" },
+      { title: "Origin Story", icon: Info, path: "/admin/about/origin-story" },
+      { title: "Values", icon: Star, path: "/admin/about/values" },
+    ],
+  },
+  // Products now has a children array to show Product Details submenu
+  {
+    title: "Products",
+    icon: Package,
+    path: "/admin/products",
+    children: [
+      { title: "Products", icon: Package, path: "/admin/products" },
+      { title: "Categories", icon: List, path: "/admin/categories" },
+      { title: "Flavors", icon: IceCream, path: "/admin/flavors" },
+      { title: "Weights", icon: IceCream, path: "/admin/weights" },
+      { title: "Types", icon: IceCream, path: "/admin/types" },
+      { title: "Occasions", icon: IceCream, path: "/admin/occasions" },
+      { title: "Shapes", icon: Heart, path: "/admin/shapes" },
+      { title: "Themes", icon: Star, path: "/admin/themes" },
+    ],
+  },
   { title: "Admins", icon: Users, path: "/admin/admins" },
   { title: "Customers", icon: Users, path: "/admin/customers" },
   { title: "Payments", icon: CreditCard, path: "/admin/payments" },
@@ -44,9 +65,28 @@ const menuItems = [
 
 const BakerySidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
+  const [openProducts, setOpenProducts] = useState(false);
+  const [openAbout, setOpenAbout] = useState(false);
   const location = useLocation();
   const role = getRole();
   const visibleMenu = menuItems.filter(i => i.title !== 'Admins' || role === 'superadmin');
+
+  // auto-open product/about submenu when navigating to one of its child routes
+  useEffect(() => {
+    const product = menuItems.find(m => m.title === 'Products');
+    if (product && product.children) {
+      const activeChild = product.children.some(c => location.pathname.startsWith(c.path));
+      const activeParent = location.pathname === product.path || location.pathname.startsWith(product.path + "/");
+      setOpenProducts(activeChild || activeParent);
+    }
+
+    const about = menuItems.find(m => m.title === 'About');
+    if (about && about.children) {
+      const activeChild = about.children.some(c => location.pathname.startsWith(c.path));
+      const activeParent = location.pathname === about.path || location.pathname.startsWith(about.path + "/");
+      setOpenAbout(activeChild || activeParent);
+    }
+  }, [location.pathname]);
 
   return (
     <aside
@@ -74,10 +114,68 @@ const BakerySidebar = () => {
       {/* Menu */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1 custom-scrollbar">
         {visibleMenu.map((item) => {
-          const isActive =
-            item.path === "/admin"
+          const isParentWithChildren = Array.isArray(item.children) && item.children.length > 0;
+
+          const isActive = isParentWithChildren
+            ? // parent is active if its path or any child path matches
+              item.path === "/admin"
               ? location.pathname === "/admin"
-              : location.pathname.startsWith(item.path);
+              : (location.pathname === item.path || location.pathname.startsWith(item.path) || item.children.some(c => location.pathname.startsWith(c.path)))
+            : item.path === "/admin"
+            ? location.pathname === "/admin"
+            : location.pathname.startsWith(item.path);
+
+          if (isParentWithChildren) {
+            const isOpen = item.title === 'Products' ? openProducts : item.title === 'About' ? openAbout : false;
+            const toggleOpen = () => {
+              if (item.title === 'Products') setOpenProducts(!openProducts);
+              if (item.title === 'About') setOpenAbout(!openAbout);
+            };
+
+            return (
+              <div key={item.title}>
+                <button
+                  onClick={toggleOpen}
+                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 group ${
+                    isActive
+                      ? "bg-[#1A2744] text-[#F5ECD7] shadow-lg shadow-[#1A2744]/20"
+                      : "text-[#1A2744]/80 hover:bg-[#D4A373]/10 hover:text-[#D4A373] hover:pl-4"
+                  } ${collapsed ? "justify-center px-0 hover:pl-0" : ""}`}
+                >
+                  <item.icon className={`w-5 h-5 transition-transform duration-300 ${isActive ? "text-[#D4A373] scale-110" : "group-hover:text-[#D4A373] group-hover:scale-110"}`} />
+                  {!collapsed && (
+                    <>
+                      <span className={`text-sm font-medium tracking-wide ${isActive ? "font-bold" : ""}`}>{item.title}</span>
+                      <ChevronDown className={`ml-auto transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                    </>
+                  )}
+                </button>
+
+                {/* children links */}
+                {isOpen && !collapsed && (
+                  <div className="mt-1 ml-8 space-y-1">
+                    {item.children.map((child) => {
+                      const childActive = location.pathname === child.path || location.pathname.startsWith(child.path);
+                      return (
+                        <Link
+                          key={child.title}
+                          to={child.path}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+                            childActive
+                              ? "bg-[#1A2744] text-[#F5ECD7] shadow-md"
+                              : "text-[#1A2744]/80 hover:bg-[#D4A373]/10 hover:text-[#D4A373]"
+                          }`}
+                        >
+                          <child.icon className={`w-4 h-4 ${childActive ? "text-[#D4A373]" : "text-[#1A2744]/60 group-hover:text-[#D4A373]"}`} />
+                          <span className="truncate">{child.title}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
 
           return (
             <Link
