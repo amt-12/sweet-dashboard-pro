@@ -64,7 +64,7 @@ const BakerySidebar = () => {
             </h1>
             <div className="flex items-center gap-1 mt-1">
                 <span className="h-[1px] w-4 bg-[#D4A373]"></span>
-                <span className="text-[0.5rem] tracking-[0.1em] text-[#8D6E63] font-medium uppercase whitespace-nowrap">Est. 1984</span>
+                <span className="text-[0.5rem] tracking-[0.1em] text-[#8D6E63] font-medium uppercase whitespace-nowrap">Est. 2024</span>
                 <span className="h-[1px] w-4 bg-[#D4A373]"></span>
             </div>
           </div>
