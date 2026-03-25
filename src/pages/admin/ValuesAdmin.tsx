@@ -15,7 +15,7 @@ export default function ValuesAdmin() {
       if (!mounted) return;
       const data = res?.data || {};
       setValues(data.values || []);
-    }).catch(() => {}).finally(() => { if (mounted) setLoading(false); });
+    }).catch(() => { }).finally(() => { if (mounted) setLoading(false); });
     return () => { mounted = false; };
   }, []);
 

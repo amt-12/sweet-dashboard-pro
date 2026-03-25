@@ -18,6 +18,7 @@ import {
   Edit3,
   ChevronDown,
   Info,
+  ChefHat,
 } from "lucide-react";
 import cupcakeIcon from "@/assets/cupcake-icon.png";
 import { getRole } from '@/services/auth';
@@ -37,6 +38,7 @@ const menuItems = [
       { title: "About Us", icon: Info, path: "/admin/about" },
       { title: "Origin Story", icon: Info, path: "/admin/about/origin-story" },
       { title: "Values", icon: Star, path: "/admin/about/values" },
+      { title: "Team", icon: ChefHat, path: "/admin/team" },
     ],
   },
   // Products now has a children array to show Product Details submenu
