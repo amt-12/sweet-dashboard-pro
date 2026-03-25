@@ -8,11 +8,13 @@ type Flavor = {
 	id: string | number;
 	name: string;
 	description?: string;
+	categoryId?: string | number;
 };
 
 const emptyForm: Partial<Flavor> = {
 	name: "",
 	description: "",
+	categoryId: "",
 };
 
 const Flavors = () => {
@@ -25,6 +27,9 @@ const Flavors = () => {
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [errors, setErrors] = useState<Record<string, string>>({});
 
+	const [categories, setCategories] = useState<{ id: string | number; name: string }[]>([]);
+	const [categoriesLoading, setCategoriesLoading] = useState(false);
+
 	useEffect(() => {
 		setLoading(true);
 		api.flavors
@@ -35,11 +40,36 @@ const Flavors = () => {
 					id: f._id || f.id,
 					name: f.name,
 					description: f.description || "",
+					categoryId: f.categoryId || (f.category && (f.category._id || f.category.id)) || undefined,
 				}));
 				setFlavors(normalized);
 			})
 			.catch((err: any) => setError(err?.message || "Failed to load flavors"))
 			.finally(() => setLoading(false));
+	}, []);
+
+	// load categories for the dropdown
+	useEffect(() => {
+		let mounted = true;
+		setCategoriesLoading(true);
+		api.categories
+			.getAll()
+			.then((res: any) => {
+				if (!mounted) return;
+				const raw = Array.isArray(res) ? res : res && (res.data || res) ? res.data : [];
+				const list = (raw || []).map((c: any) => ({ id: c._id || c.id, name: c.name }));
+				setCategories(list);
+			})
+			.catch(() => {
+				if (!mounted) return;
+				// non-fatal for the form, but surface an error state
+				setCategories([]);
+			})
+			.finally(() => mounted && setCategoriesLoading(false));
+
+		return () => {
+			mounted = false;
+		};
 	}, []);
 
 	const openAdd = () => {
@@ -49,11 +79,20 @@ const Flavors = () => {
 		setShowModal(true);
 	};
 
-	const openEdit = (f: Flavor) => {
-		setForm({ name: f.name, description: f.description });
-		setEditingId(String(f.id));
+	const openEdit = async (f: Flavor) => {
 		setErrors({});
+		setEditingId(String(f.id));
 		setShowModal(true);
+
+		// try to fetch full flavor details (to get category info if available)
+		try {
+			const res: any = await api.flavors.getById(f.id);
+			const data = res && (res._id || res.id) ? { id: res._id || res.id, ...res } : res && res.data ? res.data : res;
+			setForm({ name: data.name, description: data.description, categoryId: data.categoryId || (data.category && (data.category._id || data.category.id)) || "" });
+		} catch {
+			// fallback to the basic info we already have
+			setForm({ name: f.name, description: f.description, categoryId: "" });
+		}
 	};
 
 	const closeModal = () => {
@@ -76,18 +115,19 @@ const Flavors = () => {
 		if (Object.keys(v).length) return;
 
 		setLoading(true);
-		const payload = { name: form.name, description: form.description || "" };
+		const payload: any = { name: form.name, description: form.description || "" };
+		if (form.categoryId) payload.categoryId = form.categoryId;
 
 		try {
 			if (editingId) {
 				const res: any = await api.flavors.update(editingId, payload);
 				const f = res && (res._id || res.id) ? { id: res._id || res.id, ...res } : res && res.data ? res.data : res;
-				setFlavors((prev) => prev.map((it) => (String(it.id) === String(editingId) ? { id: f.id, name: f.name, description: f.description } : it)));
+				setFlavors((prev) => prev.map((it) => (String(it.id) === String(editingId) ? { id: f.id, name: f.name, description: f.description, categoryId: f.categoryId || (f.category && (f.category._id || f.category.id)) } : it)));
 				toast.success("Flavor updated!");
 			} else {
 				const res: any = await api.flavors.create(payload);
 				const f = res && (res._id || res.id) ? { id: res._id || res.id, ...res } : res && res.data ? res.data : res;
-				setFlavors((prev) => [{ id: f.id, name: f.name, description: f.description }, ...prev]);
+				setFlavors((prev) => [{ id: f.id, name: f.name, description: f.description, categoryId: f.categoryId || (f.category && (f.category._id || f.category.id)) }, ...prev]);
 				toast.success("Flavor added!");
 			}
 			closeModal();
@@ -203,6 +243,22 @@ const Flavors = () => {
 									/>
 								</div>
 							</div>
+
+							{/* Category select */}
+							<div className="space-y-1.5">
+								<label className="text-sm font-semibold text-[#1A2744]">Category</label>
+								<select
+									value={form.categoryId ?? ""}
+									onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+									className="w-full p-3 rounded-xl bg-white border border-[#D4A373]/20 outline-none focus:ring-2 focus:ring-[#D4A373]/10"
+								>
+									<option value="">{categoriesLoading ? 'Loading categories...' : 'Select category (optional)'}</option>
+									{categories.map((c) => (
+										<option key={c.id} value={c.id}>{c.name}</option>
+									))}
+								</select>
+							</div>
+
 						</div>
 					</form>
 
