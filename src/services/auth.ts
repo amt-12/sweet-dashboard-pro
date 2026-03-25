@@ -62,7 +62,7 @@ export function logout() {
 export async function me() {
   const token = getToken();
   if (!token) throw new Error('No token');
-  const res = await fetch('https://bakery-bakend.onrender.com/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
+  const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) throw new Error('Unauthenticated');
   return res.json();
 }
