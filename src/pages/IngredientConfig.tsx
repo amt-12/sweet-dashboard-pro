@@ -12,19 +12,15 @@ interface Nutrition {
 
 const initialNutrition: Nutrition = { calories: 0, carbs: 0, protein: 0, fat: 0, sugar: 0 };
 
-interface SimpleIngredient { _id?: string; id?: string; name: string; nutritionPer100g?: Partial<Nutrition>; }
+interface SimpleIngredient { _id?: string; id?: string; name: string; unit?: string; nutritionPer100g?: Partial<Nutrition>; }
 
 export default function IngredientConfig() {
   const [name, setName] = useState('');
   // multiple nutrient rows under a single ingredient (keys are dynamic strings from API)
   const [nutrientsList, setNutrientsList] = useState<Array<{ key: string; value: number }>>([]);
-  const [selectedNutrient, setSelectedNutrient] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [savedIngredients, setSavedIngredients] = useState<SimpleIngredient[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
-  const [selectedSavedId, setSelectedSavedId] = useState<string>('');
-  // dynamic nutrient options derived from API (use API keys only)
-  const [nutrientOptions, setNutrientOptions] = useState<string[]>([]);
 
   React.useEffect(() => {
     let mounted = true;
@@ -32,48 +28,26 @@ export default function IngredientConfig() {
     api?.ingredients?.getAll().then(data => {
       if (!mounted) return;
       const arr = Array.isArray(data) ? data : [];
-      setSavedIngredients(arr.map((it: unknown) => {
+      
+      const normalizedIngredients = arr.map((it: unknown) => {
         const raw = it as Record<string, unknown>;
         return {
           _id: typeof raw._id === 'string' ? raw._id : (typeof raw.id === 'string' ? raw.id : undefined),
           id: typeof raw.id === 'string' ? raw.id : undefined,
           name: typeof raw.name === 'string' ? raw.name : '',
+          unit: typeof raw.unit === 'string' ? raw.unit : '',
           nutritionPer100g: typeof raw.nutritionPer100g === 'object' ? (raw.nutritionPer100g as Partial<Nutrition>) : undefined,
         } as SimpleIngredient;
-      }));
-
-      // derive nutrient keys from the fetched array
-      try {
-        const keys = new Set<string>();
-        for (const item of arr) {
-          const raw = item as Record<string, unknown>;
-          const n = raw.nutritionPer100g as Record<string, unknown> | Partial<Nutrition> | undefined;
-          if (!n) continue;
-          if (Array.isArray(n)) {
-            for (const entry of n) if (entry && typeof entry === 'object') for (const k of Object.keys(entry)) keys.add(k);
-          } else if (typeof n === 'object') {
-            for (const k of Object.keys(n)) keys.add(k);
-          }
-        }
-        const derived = Array.from(keys);
-        // use only API-derived keys; if none found, leave options empty
-        if (derived.length) setNutrientOptions(derived);
-        else setNutrientOptions([]);
-      } catch (e) {
-        console.error('Failed to derive nutrient keys', e);
-        // fallback to empty options on error
-        setNutrientOptions([]);
-      }
-
+      });
+      setSavedIngredients(normalizedIngredients);
     }).catch((err) => {
       console.error('Failed to load ingredients', err);
-      // keep defaults on error
       setSavedIngredients([]);
     }).finally(() => { if (mounted) setLoadingSaved(false); });
     return () => { mounted = false; };
   }, []);
 
-  const addNutrientRow = () => setNutrientsList(prev => ([...prev, { key: (nutrientOptions[0] || ''), value: 0 }]));
+  const addNutrientRow = () => setNutrientsList(prev => ([...prev, { key: (savedIngredients[0]?.name || ''), value: 0 }]));
   const removeNutrientRow = (i: number) => setNutrientsList(prev => prev.length > 1 ? prev.filter((_, idx) => idx !== i) : []);
   const updateNutrientRow = (i: number, patch: Partial<{ key: string; value: number }>) => setNutrientsList(prev => prev.map((r, idx) => idx === i ? ({ ...r, ...patch }) : r));
 
@@ -126,8 +100,17 @@ export default function IngredientConfig() {
                 <div className="space-y-2">
                   {nutrientsList.map((row, i) => (
                     <div key={i} className="flex items-center gap-2">
-                      <select value={row.key as string} onChange={e => updateNutrientRow(i, { key: e.target.value as keyof Nutrition })} className="p-2 border rounded">
-                        {nutrientOptions.map(opt => (<option key={opt} value={opt}>{opt}</option>))}
+                      <select 
+                        value={row.key} 
+                        onChange={e => updateNutrientRow(i, { key: e.target.value })} 
+                        className="p-2 border rounded bg-slate-50 text-sm"
+                      >
+                        <option value="">-- Select Member Ingredient --</option>
+                        {savedIngredients.map(ing => (
+                          <option key={ing._id || ing.id} value={ing.name}>
+                            {ing.name}{ing.unit ? ` (${ing.unit})` : ''}
+                          </option>
+                        ))}
                       </select>
                       <input type="number" value={row.value} onChange={e => updateNutrientRow(i, { value: Number(e.target.value) || 0 })} className="p-2 border rounded w-36" />
                       <button type="button" onClick={() => removeNutrientRow(i)} className="px-3 py-2 border rounded">Remove</button>
@@ -145,7 +128,7 @@ export default function IngredientConfig() {
         </div>
 
         <div className="flex justify-end gap-2">
-          <button type="button" onClick={() => { setNutrientsList([{ key: 'calories', value: 0 }]); setName(''); }} className="px-4 py-2 border rounded">Reset</button>
+          <button type="button" onClick={() => { setNutrientsList([{ key: '', value: 0 }]); setName(''); }} className="px-4 py-2 border rounded">Reset</button>
           <button type="button" onClick={handleSave} disabled={saving} className="px-4 py-2 bg-[#1A2744] text-white rounded">
             {saving ? 'Saving…' : 'Save ingredient to DB'}
           </button>
