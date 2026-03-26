@@ -56,12 +56,17 @@ export default function IngredientConfig() {
     if (!name.trim()) { toast.error('Ingredient name required'); return; }
     setSaving(true);
     try {
-      // assemble nutrition object from rows
+      // assemble nutrition object from rows — include unit when available from the selected ingredient
       const nutritionObj = nutrientsList.reduce((acc, cur) => {
         if (!cur.key) return acc;
-        acc[cur.key] = cur.value;
+        const matched = savedIngredients.find(s => s.name === cur.key);
+        if (matched && matched.unit) {
+          acc[cur.key] = { value: cur.value, unit: matched.unit };
+        } else {
+          acc[cur.key] = cur.value;
+        }
         return acc;
-      }, {} as Record<string, number>);
+      }, {} as Record<string, number | { value: number; unit?: string }>);
       const payload = { name: name.trim(), nutritionPer100g: nutritionObj };
       // prefer named api wrapper if present, fallback to raw POST
       if (api?.ingredientDetails?.create) {
