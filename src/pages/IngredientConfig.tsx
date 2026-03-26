@@ -25,10 +25,11 @@ export default function IngredientConfig() {
   React.useEffect(() => {
     let mounted = true;
     setLoadingSaved(true);
+    // load dropdown options from existing /api/ingredients (keeps old Ingredient list for selection)
     api?.ingredients?.getAll().then(data => {
       if (!mounted) return;
       const arr = Array.isArray(data) ? data : [];
-      
+
       const normalizedIngredients = arr.map((it: unknown) => {
         const raw = it as Record<string, unknown>;
         return {
@@ -63,10 +64,12 @@ export default function IngredientConfig() {
       }, {} as Record<string, number>);
       const payload = { name: name.trim(), nutritionPer100g: nutritionObj };
       // prefer named api wrapper if present, fallback to raw POST
-      if (api?.ingredients?.create) {
+      if (api?.ingredientDetails?.create) {
+        await api.ingredientDetails.create(payload);
+      } else if (api?.ingredients?.create) {
         await api.ingredients.create(payload);
       } else {
-        await axiosInstance.post('/ingredients', payload);
+        await axiosInstance.post('/ingredient-details', payload);
       }
       toast.success('Ingredient saved');
       setName('');

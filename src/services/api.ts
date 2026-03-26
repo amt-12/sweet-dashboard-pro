@@ -55,6 +55,13 @@ export const api = {
     update: (id: string | number, payload: object) => axiosInstance.put(`/ingredients/${id}`, payload).then(res => normalize(res)),
     delete: (id: string | number) => axiosInstance.delete(`/ingredients/${id}`).then(() => undefined),
   },
+  ingredientDetails: {
+    getAll: (): Promise<any[]> => axiosInstance.get('/ingredient-details').then(res => normalize<any[]>(res)),
+    getById: (id: string | number) => axiosInstance.get(`/ingredient-details/${id}`).then(res => normalize(res)),
+    create: (payload: object) => axiosInstance.post('/ingredient-details', payload).then(res => normalize(res)),
+    update: (id: string | number, payload: object) => axiosInstance.put(`/ingredient-details/${id}`, payload).then(res => normalize(res)),
+    delete: (id: string | number) => axiosInstance.delete(`/ingredient-details/${id}`).then(() => undefined),
+  },
   weights: {
     getAll: (): Promise<any[]> => axiosInstance.get('/weights').then(res => normalize<any[]>(res)),
     getById: (id: string | number) => axiosInstance.get(`/weights/${id}`).then(res => normalize(res)),
