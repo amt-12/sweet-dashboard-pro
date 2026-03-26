@@ -144,6 +144,8 @@ const Products = () => {
   // helper to normalize a single product and preserve extra fields
   const normalizeSingle = useCallback((p: any) => {
     const imgs = (p.images || []).map((it: any) => normalizeImage(it));
+    const normalizedShape = p.shape ? (Array.isArray(p.shape) ? p.shape : [String(p.shape)]) : [];
+    const normalizedTheme = p.theme ? (Array.isArray(p.theme) ? p.theme : [String(p.theme)]) : [];
     return {
       // preserve all original properties
       ...p,
@@ -156,6 +158,9 @@ const Products = () => {
       flavor: p.flavor ? (Array.isArray(p.flavor) ? String(p.flavor[0] || '') : String(p.flavor)) : '',
       ingredients: Array.isArray(p.ingredients) ? p.ingredients : (typeof p.ingredients === 'string' ? p.ingredients.split(',').map((s: string) => s.trim()).filter(Boolean) : []),
       tasteDescription: p.tasteDescription || p.description || '',
+      // ensure shape/theme are arrays for the multi-select controls
+      shape: normalizedShape,
+      theme: normalizedTheme,
     } as any;
   }, [normalizeImage]);
 

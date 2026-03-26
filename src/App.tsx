@@ -34,6 +34,8 @@ const AdminLogin = lazy(() => import("./components/AdminLogin"));
 const OriginStoryEditor = lazy(() => import("./pages/admin/OriginStoryEditor"));
 const ValuesAdmin = lazy(() => import("./pages/admin/ValuesAdmin"));
 const TeamAdmin = lazy(() => import("./pages/admin/TeamAdmin"));
+const IngredientConfig = lazy(() => import("./pages/IngredientConfig"));
+const NutritionConfig = lazy(() => import("./pages/NutritionConfig"));
 
 const queryClient = new QueryClient();
 
@@ -90,6 +92,8 @@ const App = () => (
               <Route path="themes" element={<Themes />} />
               <Route path="types" element={<Types />} />
               <Route path="occasions" element={<Occasions />} />
+              <Route path="ingredients" element={<IngredientConfig />} />
+              <Route path="nutrition" element={<NutritionConfig />} />
               <Route path="gallery" element={<GalleryAdmin />} />
               <Route path="about/origin-story" element={<RequireRole role="superadmin"><OriginStoryEditor /></RequireRole>} />
               <Route path="about/values" element={<RequireRole role="superadmin"><ValuesAdmin /></RequireRole>} />

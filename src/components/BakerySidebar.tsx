@@ -55,6 +55,8 @@ const menuItems = [
       { title: "Occasions", icon: IceCream, path: "/admin/occasions" },
       { title: "Shapes", icon: Heart, path: "/admin/shapes" },
       { title: "Themes", icon: Star, path: "/admin/themes" },
+      { title: "Ingredients", icon: List, path: "/admin/ingredients" },
+      { title: "Nutrition", icon: List, path: "/admin/nutrition" },
     ],
   },
   { title: "Admins", icon: Users, path: "/admin/admins" },
