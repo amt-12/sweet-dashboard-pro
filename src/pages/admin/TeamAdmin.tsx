@@ -29,7 +29,7 @@ export default function TeamAdmin(): JSX.Element {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
-  const apiBase = (import.meta.env && (import.meta.env.VITE_API_URL as string)) || 'https://bakery-bakend.onrender.com';
+  const apiBase = (import.meta.env && (import.meta.env.VITE_API_URL as string)) || 'http://localhost:5000';
   const token = getToken();
   const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
 
