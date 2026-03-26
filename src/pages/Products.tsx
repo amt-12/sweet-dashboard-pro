@@ -735,6 +735,7 @@ const Products = () => {
                         onChange={(e) => {
                           const f = e.target.files?.[0] || null;
                           if (f) {
+                            if (f.size > MAX_BYTES) { toast.error('Image must be 500KB or smaller'); return; }
                             const url = URL.createObjectURL(f);
                             const reader = new FileReader();
                             reader.onload = () => {
@@ -779,6 +780,7 @@ const Products = () => {
                         onChange={(e) => {
                           const files = Array.from(e.target.files || []);
                           files.forEach(f => {
+                            if (f.size > MAX_BYTES) { toast.error(`${f.name} exceeds 500KB and was skipped`); return; }
                             const url = URL.createObjectURL(f);
                             const reader = new FileReader();
                             reader.onload = () => {
@@ -799,7 +801,18 @@ const Products = () => {
                   <label className="text-xs font-semibold text-[#1A2744]/60 italic">Or provide a Cover Image URL</label>
                   <input 
                     value={form.image} 
-                    onChange={(e) => setForm({...form, image: e.target.value, imagePreview: null, imageFile: null})} 
+                    onChange={(e) => {
+                      const val = e.target.value || '';
+                      // if user pasted data URI, enforce size
+                      if (val.startsWith('data:')) {
+                        const size = estimateDataUriSize(val);
+                        if (size > MAX_BYTES) { toast.error('Data URI image must be 500KB or smaller'); return; }
+                        // accept
+                        setForm({...form, image: val, imagePreview: null, imageFile: null});
+                      } else {
+                        setForm({...form, image: val, imagePreview: null, imageFile: null});
+                      }
+                    }} 
                     className="w-full p-2 text-xs rounded-lg bg-white border border-[#D4A373]/10"
                     placeholder="https://example.com/image.jpg"
                   />

@@ -28,6 +28,33 @@ export default function GalleryAdmin() {
   // track any object URLs created from binary buffers so we can revoke them
   const objectUrlsRef = useRef<string[]>([]);
 
+  // maximum allowed bytes (500 KB)
+  const MAX_BYTES = 500 * 1024;
+
+  const estimateBase64Size = (b64: string) => {
+    if (!b64) return 0;
+    const padding = b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0;
+    return Math.ceil((b64.length * 3) / 4) - padding;
+  };
+
+  const estimateDataUriSize = (dataUri?: string) => {
+    if (!dataUri) return 0;
+    const comma = dataUri.indexOf(',');
+    if (comma === -1) return 0;
+    const metadata = dataUri.substring(0, comma);
+    const data = dataUri.substring(comma + 1);
+    // if base64 encoded
+    if (metadata.indexOf(';base64') !== -1) {
+      return estimateBase64Size(data);
+    }
+    // otherwise attempt percent-decoding
+    try {
+      return new TextEncoder().encode(decodeURIComponent(data)).length;
+    } catch {
+      return data.length;
+    }
+  };
+
   useEffect(() => {
     fetchItems();
     fetchCategories();
@@ -46,13 +73,10 @@ export default function GalleryAdmin() {
   const fetchItems = async () => {
     setLoading(true);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const res = await api.gallery.getAll() as any;
       // debug: inspect raw backend response
-      // eslint-disable-next-line no-console
       console.log('gallery.getAll response:', res);
       // normalize response whether backend returns array or wrapper { data: [...] }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data = Array.isArray(res) ? res : (res && (res.data || res)) || [];
 
       // revoke previously created object URLs to avoid leaks
@@ -155,6 +179,10 @@ export default function GalleryAdmin() {
 
   const handleFile = (f?: File) => {
     if (!f) return;
+    if (f.size > MAX_BYTES) {
+      toast.error('Image must be 500KB or smaller');
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
@@ -163,18 +191,34 @@ export default function GalleryAdmin() {
     reader.readAsDataURL(f);
   };
 
+  const handleSrcChange = (val: string) => {
+    if (val && val.startsWith('data:')) {
+      const size = estimateDataUriSize(val);
+      if (size > MAX_BYTES) {
+        toast.error('Data URI image must be 500KB or smaller');
+        return;
+      }
+    }
+    setForm(prev => ({ ...prev, src: val }));
+  };
+
   const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
     if (e) e.preventDefault();
     if (!form.title || !form.title.trim()) { toast.error('Title required'); return; }
+
+    // final size check for data URI images
+    if (form.src && form.src.startsWith('data:')) {
+      const size = estimateDataUriSize(form.src);
+      if (size > MAX_BYTES) { toast.error('Image exceeds 500KB'); return; }
+    }
+
     try {
       setLoading(true);
       if (editingId) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await api.gallery.update(editingId as any, form as any);
         toast.success('Gallery item updated');
         await fetchItems();
       } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await api.gallery.create(form as any);
         toast.success('Gallery item created');
         await fetchItems();
@@ -190,7 +234,6 @@ export default function GalleryAdmin() {
     if (!confirm('Delete this item?')) return;
     try {
       setLoading(true);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await api.gallery.delete(id as any);
       toast.success('Deleted');
       setItems(items.filter(i => (i.id || i._id) !== id));
@@ -256,7 +299,7 @@ export default function GalleryAdmin() {
                 <input type="file" accept="image/*" onChange={e => handleFile(e.target.files && e.target.files[0] ? e.target.files[0] : undefined)} />
                 <div className="text-sm text-gray-500">Or paste a data URI into the src field below</div>
               </div>
-              <input value={form.src} onChange={e => setForm({...form, src: e.target.value})} placeholder="Image src (data URI or /uploads...)" className="w-full p-2 border rounded" />
+              <input value={form.src} onChange={e => handleSrcChange(e.target.value)} placeholder="Image src (data URI or /uploads...)" className="w-full p-2 border rounded" />
 
               <div className="flex justify-end gap-2 mt-3">
                 <button type="button" onClick={closeForm} className="px-4 py-2 rounded border">Cancel</button>
