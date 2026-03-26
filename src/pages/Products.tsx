@@ -116,6 +116,12 @@ const Products = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Ingredient modal state: show modal, options (id + name), selected id and quantity
+  const [showIngredientModal, setShowIngredientModal] = useState(false);
+  const [ingredientOptions, setIngredientOptions] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedIngredient, setSelectedIngredient] = useState<string>(''); // holds ingredient id
+  const [ingredientQty, setIngredientQty] = useState<number>(100);
+
   // Prevent background scrolling when modal is open
   useEffect(() => {
     if (showModal) {
@@ -191,7 +197,8 @@ const Products = () => {
       api.occasions.getAll().catch(() => []),
       api.shapes.getAll().catch(() => []),
       api.themes.getAll().catch(() => []),
-    ]).then(([cats, flvs, wts, typesRes, occ, shp, thm]) => {
+      api.ingredientDetails.getAll().catch(() => []),
+    ]).then(([cats, flvs, wts, typesRes, occ, shp, thm, ingredientsRes]) => {
       if (!mounted) return;
       const toNames = (arr: any[]) => (arr || []).map((it: any) => (typeof it === 'string' ? it : it.name || it.title || it.label || it.type || ''))
         .filter(Boolean);
@@ -202,6 +209,12 @@ const Products = () => {
       setOccasionsList(toNames(occ));
       setShapesList(toNames(shp));
       setThemesList(toNames(thm));
+
+      const ings = (ingredientsRes || []).map((i: any) => ({
+        id: i._id || i.id,
+        name: i.name || ''
+      })).filter((i: any) => i.name);
+      setIngredientOptions(ings);
     }).catch(() => {}).finally(() => { mounted = false; });
     return () => { mounted = false; };
   }, []);
@@ -804,11 +817,75 @@ const Products = () => {
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-sm font-semibold text-[#1A2744]">Ingredients</label>
-                  <TagInput 
-                    value={form.ingredients} 
-                    onChange={(next) => setForm({...form, ingredients: next})} 
-                    placeholder="Type and press Enter (e.g. Sugar)" 
-                  />
+                  <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap gap-2">
+                      {(form.ingredients || []).length > 0 ? (form.ingredients || []).map((ing, idx) => (
+                        <span key={idx} className="flex items-center gap-1 bg-[#FAF6E6] text-sm text-[#1A2744] px-2 py-0.5 rounded-full border border-[#D4A373]/20">
+                          <span className="text-xs">{ing}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = [...(form.ingredients || [])];
+                              next.splice(idx, 1);
+                              setForm({ ...form, ingredients: next });
+                            }}
+                            className="p-0.5 opacity-70 hover:opacity-100 ml-1"
+                          >
+                            <X size={12} />
+                          </button>
+                        </span>
+                      )) : <span className="text-xs text-slate-400">No ingredients</span>}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // open inline modal to add ingredient + grams
+                        setSelectedIngredient(ingredientOptions[0]?.id || '');
+                        setIngredientQty(100);
+                        setShowIngredientModal(true);
+                      }}
+                      className="ml-auto px-3 py-2 bg-[#1A2744] text-white rounded text-xs hover:bg-[#D4A373] transition-colors"
+                    >
+                      Add Ingredient
+                    </button>
+                  </div>
+
+                  {/* Ingredient add modal */}
+                  {showIngredientModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center">
+                      <div className="absolute inset-0 bg-black/40" onClick={() => setShowIngredientModal(false)} />
+                      <div className="relative bg-white rounded-lg p-5 w-full max-w-md shadow-lg z-10">
+                        <h4 className="text-lg font-semibold mb-3">Add Ingredient</h4>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-sm block mb-1">Ingredient</label>
+                            <select value={selectedIngredient} onChange={(e) => setSelectedIngredient(e.target.value)} className="w-full p-2 border rounded">
+                              <option value="">Select ingredient</option>
+                              {ingredientOptions.map((opt) => (
+                                <option key={opt.id} value={opt.id}>{opt.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-sm block mb-1">Quantity (grams)</label>
+                            <input type="number" value={ingredientQty} onChange={(e) => setIngredientQty(Number(e.target.value) || 0)} className="w-full p-2 border rounded" />
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-2 mt-4">
+                          <button type="button" onClick={() => setShowIngredientModal(false)} className="px-3 py-2 rounded border">Cancel</button>
+                          <button type="button" onClick={() => {
+                            if (!selectedIngredient) { toast.error('Select an ingredient'); return; }
+                            if (!ingredientQty || ingredientQty <= 0) { toast.error('Enter quantity in grams'); return; }
+                            const picked = ingredientOptions.find(i => i.id === selectedIngredient);
+                            const name = picked?.name || selectedIngredient;
+                            const entry = `${name} (${ingredientQty}g)`;
+                            setForm(prev => ({ ...prev, ingredients: [...(prev.ingredients || []), entry] }));
+                            setShowIngredientModal(false);
+                          }} className="px-3 py-2 bg-[#1A2744] text-white rounded">Add</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
