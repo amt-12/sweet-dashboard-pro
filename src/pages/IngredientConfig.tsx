@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
-import axiosInstance from '../services/api';
+import axiosInstance, { api } from '../services/api';
 
 interface Nutrition {
   calories: number;
@@ -12,52 +12,95 @@ interface Nutrition {
 
 const initialNutrition: Nutrition = { calories: 0, carbs: 0, protein: 0, fat: 0, sugar: 0 };
 
+interface SimpleIngredient { _id?: string; id?: string; name: string; nutritionPer100g?: Partial<Nutrition>; }
+
 export default function IngredientConfig() {
   const [name, setName] = useState('');
-  const [per100, setPer100] = useState<Nutrition>(initialNutrition);
-  const [quantity, setQuantity] = useState<number>(100);
+  // multiple nutrient rows under a single ingredient (keys are dynamic strings from API)
+  const [nutrientsList, setNutrientsList] = useState<Array<{ key: string; value: number }>>([]);
+  const [selectedNutrient, setSelectedNutrient] = useState<string>('');
   const [saving, setSaving] = useState(false);
+  const [savedIngredients, setSavedIngredients] = useState<SimpleIngredient[]>([]);
+  const [loadingSaved, setLoadingSaved] = useState(false);
+  const [selectedSavedId, setSelectedSavedId] = useState<string>('');
+  // dynamic nutrient options derived from API (use API keys only)
+  const [nutrientOptions, setNutrientOptions] = useState<string[]>([]);
 
-  const handleChangePer100 = (field: keyof Nutrition, value: string) => {
-    const n = Number(value);
-    setPer100(prev => ({ ...prev, [field]: Number.isNaN(n) ? 0 : n }));
-  };
+  React.useEffect(() => {
+    let mounted = true;
+    setLoadingSaved(true);
+    api?.ingredients?.getAll().then(data => {
+      if (!mounted) return;
+      const arr = Array.isArray(data) ? data : [];
+      setSavedIngredients(arr.map((it: unknown) => {
+        const raw = it as Record<string, unknown>;
+        return {
+          _id: typeof raw._id === 'string' ? raw._id : (typeof raw.id === 'string' ? raw.id : undefined),
+          id: typeof raw.id === 'string' ? raw.id : undefined,
+          name: typeof raw.name === 'string' ? raw.name : '',
+          nutritionPer100g: typeof raw.nutritionPer100g === 'object' ? (raw.nutritionPer100g as Partial<Nutrition>) : undefined,
+        } as SimpleIngredient;
+      }));
 
-  const computeForQty = (qty: number) => {
-    const factor = qty / 100;
-    return {
-      calories: +(per100.calories * factor).toFixed(2),
-      carbs: +(per100.carbs * factor).toFixed(2),
-      protein: +(per100.protein * factor).toFixed(2),
-      fat: +(per100.fat * factor).toFixed(2),
-      sugar: +(per100.sugar * factor).toFixed(2),
-    };
-  };
+      // derive nutrient keys from the fetched array
+      try {
+        const keys = new Set<string>();
+        for (const item of arr) {
+          const raw = item as Record<string, unknown>;
+          const n = raw.nutritionPer100g as Record<string, unknown> | Partial<Nutrition> | undefined;
+          if (!n) continue;
+          if (Array.isArray(n)) {
+            for (const entry of n) if (entry && typeof entry === 'object') for (const k of Object.keys(entry)) keys.add(k);
+          } else if (typeof n === 'object') {
+            for (const k of Object.keys(n)) keys.add(k);
+          }
+        }
+        const derived = Array.from(keys);
+        // use only API-derived keys; if none found, leave options empty
+        if (derived.length) setNutrientOptions(derived);
+        else setNutrientOptions([]);
+      } catch (e) {
+        console.error('Failed to derive nutrient keys', e);
+        // fallback to empty options on error
+        setNutrientOptions([]);
+      }
 
-  const result = computeForQty(quantity);
+    }).catch((err) => {
+      console.error('Failed to load ingredients', err);
+      // keep defaults on error
+      setSavedIngredients([]);
+    }).finally(() => { if (mounted) setLoadingSaved(false); });
+    return () => { mounted = false; };
+  }, []);
+
+  const addNutrientRow = () => setNutrientsList(prev => ([...prev, { key: (nutrientOptions[0] || ''), value: 0 }]));
+  const removeNutrientRow = (i: number) => setNutrientsList(prev => prev.length > 1 ? prev.filter((_, idx) => idx !== i) : []);
+  const updateNutrientRow = (i: number, patch: Partial<{ key: string; value: number }>) => setNutrientsList(prev => prev.map((r, idx) => idx === i ? ({ ...r, ...patch }) : r));
 
   const handleSave = async () => {
     if (!name.trim()) { toast.error('Ingredient name required'); return; }
     setSaving(true);
     try {
-      // try api wrapper first if available
-      // payload matches backend model expectation: { name, nutritionPer100g: {...} }
-      const payload = { name: name.trim(), nutritionPer100g: per100 };
-      // prefer api.ingredients.create if present, fallback to raw POST
-      // @ts-ignore
-      if (typeof (await import('../services/api')).api?.ingredients?.create === 'function') {
-        // dynamic import to avoid TS error if api wrapper missing
-        const apiModule = await import('../services/api');
-        await apiModule.api.ingredients.create(payload);
+      // assemble nutrition object from rows
+      const nutritionObj = nutrientsList.reduce((acc, cur) => {
+        if (!cur.key) return acc;
+        acc[cur.key] = cur.value;
+        return acc;
+      }, {} as Record<string, number>);
+      const payload = { name: name.trim(), nutritionPer100g: nutritionObj };
+      // prefer named api wrapper if present, fallback to raw POST
+      if (api?.ingredients?.create) {
+        await api.ingredients.create(payload);
       } else {
         await axiosInstance.post('/ingredients', payload);
       }
       toast.success('Ingredient saved');
       setName('');
-      setPer100(initialNutrition);
-    } catch (err: any) {
+      setNutrientsList([]);
+    } catch (err: unknown) {
       console.error('Save ingredient error', err);
-      toast.error(err?.message || 'Failed to save');
+      const msg = err instanceof Error ? err.message : (typeof err === 'string' ? err : String(err));
+      toast.error(msg || 'Failed to save');
     } finally {
       setSaving(false);
     }
@@ -75,55 +118,34 @@ export default function IngredientConfig() {
 
         <div>
           <p className="text-sm text-slate-600 mb-2">Nutrition per 100g</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs">Calories (kcal)</label>
-              <input type="number" value={per100.calories} onChange={(e) => handleChangePer100('calories', e.target.value)} className="w-full p-2 border rounded" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <label className="text-xs">Select nutrient to edit</label>
+              <div className="flex gap-2">
+                {/* multiple nutrient rows */}
+                <div className="space-y-2">
+                  {nutrientsList.map((row, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <select value={row.key as string} onChange={e => updateNutrientRow(i, { key: e.target.value as keyof Nutrition })} className="p-2 border rounded">
+                        {nutrientOptions.map(opt => (<option key={opt} value={opt}>{opt}</option>))}
+                      </select>
+                      <input type="number" value={row.value} onChange={e => updateNutrientRow(i, { value: Number(e.target.value) || 0 })} className="p-2 border rounded w-36" />
+                      <button type="button" onClick={() => removeNutrientRow(i)} className="px-3 py-2 border rounded">Remove</button>
+                    </div>
+                  ))}
+                  <div>
+                    <button type="button" onClick={addNutrientRow} className="px-3 py-2 border rounded">Add nutrient</button>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="text-xs">Carbs (g)</label>
-              <input type="number" value={per100.carbs} onChange={(e) => handleChangePer100('carbs', e.target.value)} className="w-full p-2 border rounded" />
-            </div>
-            <div>
-              <label className="text-xs">Protein (g)</label>
-              <input type="number" value={per100.protein} onChange={(e) => handleChangePer100('protein', e.target.value)} className="w-full p-2 border rounded" />
-            </div>
-            <div>
-              <label className="text-xs">Fat (g)</label>
-              <input type="number" value={per100.fat} onChange={(e) => handleChangePer100('fat', e.target.value)} className="w-full p-2 border rounded" />
-            </div>
-            <div className="col-span-2">
-              <label className="text-xs">Sugar (g)</label>
-              <input type="number" value={per100.sugar} onChange={(e) => handleChangePer100('sugar', e.target.value)} className="w-full p-2 border rounded" />
-            </div>
-          </div>
-        </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">Quantity to calculate (grams)</label>
-          <div className="flex gap-2 items-center">
-            <input type="number" value={quantity} min={0} onChange={(e) => setQuantity(Number(e.target.value || 0))} className="w-32 p-2 border rounded" />
-            <div className="flex gap-1">
-              {[25,50,100,250,500].map(q => (
-                <button key={q} type="button" onClick={() => setQuantity(q)} className="px-3 py-1 bg-[#F3F4F6] rounded border">{q}g</button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-[#FAFAFA] border rounded p-3">
-          <p className="text-sm font-medium mb-2">Computed nutrition for {quantity} g</p>
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div>Calories: <strong>{result.calories}</strong> kcal</div>
-            <div>Carbs: <strong>{result.carbs}</strong> g</div>
-            <div>Protein: <strong>{result.protein}</strong> g</div>
-            <div>Fat: <strong>{result.fat}</strong> g</div>
-            <div>Sugar: <strong>{result.sugar}</strong> g</div>
+            {/* Current per-100g values removed as requested */}
           </div>
         </div>
 
         <div className="flex justify-end gap-2">
-          <button type="button" onClick={() => { setPer100(initialNutrition); setQuantity(100); setName(''); }} className="px-4 py-2 border rounded">Reset</button>
+          <button type="button" onClick={() => { setNutrientsList([{ key: 'calories', value: 0 }]); setName(''); }} className="px-4 py-2 border rounded">Reset</button>
           <button type="button" onClick={handleSave} disabled={saving} className="px-4 py-2 bg-[#1A2744] text-white rounded">
             {saving ? 'Saving…' : 'Save ingredient to DB'}
           </button>
