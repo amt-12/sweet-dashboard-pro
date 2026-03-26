@@ -21,7 +21,7 @@ interface Product {
   stock: number;
   image: string;
   images?: ProductImage[]; // Multi-image support
-  flavor: string[];
+  flavor?: string; // single flavor value (dropdown)
   ingredients: string[];
   type?: string[];
   weight?: string[];
@@ -44,7 +44,7 @@ const emptyForm: ProductForm = {
   stock: 0,
   image: "",
   images: [],
-  flavor: [],
+  flavor: "",
   ingredients: [],
   type: [],
   weight: [],
@@ -152,7 +152,8 @@ const Products = () => {
       images: imgs,
       // prefer base64 image coming from backend (imgBase64) then first gallery base64 then fallback to stored paths
       image: p.imgBase64 || imgs.find((i: any) => i.base64)?.base64 || p.img || imgs.find((i: any) => i.url)?.url || p.image || '/placeholder.svg',
-      flavor: Array.isArray(p.flavor) ? p.flavor : (typeof p.flavor === 'string' ? p.flavor.split(',').map((s: string) => s.trim()).filter(Boolean) : []),
+      // normalize flavor: prefer first element if array else use string
+      flavor: p.flavor ? (Array.isArray(p.flavor) ? String(p.flavor[0] || '') : String(p.flavor)) : '',
       ingredients: Array.isArray(p.ingredients) ? p.ingredients : (typeof p.ingredients === 'string' ? p.ingredients.split(',').map((s: string) => s.trim()).filter(Boolean) : []),
       tasteDescription: p.tasteDescription || p.description || '',
     } as any;
@@ -217,7 +218,7 @@ const Products = () => {
       // prefer base64 preview if backend provided it, otherwise use normalized images
       image: p.imgBase64 || imgs.find(i => i.base64)?.base64 || p.image || p.img || imgs.find(i => i.url)?.url || '/placeholder.svg',
       images: imgs,
-      flavor: p.flavor || [],
+      flavor: p.flavor ? (Array.isArray(p.flavor) ? String(p.flavor[0] || '') : String(p.flavor)) : '',
       ingredients: p.ingredients || [],
       tasteDescription: p.tasteDescription || p.description || '',
       imageFile: null,
@@ -270,12 +271,12 @@ const Products = () => {
       img: form.image || undefined,
       images: form.galleryPreviews.map(gp => ({ url: gp.url, base64: gp.base64 })),
       // include dropdown selections
+      flavor: form.flavor || '',
       type: form.type || [],
       weight: form.weight || [],
       occasion: form.occasion || [],
       shape: form.shape || [],
       theme: form.theme || [],
-      flavor: form.flavor || [],
       ingredients: form.ingredients || [],
       tasteDescription: form.tasteDescription || '',
     };
@@ -483,25 +484,6 @@ const Products = () => {
                     </div>
                   </div>
 
-                  {/* Flavour tags */}
-                  {Array.isArray(product.flavor) && product.flavor.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {product.flavor.slice(0, 3).map((f: string, i: number) => (
-                        <span
-                          key={i}
-                          className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FAF6E6] text-[#8D6E63] border border-[#D4A373]/15"
-                        >
-                          {f}
-                        </span>
-                      ))}
-                      {product.flavor.length > 3 && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FAF6E6] text-[#8D6E63] border border-[#D4A373]/15">
-                          +{product.flavor.length - 3}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
                   {/* Spacer */}
                   <div className="flex-1" />
 
@@ -633,17 +615,16 @@ const Products = () => {
               {/* Dropdowns populated from APIs */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-[#1A2744]">Flavors</label>
+                  <label className="text-sm font-semibold text-[#1A2744]">Flavor</label>
                   <select
-                    multiple
                     value={form.flavor}
-                    onChange={(e) => setForm({...form, flavor: Array.from(e.target.selectedOptions).map(o => o.value)})}
+                    onChange={(e) => setForm({...form, flavor: e.target.value})}
                     className="w-full p-3 rounded-xl bg-white border border-[#D4A373]/20 outline-none shadow-sm transition-all focus:ring-2 focus:ring-[#D4A373]/10 text-sm"
                   >
+                    <option value="">Select flavor</option>
                     {flavorsList.map((f) => (<option key={f} value={f}>{f}</option>))}
                   </select>
                 </div>
-
                 <div className="space-y-1.5">
                   <label className="text-sm font-semibold text-[#1A2744]">Weights</label>
                   <select
@@ -816,15 +797,6 @@ const Products = () => {
               </div>
 
               <div className="grid grid-cols-1 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-[#1A2744]">Flavors</label>
-                  <TagInput 
-                    value={form.flavor} 
-                    onChange={(next) => setForm({...form, flavor: next})} 
-                    placeholder="Type and press Enter (e.g. Vanilla)" 
-                  />
-                </div>
-
                 <div className="space-y-1.5">
                   <label className="text-sm font-semibold text-[#1A2744]">Ingredients</label>
                   <TagInput 
