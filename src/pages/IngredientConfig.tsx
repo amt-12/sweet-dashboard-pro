@@ -12,6 +12,8 @@ interface Nutrition {
 
 const initialNutrition: Nutrition = { calories: 0, carbs: 0, protein: 0, fat: 0, sugar: 0 };
 
+type NutrientValue = number | { value: number; unit?: string };
+interface IngredientDetail { _id?: string; id?: string; name: string; unit?: string; nutritionPer100g?: Record<string, NutrientValue>; createdAt?: string; }
 interface SimpleIngredient { _id?: string; id?: string; name: string; unit?: string; nutritionPer100g?: Partial<Nutrition>; }
 
 export default function IngredientConfig() {
@@ -21,6 +23,9 @@ export default function IngredientConfig() {
   const [saving, setSaving] = useState(false);
   const [savedIngredients, setSavedIngredients] = useState<SimpleIngredient[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
+  const [detailsList, setDetailsList] = useState<IngredientDetail[]>([]);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   React.useEffect(() => {
     let mounted = true;
@@ -45,8 +50,39 @@ export default function IngredientConfig() {
       console.error('Failed to load ingredients', err);
       setSavedIngredients([]);
     }).finally(() => { if (mounted) setLoadingSaved(false); });
+
+    // load ingredient-details list for viewing/editing
+    const loadDetails = async () => {
+      setLoadingDetails(true);
+      try {
+        const items = (await api?.ingredientDetails?.getAll()) || [];
+        if (!mounted) return;
+        setDetailsList(Array.isArray(items) ? items : []);
+      } catch (err) {
+        console.error('Failed to load ingredient details', err);
+        if (mounted) setDetailsList([]);
+      } finally {
+        if (mounted) setLoadingDetails(false);
+      }
+    };
+    loadDetails();
+
     return () => { mounted = false; };
   }, []);
+
+  // helper to reload details list from API
+  const reloadDetails = async () => {
+    setLoadingDetails(true);
+    try {
+      const items = (await api?.ingredientDetails?.getAll()) || [];
+      setDetailsList(Array.isArray(items) ? items : []);
+    } catch (err) {
+      console.error('Failed to reload details', err);
+      setDetailsList([]);
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
 
   const addNutrientRow = () => setNutrientsList(prev => ([...prev, { key: (savedIngredients[0]?.name || ''), value: 0 }]));
   const removeNutrientRow = (i: number) => setNutrientsList(prev => prev.length > 1 ? prev.filter((_, idx) => idx !== i) : []);
@@ -68,23 +104,69 @@ export default function IngredientConfig() {
         return acc;
       }, {} as Record<string, number | { value: number; unit?: string }>);
       const payload = { name: name.trim(), nutritionPer100g: nutritionObj };
-      // prefer named api wrapper if present, fallback to raw POST
-      if (api?.ingredientDetails?.create) {
-        await api.ingredientDetails.create(payload);
-      } else if (api?.ingredients?.create) {
-        await api.ingredients.create(payload);
+      // prefer named api wrapper if present; perform update when editing
+      if (editingId) {
+        if (api?.ingredientDetails?.update) {
+          await api.ingredientDetails.update(editingId, payload);
+        } else {
+          await axiosInstance.put(`/ingredient-details/${editingId}`, payload);
+        }
       } else {
-        await axiosInstance.post('/ingredient-details', payload);
+        if (api?.ingredientDetails?.create) {
+          await api.ingredientDetails.create(payload);
+        } else if (api?.ingredients?.create) {
+          await api.ingredients.create(payload);
+        } else {
+          await axiosInstance.post('/ingredient-details', payload);
+        }
       }
       toast.success('Ingredient saved');
       setName('');
       setNutrientsList([]);
+      setEditingId(null);
+      await reloadDetails();
     } catch (err: unknown) {
       console.error('Save ingredient error', err);
       const msg = err instanceof Error ? err.message : (typeof err === 'string' ? err : String(err));
       toast.error(msg || 'Failed to save');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleEdit = (item: IngredientDetail) => {
+    setEditingId(item._id || item.id || null);
+    setName(item.name || '');
+    const rows: Array<{ key: string; value: number }> = [];
+
+    const obj = item.nutritionPer100g || {};
+    Object.entries(obj).forEach(([k, v]) => {
+      if (typeof v === 'number') {
+        rows.push({ key: k, value: v });
+      } else if (v && typeof v === 'object' && 'value' in v && typeof (v as { value?: unknown }).value === 'number') {
+        rows.push({ key: k, value: (v as { value: number }).value });
+      } else {
+        rows.push({ key: k, value: 0 });
+      }
+    });
+    setNutrientsList(rows);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDelete = async (id?: string) => {
+    if (!id) return;
+    if (!confirm('Delete this ingredient detail?')) return;
+    try {
+      if (api?.ingredientDetails?.delete) {
+        await api.ingredientDetails.delete(id);
+      } else {
+        await axiosInstance.delete(`/ingredient-details/${id}`);
+      }
+      toast.success('Deleted');
+      await reloadDetails();
+    } catch (err) {
+      console.error('Delete error', err);
+      toast.error('Failed to delete');
     }
   };
 
@@ -144,6 +226,52 @@ export default function IngredientConfig() {
       </div>
 
       <p className="text-xs text-slate-500 mt-3">After saving you can use this ingredient (name) when creating products. The backend expects payload: <code>{'{ name, nutritionPer100g }'}</code>.</p>
+
+      {/* List / table of saved ingredient-details */}
+      <div className="mt-6 bg-white p-4 rounded shadow-sm border">
+        <h3 className="text-lg font-semibold mb-3">Saved Ingredient Details</h3>
+        {loadingDetails ? (
+          <div className="text-sm text-slate-500">Loading…</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm table-auto">
+              <thead>
+                <tr className="text-left">
+                  <th className="px-2 py-1">Name</th>
+                  <th className="px-2 py-1">Nutrition (per 100g)</th>
+                  <th className="px-2 py-1">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {detailsList.map(d => (
+                  <tr key={d._id || d.id} className="border-t">
+                    <td className="px-2 py-2">{d.name}</td>
+                    <td className="px-2 py-2">
+                      {d.nutritionPer100g ? Object.entries(d.nutritionPer100g).map(([k, v]) => {
+                        if (typeof v === 'number') return `${k}: ${v}`;
+                        if (v && typeof v === 'object' && 'value' in v) {
+                          const val = (v as { value?: number; unit?: string }).value;
+                          const unit = (v as { value?: number; unit?: string }).unit;
+                          return `${k}: ${typeof val === 'number' ? val : '-'}${unit ? ` ${unit}` : ''}`;
+                        }
+                        return `${k}: -`;
+                      }).join(', ') : '—'}
+                    </td>
+                    
+                    <td className="px-2 py-2">
+                      <button onClick={() => handleEdit(d)} className="mr-2 px-2 py-1 border rounded">Edit</button>
+                      <button onClick={() => handleDelete(d._id || d.id)} className="px-2 py-1 border rounded">Delete</button>
+                    </td>
+                  </tr>
+                ))}
+                {detailsList.length === 0 && (
+                  <tr><td colSpan={3} className="px-2 py-2 text-slate-500">No records</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
