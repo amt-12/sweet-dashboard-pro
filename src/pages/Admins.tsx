@@ -22,6 +22,7 @@ import {
 import { fetchWithAuth } from '@/services/auth';
 import { toast } from 'sonner';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "../components/ui/sheet";
+import { PermissionsDrawer } from '@/components/PermissionsDrawer';
 
 const RoleBadge = ({ role }: { role: string }) => {
   const isManager = role === 'superadmin';
@@ -60,6 +61,8 @@ const Admins = () => {
   const [selectedAdmin, setSelectedAdmin] = useState<any | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showPermissionsDrawer, setShowPermissionsDrawer] = useState(false);
+  const [permissionsLoading, setPermissionsLoading] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -121,6 +124,29 @@ const Admins = () => {
     navigator.clipboard?.writeText(email).then(() => {
       toast.success('Email copied to clipboard');
     });
+  };
+
+  const savePermissions = async (permissions: string[]) => {
+    if (!selectedAdmin?._id) return;
+    try {
+      const res = await fetchWithAuth(`/api/admins/${selectedAdmin._id}/permissions`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ permissions }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to update permissions');
+      }
+      const updatedUser = await res.json();
+      setAdmins((prev) =>
+        prev.map((a) => (a._id === selectedAdmin._id ? updatedUser : a))
+      );
+      setSelectedAdmin(updatedUser);
+      toast.success('Permissions updated successfully!');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update permissions');
+    }
   };
 
   const managerCount = admins.filter((a) => a.role === 'superadmin').length;
@@ -207,6 +233,12 @@ const Admins = () => {
                   className="p-3 bg-white border border-chocolate/10 rounded-full text-chocolate hover:bg-chocolate hover:text-white transition-all shadow-sm"
                 >
                   <Eye size={16} />
+                </button>
+                <button 
+                  onClick={() => { setSelectedAdmin(a); setShowPermissionsDrawer(true); }}
+                  className="p-3 bg-white border border-chocolate/10 rounded-full text-chocolate hover:bg-strawberry hover:border-strawberry hover:text-white transition-all shadow-sm"
+                >
+                  <Lock size={16} />
                 </button>
                 <button 
                   onClick={() => remove(a._id)}
@@ -401,6 +433,14 @@ const Admins = () => {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      <PermissionsDrawer
+        open={showPermissionsDrawer}
+        onOpenChange={setShowPermissionsDrawer}
+        onSave={savePermissions}
+        currentPermissions={selectedAdmin?.permissions || []}
+        memberName={selectedAdmin?.name || selectedAdmin?.email || 'Team Member'}
+      />
     </div>
   );
 };

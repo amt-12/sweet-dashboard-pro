@@ -1,5 +1,6 @@
 const TOKEN_KEY = 'admin_token';
 const ROLE_KEY = 'admin_role';
+const USER_KEY = 'admin_user';
 
 function decodeJwt(token: string | null) {
   if (!token) return null;
@@ -37,6 +38,7 @@ export async function login(email: string, password: string) {
 
   if (token) localStorage.setItem(TOKEN_KEY, token);
   if (role) localStorage.setItem(ROLE_KEY, role);
+  if (data.user) localStorage.setItem(USER_KEY, JSON.stringify(data.user));
 
   return { ...data, token, role };
 }
@@ -54,9 +56,23 @@ export function getRole() {
   return decoded?.role || undefined;
 }
 
+export function getPermissions() {
+  const userStr = localStorage.getItem(USER_KEY);
+  if (userStr) {
+    try {
+      const user = JSON.parse(userStr);
+      return user.permissions || [];
+    } catch (e) {
+      return [];
+    }
+  }
+  return [];
+}
+
 export function logout() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(ROLE_KEY);
+  localStorage.removeItem(USER_KEY);
 }
 
 export async function me() {

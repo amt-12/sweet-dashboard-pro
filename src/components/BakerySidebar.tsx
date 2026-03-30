@@ -21,7 +21,7 @@ import {
   ChefHat,
 } from "lucide-react";
 import cupcakeIcon from "@/assets/cupcake-icon.png";
-import { getRole } from '@/services/auth';
+import { getRole, getPermissions } from '@/services/auth';
 
 const menuItems = [
   { title: "Dashboard", icon: LayoutDashboard, path: "/admin" },
@@ -74,24 +74,52 @@ const BakerySidebar = () => {
   const [openAbout, setOpenAbout] = useState(false);
   const location = useLocation();
   const role = getRole();
-  const visibleMenu = menuItems.filter(i => i.title !== 'Admins' || role === 'superadmin');
+  const permissions = getPermissions();
+  
+  const getVisibleMenu = () => {
+    // Superadmin sees everything
+    if (role === 'superadmin') {
+      return menuItems;
+    }
+    
+    // Admin sees only items in their permissions
+    return menuItems.map(item => {
+      // Always show Dashboard
+      if (item.title === 'Dashboard') return item;
+      
+      // Filter by permissions
+      if (permissions.includes(item.title)) {
+        // If item has children, filter those too
+        if (item.children) {
+          return {
+            ...item,
+            children: item.children.filter(child => permissions.includes(child.title))
+          };
+        }
+        return item;
+      }
+      return null;
+    }).filter(Boolean);
+  };
+  
+  const visibleMenu = getVisibleMenu();
 
   // auto-open product/about submenu when navigating to one of its child routes
   useEffect(() => {
-    const product = menuItems.find(m => m.title === 'Products');
+    const product = visibleMenu.find(m => m.title === 'Products');
     if (product && product.children) {
       const activeChild = product.children.some(c => location.pathname.startsWith(c.path));
       const activeParent = location.pathname === product.path || location.pathname.startsWith(product.path + "/");
       setOpenProducts(activeChild || activeParent);
     }
 
-    const about = menuItems.find(m => m.title === 'About');
+    const about = visibleMenu.find(m => m.title === 'About');
     if (about && about.children) {
       const activeChild = about.children.some(c => location.pathname.startsWith(c.path));
       const activeParent = location.pathname === about.path || location.pathname.startsWith(about.path + "/");
       setOpenAbout(activeChild || activeParent);
     }
-  }, [location.pathname]);
+  }, [location.pathname, visibleMenu]);
 
   return (
     <aside
