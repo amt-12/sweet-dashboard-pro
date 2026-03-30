@@ -17,6 +17,8 @@ type TeamMember = {
   order?: number;
 };
 
+const MAX_IMAGE_SIZE_BYTES = 500 * 1024; // 500KB
+
 export default function TeamAdmin(): JSX.Element {
   const [items, setItems] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(false);
@@ -31,7 +33,7 @@ export default function TeamAdmin(): JSX.Element {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
-  const apiBase = (import.meta.env && (import.meta.env.VITE_API_URL as string)) || 'https://bakery-bakend.onrender.com';
+  const apiBase = (import.meta.env && (import.meta.env.VITE_API_URL as string)) || 'http://localhost:5000';
   const token = getToken();
   const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
 
@@ -89,6 +91,12 @@ export default function TeamAdmin(): JSX.Element {
       try { URL.revokeObjectURL(preview); } catch (e) {}
     }
     if (!f) {
+      setFile(null);
+      setPreview(null);
+      return;
+    }
+    if (f.size > MAX_IMAGE_SIZE_BYTES) {
+      toast.error('Portrait image must be 500KB or smaller');
       setFile(null);
       setPreview(null);
       return;

@@ -28,7 +28,7 @@ export default function GalleryAdmin() {
   const [searchQuery, setSearchQuery] = useState("");
   const objectUrlsRef = useRef<string[]>([]);
 
-  const MAX_BYTES = 1000 * 1024; // Increased to 1MB for luxury convenience
+  const MAX_BYTES = 500 * 1024; // 500KB
 
   useEffect(() => {
     fetchItems();
@@ -110,7 +110,7 @@ export default function GalleryAdmin() {
 
   const fetchCategories = async () => {
     try {
-      const res = await api.categories.getAll() as unknown;
+      const res: any = await api.categories.getAll();
       const arr = Array.isArray(res) ? res : (res && (res.data || res)) || [];
       const cats = (arr as unknown[]).map(c => {
         if (typeof c === 'string') return c;
@@ -144,7 +144,7 @@ export default function GalleryAdmin() {
   const handleFile = (f?: File) => {
     if (!f) return;
     if (f.size > MAX_BYTES) {
-      toast.error('Luxury artwork must be smaller than 1MB');
+      toast.error('Image must be 500KB or smaller');
       return;
     }
     const reader = new FileReader();
@@ -421,7 +421,7 @@ export default function GalleryAdmin() {
                           <div className="flex flex-col items-center justify-center p-10 text-center">
                             <Upload className="w-12 h-12 mb-4 text-chocolate/10 group-hover:text-strawberry transition-colors group-hover:translate-y-[-4px] duration-300" />
                             <p className="text-sm text-chocolate/40 font-bold uppercase tracking-widest mb-1">Upload Perspective</p>
-                            <p className="text-[10px] text-chocolate/20 font-medium italic">High fidelity images (max 1MB) recommended</p>
+                            <p className="text-[10px] text-chocolate/20 font-medium italic">High fidelity images (max 500KB) recommended</p>
                           </div>
                         </label>
                     </div>

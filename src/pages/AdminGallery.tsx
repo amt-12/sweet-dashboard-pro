@@ -16,6 +16,8 @@ interface GalleryItem {
   desc?: string;
 }
 
+const MAX_IMAGE_SIZE_BYTES = 500 * 1024; // 500KB
+
 export default function AdminGallery() {
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -42,6 +44,10 @@ export default function AdminGallery() {
 
   const handleFile = (f?: File) => {
     if (!f) { setPreview(null); setFileData(null); return; }
+    if (f.size > MAX_IMAGE_SIZE_BYTES) {
+      toast.error('Image must be 500KB or smaller');
+      return;
+    }
     const url = URL.createObjectURL(f);
     setPreview(url);
     const reader = new FileReader();
@@ -231,7 +237,7 @@ export default function AdminGallery() {
                       </div>
                       <div className="text-center">
                         <span className="font-bold text-sm block">Click to upload cover</span>
-                        <span className="text-[10px] opacity-70">PNG, JPG or WEBP (Max. 5MB)</span>
+                        <span className="text-[10px] opacity-70">PNG, JPG or WEBP (Max. 500KB)</span>
                       </div>
                     </div>
                   )}
