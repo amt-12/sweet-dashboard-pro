@@ -57,6 +57,14 @@ const emptyForm: ProductForm = {
   galleryPreviews: [],
 };
 
+const MAX_BYTES = 500 * 1024; // 500KB
+
+const estimateDataUriSize = (dataUri: string) => {
+  if (!dataUri || !dataUri.includes(',')) return 0;
+  const base64Part = dataUri.split(',')[1];
+  return Math.round((base64Part.length * 3) / 4);
+};
+
 // TagInput: small inline tag editor for flavor/ingredients
 const TagInput = ({ value, onChange, placeholder }: { value: string[]; onChange: (next: string[]) => void; placeholder?: string }) => {
   const [input, setInput] = useState('');
@@ -372,64 +380,64 @@ const Products = () => {
   );
 
   return (
-    <div className="space-y-6 animate-fade-in font-inter">
+    <div className="space-y-8 animate-in fade-in duration-700 font-lora">
 
       {/* ── Page Header ───────────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h2 className="text-3xl font-bold font-playfair text-[#1A2744]">
-            Product Management{" "}
-            <span className="inline-block animate-bounce text-[#D4A373]">🥐</span>
+          <h2 className="text-4xl font-bold font-dancing text-chocolate">
+            Couture Menu{" "}
+            <span className="inline-block animate-bounce text-strawberry text-2xl">🧁</span>
           </h2>
-          <p className="text-sm text-[#8D6E63] font-medium mt-1">
-            Manage your bakery items, prices, and stock.
+          <p className="text-sm text-chocolate-light font-medium mt-1">
+            Meticulously manage your exquisite bakery offerings and inventory.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           {products.length > 0 && (
-            <div className="px-4 py-2 rounded-xl bg-[#1A2744]/5 border border-[#1A2744]/10 text-sm font-bold text-[#1A2744] flex items-center gap-2">
-              <Package size={15} className="text-[#D4A373]" />
-              {products.length} {products.length === 1 ? 'Item' : 'Items'}
+            <div className="px-5 py-2.5 rounded-2xl bg-white border border-chocolate/10 text-sm font-bold text-chocolate flex items-center gap-2 shadow-bakery">
+              <Package size={16} className="text-strawberry" />
+              {products.length} {products.length === 1 ? 'Creation' : 'Creations'}
             </div>
           )}
           <button
             onClick={openAdd}
-            className="px-5 py-2.5 bg-[#1A2744] text-[#F5ECD7] rounded-xl flex items-center gap-2 shadow-lg hover:shadow-xl hover:bg-[#D4A373] hover:text-[#1A2744] transition-all duration-300 group"
+            className="px-6 py-3 bg-chocolate text-white rounded-full flex items-center gap-2 shadow-bakery hover:shadow-bakery-lg hover:bg-strawberry transition-all duration-300 group"
           >
-            <Plus size={18} className="group-hover:rotate-90 transition-transform" />
-            <span className="font-bold text-xs uppercase tracking-wider">Add New Product</span>
+            <Plus size={20} className="group-hover:rotate-90 transition-transform" />
+            <span className="font-bold text-xs uppercase tracking-widest">New Delight</span>
           </button>
         </div>
       </div>
 
       {/* ── Search Bar ────────────────────────────────────────────── */}
-      <div className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-[#D4A373]/20">
+      <div className="flex items-center gap-4 bg-white/60 backdrop-blur-md p-4 rounded-3xl shadow-bakery border border-chocolate/5">
         <div className="relative flex-1 group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#1A2744]/40 group-focus-within:text-[#D4A373] transition-colors w-4 h-4" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/30 group-focus-within:text-strawberry transition-colors w-4 h-4" />
           <input
             type="text"
-            placeholder="Search products by name or category…"
-            className="w-full pl-11 pr-4 py-3 rounded-xl bg-[#FAF6E6] border border-transparent focus:border-[#D4A373]/30 focus:bg-white text-sm text-[#1A2744] placeholder:text-[#1A2744]/40 outline-none transition-all"
+            placeholder="Search our fine collection..."
+            className="w-full pl-11 pr-4 py-3 rounded-2xl bg-white border border-transparent focus:border-strawberry/20 focus:bg-white text-sm text-chocolate placeholder:text-chocolate/30 outline-none transition-all"
           />
         </div>
-        <button className="p-3 bg-[#FAF6E6] rounded-xl text-[#1A2744] hover:bg-[#D4A373] hover:text-white transition-colors border border-transparent hover:border-[#D4A373]/30">
-          <Filter size={17} />
+        <button className="p-3 bg-white rounded-2xl text-chocolate hover:bg-strawberry hover:text-white transition-all shadow-sm border border-chocolate/5">
+          <Filter size={18} />
         </button>
       </div>
 
       {/* ── Product Cards Grid ────────────────────────────────────── */}
       {products.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-[#D4A373]/20 shadow-sm p-20 flex flex-col items-center gap-4">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#D4A373]/20 to-[#D4A373]/5 flex items-center justify-center">
-            <Package size={36} className="text-[#D4A373]" />
+        <div className="bg-white/50 backdrop-blur-sm rounded-[2rem] border border-chocolate/10 shadow-bakery p-20 flex flex-col items-center gap-6">
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-chocolate/10 to-strawberry/10 flex items-center justify-center border border-white/40 shadow-inner">
+            <Package size={40} className="text-chocolate/30" />
           </div>
           <div className="text-center">
-            <p className="text-lg font-bold font-playfair text-[#1A2744]">No Products Yet</p>
-            <p className="text-sm text-[#8D6E63] mt-1">Add your first bakery item using the button above.</p>
+            <p className="text-2xl font-bold font-dancing text-chocolate">The pantry is empty</p>
+            <p className="text-sm text-chocolate-light font-medium mt-1">Shall we begin by adding an exquisite new item?</p>
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
           {products.map((product: any) => {
             const imgSrc = getImageSrc(product.image, product.images?.[0]?.base64);
             const stock = Number(product.stock) || 0;
@@ -438,94 +446,74 @@ const Products = () => {
             return (
               <div
                 key={product.id}
-                className="bg-white rounded-2xl border border-[#D4A373]/20 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group flex flex-col relative"
+                className="bg-white rounded-[2rem] border border-chocolate/5 shadow-bakery hover:shadow-bakery-lg transition-all duration-500 overflow-hidden group flex flex-col relative"
               >
-                {/* Top accent */}
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#D4A373] via-[#F5ECD7] to-[#D4A373] opacity-0 group-hover:opacity-100 transition-opacity" />
-
                 {/* Cover image */}
-                <div className="relative w-full h-44 bg-[#FAF6E6] overflow-hidden">
+                <div className="relative w-full h-52 bg-cream overflow-hidden">
                   {imgSrc ? (
                     <img
                       src={imgSrc}
                       alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Package size={32} className="text-[#D4A373]/40" />
+                    <div className="w-full h-full flex items-center justify-center opacity-30">
+                      <Package size={48} className="text-chocolate" />
                     </div>
                   )}
 
-                  {/* Category badge overlay */}
-                  {product.category && (
-                    <div className="absolute top-3 left-3">
-                      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/90 text-[#1A2744] shadow-sm border border-[#D4A373]/20">
+                  {/* Badges overlay */}
+                  <div className="absolute top-4 inset-x-4 flex items-center justify-between pointer-events-none">
+                    {product.category && (
+                      <span className="px-3 py-1 bg-white/90 backdrop-blur-md text-chocolate text-[10px] font-bold uppercase tracking-widest rounded-full shadow-sm border border-white/20">
                         {product.category}
                       </span>
-                    </div>
-                  )}
-
-                  {/* Stock badge overlay */}
-                  <div className="absolute top-3 right-3">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm ${
+                    )}
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-sm backdrop-blur-md ${
                       stockOut
-                        ? 'bg-red-500 text-white'
+                        ? 'bg-red-500/90 text-white'
                         : stockLow
-                        ? 'bg-amber-400 text-white'
-                        : 'bg-emerald-500 text-white'
+                        ? 'bg-amber-400/90 text-white'
+                        : 'bg-emerald-500/90 text-white'
                     }`}>
-                      {stockOut ? 'Out of stock' : stockLow ? `Low: ${stock}` : `In stock`}
+                      {stockOut ? 'Out' : stockLow ? `Low: ${stock}` : `Luxury`}
                     </span>
                   </div>
+
+                  <div className="absolute inset-0 bg-gradient-to-t from-chocolate/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
 
                 {/* Body */}
-                <div className="flex flex-col flex-1 p-4 gap-3">
-                  {/* Name + price */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <h3 className="font-bold text-[#1A2744] text-sm leading-snug truncate group-hover:text-[#D4A373] transition-colors">
+                <div className="flex flex-col flex-1 p-6 space-y-4">
+                  <div className="space-y-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="font-bold text-chocolate text-base leading-tight truncate group-hover:text-strawberry transition-colors">
                         {product.name}
                       </h3>
-                      {product.tasteDescription && (
-                        <p className="text-[11px] text-[#8D6E63] mt-0.5 line-clamp-2 font-medium">
-                          {product.tasteDescription}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex-shrink-0 text-right">
-                      <p className="text-base font-bold text-[#D4A373] leading-none">
-                        ₹{(Number(product.price) || 0).toFixed(0)}
+                      <p className="text-lg font-bold text-strawberry whitespace-nowrap">
+                        ₹{(Number(product.price) || 0).toLocaleString()}
                       </p>
-                      <p className="text-[10px] text-[#8D6E63] mt-0.5">{stock} units</p>
                     </div>
+                    {product.tasteDescription && (
+                      <p className="text-xs text-chocolate-light line-clamp-2 italic font-medium leading-relaxed">
+                        {product.tasteDescription}
+                      </p>
+                    )}
                   </div>
 
-                  {/* Spacer */}
-                  <div className="flex-1" />
-
-                  {/* Action buttons */}
-                  <div className="flex items-center gap-2 pt-3 border-t border-[#D4A373]/10">
-                    <Link
-                      to={`/product/${product.id}`}
-                      className="flex-1 px-3 py-2 rounded-xl text-xs font-bold text-[#D4A373] bg-[#D4A373]/10 hover:bg-[#D4A373] hover:text-white transition-all flex items-center justify-center gap-1.5 border border-[#D4A373]/20"
-                    >
-                      <Eye size={12} />
-                      View
-                    </Link>
+                  <div className="flex items-center gap-2 pt-4 mt-auto">
                     <button
                       onClick={() => openEdit(product)}
-                      className="flex-1 px-3 py-2 rounded-xl text-xs font-bold text-[#1A2744] bg-[#1A2744]/5 hover:bg-[#1A2744] hover:text-white transition-all flex items-center justify-center gap-1.5 border border-[#1A2744]/10"
+                      className="flex-1 px-4 py-2.5 rounded-full text-xs font-bold text-white bg-chocolate hover:bg-strawberry transition-colors flex items-center justify-center gap-2 shadow-sm"
                     >
-                      <Edit size={12} />
-                      Edit
+                      <Edit size={14} />
+                      Detail
                     </button>
                     <button
                       onClick={() => handleDelete(product.id)}
-                      className="px-3 py-2 rounded-xl text-xs font-bold text-red-500 bg-red-50 hover:bg-red-500 hover:text-white transition-all flex items-center gap-1 border border-red-100"
+                      className="p-2.5 rounded-full text-red-500 hover:text-white hover:bg-red-500 border border-red-100 transition-all"
                     >
-                      <Trash2 size={12} />
+                      <Trash2 size={16} />
                     </button>
                   </div>
                 </div>
@@ -536,21 +524,24 @@ const Products = () => {
       )}
 
       <Sheet open={showModal} onOpenChange={(open) => !open && closeModal()}>
-        <SheetContent side="right" className="w-full md:w-[30vw] lg:w-[30vw] p-0 flex flex-col gap-0 bg-[#FAFBFD] border-l-[#D4A373]/20">
-          <SheetHeader className="p-6 bg-white border-b border-[#D4A373]/10">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#1A2744] flex items-center justify-center text-white">
-                <Package size={20} />
-              </div>
-              <div>
-                <SheetTitle className="font-playfair text-2xl font-bold text-[#1A2744]">
-                  {editingId ? 'Edit Product' : 'Add New Product'}
-                </SheetTitle>
-                <SheetDescription className="text-[#8D6E63] font-medium">
-                  {editingId ? 'Update the details for this bakery item.' : 'Create a new item for your bakery menu.'}
-                </SheetDescription>
-              </div>
-            </div>
+        <SheetContent side="right" className="flex flex-col h-full bg-[#FAFBFD] p-0 border-l border-chocolate/10">
+          <SheetHeader className="p-8 bg-white border-b border-chocolate/5 relative overflow-hidden">
+             <div className="absolute top-0 right-0 w-32 h-32 bg-strawberry/5 rounded-full -mr-16 -mt-16 blur-3xl" />
+             <div className="relative flex items-center gap-4">
+                <div className="w-14 h-14 bg-chocolate text-white rounded-2xl flex items-center justify-center shadow-lg transform -rotate-3 hover:rotate-0 transition-transform">
+                  <Package size={28} />
+                </div>
+                <div>
+                  <SheetTitle className="text-3xl font-bold text-chocolate font-dancing">
+                    {editingId ? 'Edit Couture Item' : 'New creation'}
+                  </SheetTitle>
+                  <SheetDescription className="text-chocolate-light font-medium flex items-center gap-1.5 mt-0.5">
+                    {editingId ? (
+                      <>Refining the artistry of <span className="text-strawberry font-bold">{form.name}</span></>
+                    ) : 'Introduce a new sensory delight to your collection.'}
+                  </SheetDescription>
+                </div>
+             </div>
           </SheetHeader>
 
           <form id="product-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-8">
@@ -918,27 +909,27 @@ const Products = () => {
             </div>
           </form>
 
-          <SheetFooter className="p-6 bg-white border-t border-[#D4A373]/10 flex flex-row justify-end gap-3">
+          <SheetFooter className="p-8 bg-white border-t border-chocolate/5 flex flex-row items-center justify-between gap-4">
             <button 
               type="button" 
               onClick={closeModal} 
-              className="px-6 py-2.5 rounded-xl text-sm font-bold text-[#1A2744] hover:bg-[#FAF6E6] border border-[#D4A373]/10 transition-colors"
+              className="px-6 py-3 rounded-full text-sm font-bold text-chocolate hover:bg-chocolate/5 border border-chocolate/10 transition-all font-lora"
             >
-              Cancel
+              Close Studio
             </button>
             <button 
               type="submit" 
               form="product-form"
               disabled={loading} 
-              className={`px-8 py-2.5 rounded-xl text-sm font-bold text-[#F5ECD7] flex items-center gap-2 shadow-lg hover:shadow-xl transition-all ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#1A2744] hover:bg-[#D4A373] hover:text-[#1A2744]'}`}
+              className={`px-10 py-3 rounded-full text-sm font-bold text-white flex items-center gap-2 shadow-bakery hover:shadow-bakery-lg transition-all duration-300 ${loading ? 'bg-chocolate/40 cursor-not-allowed' : 'bg-chocolate hover:bg-strawberry'}`}
             >
               {loading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  Processing...
+                  Preserving...
                 </>
               ) : (
-                editingId ? 'Save Changes' : 'Create Product'
+                editingId ? 'Update Artistry' : 'Unveil Masterpiece'
               )}
             </button>
           </SheetFooter>

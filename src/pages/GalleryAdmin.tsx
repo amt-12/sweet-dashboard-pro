@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef } from "react";
 import { api } from "@/services/api";
-import axiosInstance from "@/services/api";
 import { toast } from "sonner";
-import { X, Plus, Edit, Trash2 } from "lucide-react";
+import { X, Plus, Edit, Trash2, Image as ImageIcon, Search, RefreshCw, Upload, FileText, Tag, Info, Sparkles, DollarSign, Boxes, Camera } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "../components/ui/sheet";
 
 interface GalleryItem {
   _id?: string;
@@ -10,13 +10,13 @@ interface GalleryItem {
   title: string;
   alt?: string;
   category?: string;
-  src?: string; // data URI or relative path
+  src?: string; 
   badge?: string;
   price?: string;
   desc?: string;
 }
 
-const empty: GalleryItem = { title: "", alt: "", category: "Misc", src: "", badge: "", price: "", desc: "" };
+const empty: GalleryItem = { title: "", alt: "", category: "General", src: "", badge: "", price: "", desc: "" };
 
 export default function GalleryAdmin() {
   const [items, setItems] = useState<GalleryItem[]>([]);
@@ -25,42 +25,16 @@ export default function GalleryAdmin() {
   const [form, setForm] = useState<GalleryItem>(empty);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
-  // track any object URLs created from binary buffers so we can revoke them
+  const [searchQuery, setSearchQuery] = useState("");
   const objectUrlsRef = useRef<string[]>([]);
 
-  // maximum allowed bytes (500 KB)
-  const MAX_BYTES = 500 * 1024;
-
-  const estimateBase64Size = (b64: string) => {
-    if (!b64) return 0;
-    const padding = b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0;
-    return Math.ceil((b64.length * 3) / 4) - padding;
-  };
-
-  const estimateDataUriSize = (dataUri?: string) => {
-    if (!dataUri) return 0;
-    const comma = dataUri.indexOf(',');
-    if (comma === -1) return 0;
-    const metadata = dataUri.substring(0, comma);
-    const data = dataUri.substring(comma + 1);
-    // if base64 encoded
-    if (metadata.indexOf(';base64') !== -1) {
-      return estimateBase64Size(data);
-    }
-    // otherwise attempt percent-decoding
-    try {
-      return new TextEncoder().encode(decodeURIComponent(data)).length;
-    } catch {
-      return data.length;
-    }
-  };
+  const MAX_BYTES = 1000 * 1024; // Increased to 1MB for luxury convenience
 
   useEffect(() => {
     fetchItems();
     fetchCategories();
   }, []);
 
-  // revoke object URLs on unmount
   useEffect(() => {
     return () => {
       objectUrlsRef.current.forEach(url => {
@@ -74,12 +48,8 @@ export default function GalleryAdmin() {
     setLoading(true);
     try {
       const res = await api.gallery.getAll() as any;
-      // debug: inspect raw backend response
-      console.log('gallery.getAll response:', res);
-      // normalize response whether backend returns array or wrapper { data: [...] }
       const data = Array.isArray(res) ? res : (res && (res.data || res)) || [];
 
-      // revoke previously created object URLs to avoid leaks
       objectUrlsRef.current.forEach(url => {
         try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ }
       });
@@ -89,25 +59,21 @@ export default function GalleryAdmin() {
       const normalized = arr.map((itRaw) => {
         const it = itRaw as Record<string, unknown>;
         const id = (it._id as string) || (it.id as string);
-        // prefer imgBase64 from backend if provided (may be full data URI or plain base64)
         const imgBase64 = it.imgBase64 as unknown;
         const srcVal = it.src as unknown;
         let src: string | undefined;
 
         if (typeof imgBase64 === 'string' && imgBase64.trim()) {
           src = imgBase64;
-          // if backend sent plain base64 without data: prefix, add default mime
           if (!src.startsWith('data:')) {
             src = `data:image/png;base64,${src}`;
           }
         } else if (typeof srcVal === 'string') {
           src = srcVal;
-          // if it's a plain base64 string (no leading slash, http, or data) treat as base64
           if (!src.startsWith('data:') && !src.startsWith('/') && !src.startsWith('http')) {
             src = `data:image/png;base64,${src}`;
           }
         } else if (srcVal && typeof srcVal === 'object') {
-          // try Buffer-like object { type: 'Buffer', data: number[] }
           const maybe = srcVal as { data?: number[] };
           if (Array.isArray(maybe.data)) {
             try {
@@ -138,13 +104,12 @@ export default function GalleryAdmin() {
 
       setItems(normalized);
     } catch (e) {
-      toast.error("Failed to load gallery");
+      toast.error("Failed to load showroom");
     } finally { setLoading(false); }
   };
 
   const fetchCategories = async () => {
     try {
-      // use api helper to fetch categories (normalized by api.ts)
       const res = await api.categories.getAll() as unknown;
       const arr = Array.isArray(res) ? res : (res && (res.data || res)) || [];
       const cats = (arr as unknown[]).map(c => {
@@ -152,15 +117,14 @@ export default function GalleryAdmin() {
         const obj = c as Record<string, unknown>;
         return (obj.name as string) || (obj.title as string) || (obj.category as string) || undefined;
       }).filter(Boolean) as string[];
-      setCategories(cats);
+      setCategories(Array.from(new Set(cats)));
     } catch (e) {
       setCategories([]);
     }
   };
 
   const openAdd = () => {
-    // default category to first fetched category (if any)
-    setForm({ ...empty, category: categories && categories.length ? categories[0] : empty.category });
+    setForm({ ...empty, category: categories && categories.length ? categories[0] : "General" });
     setEditingId(null);
     setShowForm(true);
   };
@@ -180,7 +144,7 @@ export default function GalleryAdmin() {
   const handleFile = (f?: File) => {
     if (!f) return;
     if (f.size > MAX_BYTES) {
-      toast.error('Image must be 500KB or smaller');
+      toast.error('Luxury artwork must be smaller than 1MB');
       return;
     }
     const reader = new FileReader();
@@ -191,126 +155,293 @@ export default function GalleryAdmin() {
     reader.readAsDataURL(f);
   };
 
-  const handleSrcChange = (val: string) => {
-    if (val && val.startsWith('data:')) {
-      const size = estimateDataUriSize(val);
-      if (size > MAX_BYTES) {
-        toast.error('Data URI image must be 500KB or smaller');
-        return;
-      }
-    }
-    setForm(prev => ({ ...prev, src: val }));
-  };
-
   const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
     if (e) e.preventDefault();
-    if (!form.title || !form.title.trim()) { toast.error('Title required'); return; }
-
-    // final size check for data URI images
-    if (form.src && form.src.startsWith('data:')) {
-      const size = estimateDataUriSize(form.src);
-      if (size > MAX_BYTES) { toast.error('Image exceeds 500KB'); return; }
-    }
+    if (!form.title || !form.title.trim()) { toast.error('A title is required for your masterpiece'); return; }
 
     try {
       setLoading(true);
       if (editingId) {
         await api.gallery.update(editingId as any, form as any);
-        toast.success('Gallery item updated');
+        toast.success('Showroom updated!');
         await fetchItems();
       } else {
         await api.gallery.create(form as any);
-        toast.success('Gallery item created');
+        toast.success('Masterpiece added to showroom!');
         await fetchItems();
       }
       closeForm();
     } catch (err) {
-      toast.error('Save failed');
+      toast.error('Failed to save artwork');
     } finally { setLoading(false); }
   };
 
   const handleDelete = async (id?: string) => {
     if (!id) return;
-    if (!confirm('Delete this item?')) return;
+    if (!confirm('Remove this masterpiece from the showroom?')) return;
     try {
       setLoading(true);
       await api.gallery.delete(id as any);
-      toast.success('Deleted');
+      toast.success('Artwork removed.');
       setItems(items.filter(i => (i.id || i._id) !== id));
-    } catch (e) { toast.error('Delete failed'); }
+    } catch (e) { toast.error('Removal failed'); }
     finally { setLoading(false); }
   };
 
+  const filteredItems = items.filter(it => 
+    it.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    it.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    it.desc?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-10 animate-in fade-in duration-700 font-lora pb-20">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h2 className="text-3xl font-playfair">Gallery Admin</h2>
-          <p className="text-sm text-[#8D6E63]">Add, edit or remove gallery images. Public gallery page remains view-only.</p>
+          <h2 className="text-4xl font-bold font-dancing text-chocolate">Artisan Showroom</h2>
+          <p className="text-sm text-chocolate-light font-medium mt-1">
+            Display your finest creations to inspire your patrons.
+          </p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={openAdd} className="px-4 py-2 bg-[#1A2744] text-white rounded-md flex items-center gap-2">
-            <Plus size={16}/> Add Image
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={fetchItems}
+            className="p-3 bg-white border border-chocolate/10 rounded-full text-chocolate hover:bg-strawberry/5 transition-all shadow-sm group"
+          >
+            <RefreshCw size={18} className={loading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'} />
           </button>
-          <button onClick={fetchItems} className="px-4 py-2 bg-white border rounded-md">Refresh</button>
+          <button 
+            onClick={openAdd} 
+            className="px-6 py-3 bg-chocolate text-white rounded-full flex items-center gap-2 shadow-bakery hover:shadow-bakery-lg hover:bg-strawberry transition-all duration-300"
+          >
+            <Plus size={18} />
+            <span className="font-bold text-xs uppercase tracking-widest text-[#F5ECD7]">New Masterpiece</span>
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {items.map(it => (
-          <div key={it.id || it._id} className="bg-white rounded-xl p-3 shadow-md flex flex-col">
-            <div className="h-40 bg-gray-100 rounded-md overflow-hidden mb-3">
-              {it.src ? <img src={it.src.startsWith('data:') ? it.src : (it.src.startsWith('/') ? it.src : `/${it.src}`)} alt={it.alt || it.title} className="w-full h-full object-cover"/> : <div className="w-full h-full grid place-items-center text-sm text-gray-500">No image</div>}
+      <div className="flex items-center gap-4 bg-white/60 backdrop-blur-md p-4 rounded-[2rem] shadow-bakery border border-chocolate/5">
+        <div className="relative flex-1 group">
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-chocolate/30 group-focus-within:text-strawberry transition-colors w-5 h-5" />
+          <input 
+            type="text" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search showroom..." 
+            className="w-full pl-14 pr-6 py-4 rounded-2xl bg-[#FAF6E6]/50 text-chocolate outline-none border border-transparent focus:border-strawberry/20 focus:bg-white focus:ring-8 focus:ring-strawberry/5 transition-all font-medium placeholder:text-chocolate/20" 
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+        {filteredItems.map((it) => (
+          <div key={it.id || it._id} className="group relative bg-white rounded-[3rem] p-6 border border-chocolate/5 shadow-bakery hover:shadow-bakery-lg transition-all duration-500 overflow-hidden flex flex-col h-full">
+            <div className="relative h-72 rounded-[2.5rem] overflow-hidden mb-8 transform -rotate-2 group-hover:rotate-0 transition-transform duration-700 shadow-lg">
+              {it.src ? (
+                <img 
+                  src={it.src.startsWith('data:') ? it.src : (it.src.startsWith('/') ? it.src : `/${it.src}`)} 
+                  alt={it.alt || it.title} 
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                />
+              ) : (
+                <div className="w-full h-full bg-[#FAF6E6] flex items-center justify-center text-chocolate/10">
+                  <Camera size={64} />
+                </div>
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              {it.badge && (
+                <div className="absolute top-6 right-6 px-4 py-1.5 bg-strawberry text-white text-[9px] font-bold uppercase tracking-widest rounded-full shadow-lg transform rotate-3">
+                    <Sparkles size={10} className="inline mr-1" />
+                    {it.badge}
+                </div>
+              )}
             </div>
-            <div className="flex-1">
-              <div className="font-semibold">{it.title}</div>
-              <div className="text-xs text-[#8D6E63]">{it.category} {it.badge ? `• ${it.badge}` : ''}</div>
-              <div className="text-sm text-[#5D4037] mt-2 truncate">{it.desc}</div>
-            </div>
-            <div className="flex items-center gap-2 mt-3">
-              <button onClick={() => openEdit(it)} className="px-3 py-1 bg-[#FAF6E6] rounded-md flex items-center gap-2"><Edit size={14}/> Edit</button>
-              <button onClick={() => handleDelete(it.id || it._id)} className="px-3 py-1 bg-[#FFEAEA] rounded-md flex items-center gap-2"><Trash2 size={14}/> Delete</button>
+            
+            <div className="px-2 flex-1 flex flex-col">
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-2xl font-bold font-playfair text-chocolate group-hover:text-strawberry transition-colors italic leading-tight">{it.title}</h3>
+                {it.price && <span className="text-lg font-bold text-strawberry font-playfair">{it.price}</span>}
+              </div>
+              <p className="text-sm text-chocolate-light font-medium line-clamp-3 italic mb-8 leading-relaxed">
+                {it.desc || "A masterpiece waiting to be savored."}
+              </p>
+              
+              <div className="mt-auto pt-6 border-t border-chocolate/5 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-chocolate/5 flex items-center justify-center text-chocolate/20">
+                        <Tag size={14} />
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-chocolate/30 italic">
+                        {it.category}
+                    </span>
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={() => openEdit(it)} className="p-3 bg-white border border-chocolate/10 rounded-full text-chocolate hover:bg-chocolate hover:text-white transition-all shadow-sm active:scale-95"><Edit size={16} /></button>
+                  <button onClick={() => handleDelete(it.id || it._id)} className="p-3 bg-white border border-red-50 rounded-full text-red-400 hover:bg-red-500 hover:text-white transition-all shadow-sm active:scale-95"><Trash2 size={16} /></button>
+                </div>
+              </div>
             </div>
           </div>
         ))}
+
+        {filteredItems.length === 0 && !loading && (
+          <div className="col-span-full py-32 text-center space-y-6">
+            <div className="w-24 h-24 bg-chocolate/5 rounded-full flex items-center justify-center mx-auto text-chocolate/10 transform rotate-12">
+              <ImageIcon size={48} />
+            </div>
+            <div>
+                <h3 className="text-2xl font-bold font-playfair text-chocolate">The Showroom is Empty</h3>
+                <p className="text-chocolate-light font-medium italic mt-2">Begin your exhibition by adding your first creation.</p>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* simple modal form */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <form onSubmit={handleSubmit} className="bg-white rounded-2xl max-w-xl w-full p-6 relative">
-            <button type="button" onClick={closeForm} className="absolute right-4 top-4 text-gray-500"><X/></button>
-            <h3 className="text-xl font-semibold mb-4">{editingId ? 'Edit' : 'Add'} Gallery Item</h3>
-            <div className="grid grid-cols-1 gap-3">
-              <input value={form.title} onChange={e => setForm({...form, title: e.target.value})} placeholder="Title" className="w-full p-2 border rounded" />
-              <input value={form.alt} onChange={e => setForm({...form, alt: e.target.value})} placeholder="Alt text" className="w-full p-2 border rounded" />
-              {/* category dropdown (populated from API) */}
-              <select value={form.category} onChange={e => setForm({...form, category: e.target.value})} className="w-full p-2 border rounded">
-                {categories.length === 0 && <option value={form.category || 'Misc'}>Misc</option>}
-                {categories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-              <input value={form.badge} onChange={e => setForm({...form, badge: e.target.value})} placeholder="Badge" className="w-full p-2 border rounded" />
-              <input value={form.price} onChange={e => setForm({...form, price: e.target.value})} placeholder="Price" className="w-full p-2 border rounded" />
-              <textarea value={form.desc} onChange={e => setForm({...form, desc: e.target.value})} placeholder="Description" className="w-full p-2 border rounded" />
-
-              <div className="flex items-center gap-3">
-                <input type="file" accept="image/*" onChange={e => handleFile(e.target.files && e.target.files[0] ? e.target.files[0] : undefined)} />
-                <div className="text-sm text-gray-500">Or paste a data URI into the src field below</div>
+      <Sheet open={showForm} onOpenChange={(open) => !open && closeForm()}>
+        <SheetContent side="right" className="flex flex-col h-full bg-[#FAFBFD] p-0 border-l border-chocolate/10">
+          <SheetHeader className="p-10 bg-white border-b border-chocolate/5 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-strawberry/5 rounded-full -mr-32 -mt-32 blur-3xl" />
+            <div className="relative flex items-center gap-6">
+              <div className="w-16 h-16 rounded-2xl bg-chocolate text-white flex items-center justify-center shadow-bakery transform rotate-3">
+                <Camera size={28} />
               </div>
-              <input value={form.src} onChange={e => handleSrcChange(e.target.value)} placeholder="Image src (data URI or /uploads...)" className="w-full p-2 border rounded" />
+              <div>
+                <SheetTitle className="text-4xl font-bold text-chocolate font-dancing">
+                  {editingId ? "Refine Artwork" : "New Masterpiece"}
+                </SheetTitle>
+                <SheetDescription className="text-chocolate-light font-medium italic">
+                  {editingId ? "Update the perspective of this exhibition piece." : "Introduce a new visual delight to your showroom."}
+                </SheetDescription>
+              </div>
+            </div>
+          </SheetHeader>
 
-              <div className="flex justify-end gap-2 mt-3">
-                <button type="button" onClick={closeForm} className="px-4 py-2 rounded border">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-[#D4A373] text-[#2C1810] rounded">Save</button>
+          <form id="gallery-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-10 space-y-10">
+            <div className="space-y-8">
+              <div className="space-y-2 group">
+                <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Artwork Title</label>
+                <div className="relative">
+                  <ImageIcon size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
+                  <input 
+                    required
+                    value={form.title} 
+                    onChange={e => setForm({...form, title: e.target.value})} 
+                    placeholder="e.g. Midnight Truffle Delight"
+                    className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium placeholder:text-chocolate/10"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2 group">
+                  <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Collection</label>
+                  <div className="relative">
+                    <Boxes size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/20 group-focus-within:text-strawberry transition-colors pointer-events-none" />
+                    <select 
+                      value={form.category} 
+                      onChange={e => setForm({...form, category: e.target.value})} 
+                      className="w-full pl-12 pr-10 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-bold text-chocolate italic appearance-none"
+                    >
+                      <option value="General">General Collection</option>
+                      {categories.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-2 group">
+                  <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Price (Optional)</label>
+                  <div className="relative">
+                    <DollarSign size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
+                    <input 
+                      value={form.price} 
+                      onChange={e => setForm({...form, price: e.target.value})} 
+                      placeholder="e.g. $12.00"
+                      className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium placeholder:text-chocolate/10"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2 group">
+                <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Ambassador Badge</label>
+                <div className="relative">
+                  <Sparkles size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
+                  <input 
+                    value={form.badge} 
+                    onChange={e => setForm({...form, badge: e.target.value})} 
+                    placeholder="e.g. Signature Piece, Limited Edition"
+                    className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium placeholder:text-chocolate/10"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2 group">
+                <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Artistic Narrative</label>
+                <div className="relative">
+                  <FileText size={18} className="absolute left-4 top-5 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
+                  <textarea 
+                    value={form.desc} 
+                    onChange={e => setForm({...form, desc: e.target.value})} 
+                    placeholder="Weave a story about this creation..."
+                    className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium min-h-[140px] resize-none leading-relaxed italic"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Visual Evidence</label>
+                <div className="flex flex-col gap-6">
+                  {form.src ? (
+                    <div className="relative rounded-[2.5rem] overflow-hidden border border-chocolate/5 shadow-bakery h-72 bg-white group/preview">
+                      <img src={form.src.startsWith('data:') ? form.src : (form.src.startsWith('/') ? form.src : `/${form.src}`)} className="w-full h-full object-cover" alt="Perspective Preview"/>
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/preview:opacity-100 transition-opacity flex items-center justify-center">
+                          <button 
+                            type="button"
+                            onClick={() => setForm({...form, src: ""})}
+                            className="p-4 bg-red-500 text-white rounded-full shadow-2xl hover:bg-red-600 transition-all transform scale-90 group-hover/preview:scale-100"
+                          >
+                            <Trash2 size={24} />
+                          </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative group">
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          onChange={e => handleFile(e.target.files && e.target.files[0] ? e.target.files[0] : undefined)} 
+                          className="hidden" 
+                          id="image-upload"
+                        />
+                        <label 
+                          htmlFor="image-upload" 
+                          className="flex flex-col items-center justify-center w-full h-72 border-2 border-dashed border-chocolate/10 rounded-[2.5rem] bg-white cursor-pointer hover:bg-strawberry/5 hover:border-strawberry/20 transition-all group shadow-sm"
+                        >
+                          <div className="flex flex-col items-center justify-center p-10 text-center">
+                            <Upload className="w-12 h-12 mb-4 text-chocolate/10 group-hover:text-strawberry transition-colors group-hover:translate-y-[-4px] duration-300" />
+                            <p className="text-sm text-chocolate/40 font-bold uppercase tracking-widest mb-1">Upload Perspective</p>
+                            <p className="text-[10px] text-chocolate/20 font-medium italic">High fidelity images (max 1MB) recommended</p>
+                          </div>
+                        </label>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </form>
-        </div>
-      )}
 
-      {loading && <div className="text-center text-sm">Working…</div>}
+          <SheetFooter className="p-10 bg-white border-t border-chocolate/5 flex flex-row justify-between items-center">
+            <button type="button" onClick={closeForm} className="px-10 py-4 rounded-full text-xs font-bold text-chocolate bg-white border border-chocolate/10 hover:bg-chocolate/5 transition-all uppercase tracking-[0.2em] italic">
+              Cancel
+            </button>
+            <button type="submit" form="gallery-form" disabled={loading} className="px-12 py-4 bg-chocolate text-white rounded-full font-bold shadow-bakery hover:bg-strawberry transition-all disabled:opacity-50 flex items-center gap-3 uppercase tracking-[0.2em]">
+              {loading && <RefreshCw size={18} className="animate-spin" />}
+              {editingId ? "Save Changes" : "Exhibit Artwork"}
+            </button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

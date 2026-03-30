@@ -15,59 +15,61 @@ import {
   Calendar,
   X,
   CheckCircle2,
+  RefreshCw,
+  Hash,
+  Crown
 } from 'lucide-react';
 import { fetchWithAuth } from '@/services/auth';
+import { toast } from 'sonner';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "../components/ui/sheet";
 
-// ── Role badge ────────────────────────────────────────────────────────────────
 const RoleBadge = ({ role }: { role: string }) => {
-  const isSuperadmin = role === 'superadmin';
+  const isManager = role === 'superadmin';
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-        isSuperadmin
-          ? 'bg-amber-50 text-amber-700 border-amber-200'
-          : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+      className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-sm border ${
+        isManager
+          ? 'bg-chocolate text-white border-chocolate/10'
+          : 'bg-white text-chocolate border-chocolate/10'
       }`}
     >
-      {isSuperadmin ? <ShieldCheck size={10} /> : <Shield size={10} />}
-      {isSuperadmin ? 'Superadmin' : 'Admin'}
+      {isManager ? <Crown size={12} className="text-strawberry" /> : <Shield size={12} className="text-strawberry/60" />}
+      {isManager ? 'Manager' : 'Staff'}
     </span>
   );
 };
 
-// ── Avatar ────────────────────────────────────────────────────────────────────
 const Avatar = ({ name, size = 'md' }: { name?: string; size?: 'sm' | 'md' | 'lg' }) => {
   const letter = (name || '?').charAt(0).toUpperCase();
   const dims =
-    size === 'lg' ? 'w-16 h-16 text-2xl' : size === 'sm' ? 'w-8 h-8 text-sm' : 'w-11 h-11 text-base';
+    size === 'lg' ? 'w-24 h-24 text-4xl' : size === 'sm' ? 'w-10 h-10 text-sm' : 'w-16 h-16 text-xl';
   return (
     <div
-      className={`${dims} rounded-2xl bg-gradient-to-br from-[#D4A373] to-[#c49265] flex items-center justify-center text-white font-playfair font-bold shadow-md border border-white flex-shrink-0`}
+      className={`${dims} rounded-[1.5rem] bg-chocolate flex items-center justify-center text-white font-dancing font-bold shadow-bakery transform rotate-3 hover:rotate-0 transition-all duration-500`}
     >
       {letter}
     </div>
   );
 };
 
-// ── Main Component ────────────────────────────────────────────────────────────
 const Admins = () => {
   const [admins, setAdmins] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ email: '', password: '', name: '', role: 'admin' });
   const [creating, setCreating] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<any | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [showSheet, setShowSheet] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
-  // ── Data ──────────────────────────────────────────────────────────────────
   const load = async () => {
     setLoading(true);
     try {
       const res = await fetchWithAuth('/api/admins');
-      if (!res.ok) throw new Error('Failed');
+      if (!res.ok) throw new Error('Failed to load team members');
       const data = await res.json();
       setAdmins(data.users || []);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to load team members');
     } finally {
       setLoading(false);
     }
@@ -88,399 +90,317 @@ const Admins = () => {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Create failed');
+        throw new Error(err.error || 'Failed to add member');
       }
+      toast.success('New team member added!');
       setForm({ email: '', password: '', name: '', role: 'admin' });
+      setShowSheet(false);
       load();
     } catch (err: any) {
-      alert(err.message || 'Failed');
+      toast.error(err.message || 'Failed to add member');
     } finally {
       setCreating(false);
     }
   };
 
   const remove = async (id: string) => {
-    if (!confirm('Delete this admin? This action cannot be undone.')) return;
+    if (!confirm('Remove this team member? Access will be revoked immediately.')) return;
     try {
       const res = await fetchWithAuth(`/api/admins/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Delete failed');
+      if (!res.ok) throw new Error('Failed to remove member');
       setAdmins((prev) => prev.filter((a) => a._id !== id));
-    } catch {
-      alert('Failed to delete admin');
+      toast.success('Team member removed.');
+      if (selectedAdmin?._id === id) setShowProfile(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to remove member');
     }
   };
-
-  const closeModal = () => setSelectedAdmin(null);
 
   const copyEmail = (email?: string) => {
     if (!email) return;
     navigator.clipboard?.writeText(email).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      toast.success('Email copied to clipboard');
     });
   };
 
-  // ── Stats ─────────────────────────────────────────────────────────────────
-  const superadminCount = admins.filter((a) => a.role === 'superadmin').length;
-  const adminCount = admins.filter((a) => a.role === 'admin').length;
+  const managerCount = admins.filter((a) => a.role === 'superadmin').length;
+  const staffCount = admins.filter((a) => a.role === 'admin').length;
 
   return (
-    <div className="space-y-8 animate-fade-in font-inter">
-
-      {/* ── Page Header ─────────────────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-8 animate-in fade-in duration-700 font-lora">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h2 className="text-3xl font-bold font-playfair text-[#1A2744]">
-            Admins <span className="inline-block animate-bounce text-[#D4A373]">👑</span>
-          </h2>
-          <p className="text-[#8D6E63] mt-1 font-medium">
-            Manage admin accounts and access roles for the bakery dashboard.
+          <h2 className="text-4xl font-bold font-dancing text-chocolate">Team Members</h2>
+          <p className="text-sm text-chocolate-light font-medium mt-1">
+            Manage your bakery's administrative team and permissions.
           </p>
         </div>
-
-        {/* Stats pills */}
-        {!loading && admins.length > 0 && (
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-700">
-              <ShieldCheck size={15} />
-              <span className="text-sm font-bold">{superadminCount} Superadmin{superadminCount !== 1 ? 's' : ''}</span>
-            </div>
-            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700">
-              <Shield size={15} />
-              <span className="text-sm font-bold">{adminCount} Admin{adminCount !== 1 ? 's' : ''}</span>
-            </div>
-          </div>
-        )}
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={load}
+            className="p-3 bg-white border border-chocolate/10 rounded-full text-chocolate hover:bg-strawberry/5 transition-all shadow-sm group"
+          >
+            <RefreshCw size={18} className={loading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'} />
+          </button>
+          <button 
+            onClick={() => setShowSheet(true)} 
+            className="px-6 py-3 bg-chocolate text-white rounded-full flex items-center gap-2 shadow-bakery hover:shadow-bakery-lg hover:bg-strawberry transition-all duration-300"
+          >
+            <Plus size={18} />
+            <span className="font-bold text-xs uppercase tracking-widest text-[#F5ECD7]">Add Member</span>
+          </button>
+        </div>
       </div>
 
-      {/* ── Create Admin Form ────────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-[#D4A373]/20 shadow-sm overflow-hidden">
-        {/* Form header */}
-        <div className="px-6 py-4 bg-gradient-to-r from-[#FAF6E6] to-white border-b border-[#D4A373]/15 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#1A2744] flex items-center justify-center text-white">
-            <Plus size={18} />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="bg-white/60 backdrop-blur-md p-8 rounded-[2rem] shadow-bakery border border-chocolate/5 flex items-center justify-center gap-6">
+          <div className="w-16 h-16 rounded-2xl bg-chocolate text-white flex items-center justify-center shadow-bakery transform -rotate-3">
+            <Users size={32} />
           </div>
           <div>
-            <h3 className="text-base font-bold font-playfair text-[#1A2744]">Add New Admin</h3>
-            <p className="text-xs text-[#8D6E63] font-medium">Fill in the details to create a new admin account.</p>
+            <p className="text-[10px] font-bold text-chocolate/40 uppercase tracking-widest mb-1 ml-1">Total Team</p>
+            <h3 className="text-3xl font-bold font-playfair text-chocolate">{admins.length}</h3>
           </div>
         </div>
+        <div className="bg-white/60 backdrop-blur-md p-8 rounded-[2rem] shadow-bakery border border-chocolate/5 flex items-center justify-center gap-6">
+          <div className="w-16 h-16 rounded-2xl bg-strawberry text-white flex items-center justify-center shadow-bakery transform rotate-3">
+            <Crown size={32} />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-chocolate/40 uppercase tracking-widest mb-1 ml-1">Managers</p>
+            <h3 className="text-3xl font-bold font-playfair text-chocolate">{managerCount}</h3>
+          </div>
+        </div>
+        <div className="md:col-span-2 bg-[#F5ECD7]/30 border border-[#D4A373]/10 rounded-[2rem] p-8 flex items-center">
+            <p className="text-sm text-chocolate-light font-medium italic leading-relaxed">
+              "Great things in business are never done by one person. They're done by a team of people." — Standardize access levels to keep your bakery secure.
+            </p>
+        </div>
+      </div>
 
-        <form onSubmit={create} className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Name */}
-            <div className="space-y-1.5 group">
-              <label className="text-xs font-bold text-[#1A2744] uppercase tracking-wider ml-1">Name</label>
-              <div className="relative">
-                <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#1A2744]/30 group-focus-within:text-[#D4A373] transition-colors" />
-                <input
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="Full name (optional)"
-                  className="w-full pl-10 pr-4 py-3 bg-[#FAF6E6]/50 border border-[#D4A373]/20 focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/15 rounded-xl text-sm outline-none transition-all font-medium placeholder:text-[#1A2744]/30 placeholder:font-normal"
-                />
-              </div>
-            </div>
-
-            {/* Email */}
-            <div className="space-y-1.5 group">
-              <label className="text-xs font-bold text-[#1A2744] uppercase tracking-wider ml-1">
-                Email <span className="text-red-400">*</span>
-              </label>
-              <div className="relative">
-                <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#1A2744]/30 group-focus-within:text-[#D4A373] transition-colors" />
-                <input
-                  required
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="admin@example.com"
-                  className="w-full pl-10 pr-4 py-3 bg-[#FAF6E6]/50 border border-[#D4A373]/20 focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/15 rounded-xl text-sm outline-none transition-all font-medium placeholder:text-[#1A2744]/30 placeholder:font-normal"
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div className="space-y-1.5 group">
-              <label className="text-xs font-bold text-[#1A2744] uppercase tracking-wider ml-1">
-                Password <span className="text-red-400">*</span>
-              </label>
-              <div className="relative">
-                <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#1A2744]/30 group-focus-within:text-[#D4A373] transition-colors" />
-                <input
-                  required
-                  type="password"
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  placeholder="Create a password"
-                  className="w-full pl-10 pr-4 py-3 bg-[#FAF6E6]/50 border border-[#D4A373]/20 focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/15 rounded-xl text-sm outline-none transition-all font-medium placeholder:text-[#1A2744]/30 placeholder:font-normal"
-                />
-              </div>
-            </div>
-
-            {/* Role + Submit */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#1A2744] uppercase tracking-wider ml-1">Role</label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Shield size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#1A2744]/30 pointer-events-none" />
-                  <select
-                    value={form.role}
-                    onChange={(e) => setForm({ ...form, role: e.target.value })}
-                    className="w-full pl-10 pr-8 py-3 bg-[#FAF6E6]/50 border border-[#D4A373]/20 focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/15 rounded-xl text-sm outline-none transition-all font-medium appearance-none"
-                  >
-                    <option value="admin">Admin</option>
-                    <option value="superadmin">Superadmin</option>
-                  </select>
-                  <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1A2744]/40 pointer-events-none" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {admins.map((a) => (
+          <div key={a._id} className="group relative bg-white rounded-[2.5rem] p-10 border border-chocolate/5 shadow-bakery hover:shadow-bakery-lg transition-all duration-500 overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-strawberry/5 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:bg-strawberry/10" />
+            
+            <div className="flex flex-col items-center text-center">
+              <Avatar name={a.name || a.email} size="lg" />
+              <div className="mt-8 space-y-2">
+                <h3 className="text-2xl font-bold font-playfair text-chocolate group-hover:text-strawberry transition-colors italic">
+                  {a.name || 'Unnamed Member'}
+                </h3>
+                <p className="text-xs text-chocolate-light font-medium">{a.email}</p>
+                <div className="pt-4 flex justify-center">
+                  <RoleBadge role={a.role || 'admin'} />
                 </div>
-                <button
-                  type="submit"
-                  disabled={creating}
-                  className="px-5 py-3 bg-[#1A2744] hover:bg-[#D4A373] hover:text-[#1A2744] text-[#F5ECD7] rounded-xl text-sm font-bold flex items-center gap-2 transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex-shrink-0"
+              </div>
+            </div>
+
+            <div className="mt-10 pt-8 border-t border-chocolate/5 flex items-center justify-between">
+              <div className="flex flex-col">
+                <span className="text-[9px] font-bold uppercase tracking-widest text-chocolate/30 mb-1">ID Code</span>
+                <span className="font-mono text-[10px] font-bold text-chocolate/40 italic">#{String(a._id || '').slice(-8).toUpperCase()}</span>
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => { setSelectedAdmin(a); setShowProfile(true); }}
+                  className="p-3 bg-white border border-chocolate/10 rounded-full text-chocolate hover:bg-chocolate hover:text-white transition-all shadow-sm"
                 >
-                  {creating ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <Plus size={16} />
-                  )}
-                  {creating ? '' : 'Create'}
+                  <Eye size={16} />
+                </button>
+                <button 
+                  onClick={() => remove(a._id)}
+                  className="p-3 bg-white border border-red-100 rounded-full text-red-400 hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                >
+                  <Trash2 size={16} />
                 </button>
               </div>
             </div>
           </div>
-        </form>
+        ))}
       </div>
 
-      {/* ── Admins List ──────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-[#D4A373]/20 shadow-sm overflow-hidden">
-        {/* List header */}
-        <div className="px-6 py-4 bg-gradient-to-r from-[#FAF6E6] to-white border-b border-[#D4A373]/15 flex items-center gap-2">
-          <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#D4A373] to-[#F5ECD7]" />
-          <Users size={16} className="text-[#D4A373]" />
-          <h3 className="text-sm font-bold text-[#1A2744] uppercase tracking-wider">
-            All Admins {!loading && `(${admins.length})`}
-          </h3>
-        </div>
-
-        {/* Loading */}
-        {loading && (
-          <div className="p-16 flex flex-col items-center justify-center gap-4">
-            <div className="w-10 h-10 border-4 border-[#D4A373]/20 border-t-[#D4A373] rounded-full animate-spin" />
-            <p className="text-[#8D6E63] font-semibold animate-pulse text-sm">Loading admins...</p>
-          </div>
-        )}
-
-        {/* Empty state */}
-        {!loading && admins.length === 0 && (
-          <div className="p-16 flex flex-col items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#D4A373]/20 to-[#D4A373]/5 flex items-center justify-center">
-              <Users size={28} className="text-[#D4A373]" />
-            </div>
-            <div className="text-center">
-              <p className="text-base font-bold font-playfair text-[#1A2744]">No Admins Yet</p>
-              <p className="text-sm text-[#8D6E63] mt-1">Create an admin account using the form above.</p>
-            </div>
-          </div>
-        )}
-
-        {/* Admin Cards Grid */}
-        {!loading && admins.length > 0 && (
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {admins.map((a) => (
-              <div
-                key={a._id}
-                className="relative bg-white rounded-2xl border border-[#D4A373]/20 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group"
-              >
-                {/* Top accent */}
-                <div
-                  className={`absolute top-0 left-0 w-full h-1 ${
-                    a.role === 'superadmin'
-                      ? 'bg-gradient-to-r from-amber-400 to-amber-200'
-                      : 'bg-gradient-to-r from-[#D4A373] to-[#F5ECD7]'
-                  }`}
-                />
-
-                <div className="p-5">
-                  {/* Header row */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <Avatar name={a.name || a.email} />
-                      <div className="min-w-0">
-                        <p className="font-bold text-[#1A2744] text-sm truncate group-hover:text-[#D4A373] transition-colors">
-                          {a.name || 'Unnamed'}
-                        </p>
-                        <p className="text-xs text-[#8D6E63] truncate font-medium">{a.email}</p>
-                      </div>
-                    </div>
-                    <RoleBadge role={a.role || 'admin'} />
-                  </div>
-
-                  {/* ID + Date */}
-                  <div className="mt-4 pt-4 border-t border-[#D4A373]/10 flex items-center justify-between gap-2">
-                    <div>
-                      <p className="text-[9px] font-bold text-[#8D6E63]/70 uppercase tracking-widest">Admin ID</p>
-                      <p className="text-[10px] font-mono font-bold text-[#1A2744]/60">
-                        #{String(a._id || '').slice(-8).toUpperCase()}
-                      </p>
-                    </div>
-                    {a.createdAt && (
-                      <div className="text-right">
-                        <p className="text-[9px] font-bold text-[#8D6E63]/70 uppercase tracking-widest">Joined</p>
-                        <p className="text-[10px] font-medium text-[#8D6E63]">
-                          {new Date(a.createdAt).toLocaleDateString('en-IN', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="mt-4 flex items-center gap-2">
-                    <button
-                      onClick={() => setSelectedAdmin(a)}
-                      className="flex-1 px-3 py-2 rounded-xl text-xs font-bold text-[#D4A373] bg-[#D4A373]/10 hover:bg-[#D4A373] hover:text-white transition-all flex items-center justify-center gap-1.5 border border-[#D4A373]/20"
-                    >
-                      <Eye size={12} />
-                      View Profile
-                    </button>
-                    <button
-                      onClick={() => remove(a._id)}
-                      className="px-3 py-2 rounded-xl text-xs font-bold text-red-500 bg-red-50 hover:bg-red-500 hover:text-white transition-all flex items-center gap-1.5 border border-red-100"
-                    >
-                      <Trash2 size={12} />
-                      Remove
-                    </button>
-                  </div>
-                </div>
+      <Sheet open={showSheet} onOpenChange={setShowSheet}>
+        <SheetContent side="right" className="flex flex-col h-full bg-[#FAFBFD] p-0 border-l border-chocolate/10">
+          <SheetHeader className="p-10 bg-white border-b border-chocolate/5 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-strawberry/5 rounded-full -mr-24 -mt-24 blur-3xl" />
+            <div className="relative flex items-center gap-6">
+              <div className="w-16 h-16 rounded-2xl bg-chocolate text-white flex items-center justify-center shadow-bakery transform rotate-3">
+                <Users size={28} />
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ── Profile Modal ────────────────────────────────────────────────── */}
-      {selectedAdmin && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-          onClick={closeModal}
-        >
-          <div
-            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal header background */}
-            <div className="relative h-32 bg-gradient-to-br from-[#1A2744] to-[#2c3e50] flex items-end p-5">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-bl-full" />
-              {/* Close */}
-              <button
-                onClick={closeModal}
-                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all"
-              >
-                <X size={15} />
-              </button>
-              {/* Floating avatar */}
-              <div className="absolute -bottom-8 left-6 p-1 bg-white rounded-2xl shadow-xl">
-                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-[#D4A373] to-[#c49265] flex items-center justify-center text-white font-playfair font-bold text-2xl">
-                  {(selectedAdmin.name || selectedAdmin.email || '?').charAt(0).toUpperCase()}
-                </div>
-              </div>
-            </div>
-
-            {/* Modal body */}
-            <div className="px-6 pt-12 pb-6 space-y-5">
-              {/* Name + role */}
               <div>
-                <h3 className="text-xl font-bold font-playfair text-[#1A2744]">
-                  {selectedAdmin.name || 'Unnamed Admin'}
-                </h3>
-                <div className="flex items-center gap-2 mt-1.5">
-                  <RoleBadge role={selectedAdmin.role || 'admin'} />
-                  <span className="text-[10px] font-mono text-[#8D6E63]">
-                    #{String(selectedAdmin._id || '').slice(-8).toUpperCase()}
-                  </span>
+                <SheetTitle className="text-4xl font-bold text-chocolate font-dancing">
+                  Add Member
+                </SheetTitle>
+                <SheetDescription className="text-chocolate-light font-medium italic">
+                  Invite a new soul to your bakery's team.
+                </SheetDescription>
+              </div>
+            </div>
+          </SheetHeader>
+
+          <form id="team-form" onSubmit={create} className="flex-1 overflow-y-auto p-10 space-y-8">
+            <div className="space-y-6">
+              <div className="space-y-2 group">
+                <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Full Name</label>
+                <div className="relative">
+                  <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
+                  <input 
+                    value={form.name} 
+                    onChange={(e) => setForm({ ...form, name: e.target.value })} 
+                    placeholder="Enter name..."
+                    className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium placeholder:text-chocolate/10"
+                  />
                 </div>
               </div>
 
-              {/* Info rows */}
-              <div className="space-y-3">
-                {/* Email */}
-                <div className="flex items-center justify-between p-3 rounded-xl bg-[#FAF6E6]/80 border border-[#D4A373]/10">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-[#D4A373]/20 flex items-center justify-center text-[#D4A373]">
-                      <Mail size={13} />
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-bold text-[#8D6E63] uppercase tracking-wider">Email</p>
-                      <p className="text-xs font-bold text-[#1A2744]">{selectedAdmin.email}</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => copyEmail(selectedAdmin.email)}
-                    className="p-1.5 rounded-lg hover:bg-[#D4A373]/10 text-[#8D6E63] hover:text-[#D4A373] transition-colors"
-                    title="Copy email"
+              <div className="space-y-2 group">
+                <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Email Address</label>
+                <div className="relative">
+                  <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
+                  <input 
+                    required
+                    type="email"
+                    value={form.email} 
+                    onChange={(e) => setForm({ ...form, email: e.target.value })} 
+                    placeholder="email@example.com"
+                    className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium placeholder:text-chocolate/10 italic"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2 group">
+                <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Access Password</label>
+                <div className="relative">
+                  <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
+                  <input 
+                    required
+                    type="password"
+                    value={form.password} 
+                    onChange={(e) => setForm({ ...form, password: e.target.value })} 
+                    placeholder="••••••••"
+                    className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium placeholder:text-chocolate/10"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Assign Role</label>
+                <div className="grid grid-cols-2 gap-4">
+                  <button 
+                    type="button" 
+                    onClick={() => setForm({...form, role: 'admin'})}
+                    className={`py-4 rounded-2xl font-bold text-[10px] uppercase tracking-widest border transition-all ${form.role === 'admin' ? 'bg-chocolate text-white border-chocolate shadow-bakery' : 'bg-white text-chocolate/40 border-chocolate/10 hover:border-strawberry/30'}`}
                   >
-                    {copied ? <CheckCircle2 size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                    Staff
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => setForm({...form, role: 'superadmin'})}
+                    className={`py-4 rounded-2xl font-bold text-[10px] uppercase tracking-widest border transition-all ${form.role === 'superadmin' ? 'bg-chocolate text-white border-chocolate shadow-bakery' : 'bg-white text-chocolate/40 border-chocolate/10 hover:border-strawberry/30'}`}
+                  >
+                    Manager
                   </button>
                 </div>
-
-                {/* Role full row */}
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-[#FAF6E6]/80 border border-[#D4A373]/10">
-                  <div className="w-7 h-7 rounded-lg bg-[#D4A373]/20 flex items-center justify-center text-[#D4A373]">
-                    <ShieldCheck size={13} />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-bold text-[#8D6E63] uppercase tracking-wider">Access Role</p>
-                    <p className="text-xs font-bold text-[#1A2744] capitalize">{selectedAdmin.role || 'admin'}</p>
-                  </div>
-                </div>
-
-                {/* Created */}
-                {selectedAdmin.createdAt && (
-                  <div className="flex items-center gap-2 p-3 rounded-xl bg-[#FAF6E6]/80 border border-[#D4A373]/10">
-                    <div className="w-7 h-7 rounded-lg bg-[#D4A373]/20 flex items-center justify-center text-[#D4A373]">
-                      <Calendar size={13} />
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-bold text-[#8D6E63] uppercase tracking-wider">Member Since</p>
-                      <p className="text-xs font-bold text-[#1A2744]">
-                        {new Date(selectedAdmin.createdAt).toLocaleDateString('en-IN', {
-                          day: '2-digit',
-                          month: 'long',
-                          year: 'numeric',
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 pt-1">
-                <button
-                  onClick={closeModal}
-                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-bold text-[#1A2744] border border-[#D4A373]/20 hover:bg-[#FAF6E6] transition-colors"
-                >
-                  Close
-                </button>
-                <button
-                  onClick={() => {
-                    remove(selectedAdmin._id);
-                    closeModal();
-                  }}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-red-500 border border-red-100 bg-red-50 hover:bg-red-500 hover:text-white transition-all"
-                >
-                  <Trash2 size={14} />
-                  Delete
-                </button>
               </div>
             </div>
+          </form>
+
+          <SheetFooter className="p-10 bg-white border-t border-chocolate/5 flex flex-row justify-between items-center">
+            <button type="button" onClick={() => setShowSheet(false)} className="px-8 py-3 rounded-full text-xs font-bold text-chocolate bg-white border border-chocolate/10 hover:bg-chocolate/5 transition-all uppercase tracking-widest">
+              Cancel
+            </button>
+            <button type="submit" form="team-form" disabled={creating} className="px-10 py-4 bg-chocolate text-white rounded-full font-bold shadow-bakery hover:bg-strawberry transition-all disabled:opacity-50 flex items-center gap-3 uppercase tracking-widest">
+              {creating && <RefreshCw size={16} className="animate-spin" />}
+              Create Member
+            </button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={showProfile} onOpenChange={setShowProfile}>
+        <SheetContent side="right" className="flex flex-col h-full bg-[#FAFBFD] p-0 border-l border-chocolate/10">
+          <SheetHeader className="p-10 bg-chocolate text-white relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -mr-24 -mt-24 blur-3xl" />
+            <div className="relative flex flex-col items-center gap-6 py-10">
+                <Avatar name={selectedAdmin?.name || selectedAdmin?.email} size="lg" />
+                <div className="text-center">
+                    <SheetTitle className="text-4xl font-bold text-white font-dancing mb-2">
+                        {selectedAdmin?.name || 'Unnamed Member'}
+                    </SheetTitle>
+                    <div className="flex justify-center">
+                        <RoleBadge role={selectedAdmin?.role || 'admin'} />
+                    </div>
+                </div>
+            </div>
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto p-10 space-y-10">
+            <div className="space-y-6">
+                <h4 className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] border-b border-chocolate/5 pb-2">Member Details</h4>
+                
+                <div className="space-y-4">
+                    <div className="flex items-center gap-4 bg-white p-4 rounded-2xl border border-chocolate/5">
+                        <div className="p-3 bg-chocolate/5 text-chocolate rounded-xl">
+                            <Mail size={18} />
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-[9px] font-bold text-chocolate/20 uppercase tracking-widest">Email Address</p>
+                            <p className="text-sm font-bold text-chocolate italic">{selectedAdmin?.email}</p>
+                        </div>
+                        <button onClick={() => copyEmail(selectedAdmin?.email)} className="p-2 text-chocolate/20 hover:text-strawberry transition-colors">
+                            <Copy size={16} />
+                        </button>
+                    </div>
+
+                    <div className="flex items-center gap-4 bg-white p-4 rounded-2xl border border-chocolate/5">
+                        <div className="p-3 bg-chocolate/5 text-chocolate rounded-xl">
+                            <Hash size={18} />
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-[9px] font-bold text-chocolate/20 uppercase tracking-widest">Identification Code</p>
+                            <p className="text-sm font-mono font-bold text-chocolate">#{String(selectedAdmin?._id || '').toUpperCase()}</p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 bg-white p-4 rounded-2xl border border-chocolate/5">
+                        <div className="p-3 bg-chocolate/5 text-chocolate rounded-xl">
+                            <Calendar size={18} />
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-[9px] font-bold text-chocolate/20 uppercase tracking-widest">Joined Team</p>
+                            <p className="text-sm font-bold text-chocolate">
+                                {selectedAdmin?.createdAt ? new Date(selectedAdmin.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Joining date unknown'}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div className="p-8 bg-strawberry/5 rounded-[2rem] border border-strawberry/10 space-y-4">
+                <h4 className="text-[10px] font-bold text-strawberry uppercase tracking-widest flex items-center gap-2">
+                    <ShieldCheck size={14} /> Permissions Overview
+                </h4>
+                <p className="text-xs text-chocolate-light font-medium italic leading-relaxed">
+                    This user has {selectedAdmin?.role === 'superadmin' ? 'unrestricted' : 'limited staff'} access to the dashboard. They can {selectedAdmin?.role === 'superadmin' ? 'manage team members, access financial reports, and edit store settings' : 'manage products, view orders, and update inventory'}.
+                </p>
+            </div>
           </div>
-        </div>
-      )}
+
+          <SheetFooter className="p-10 bg-white border-t border-chocolate/5 flex flex-row justify-between items-center">
+            <button onClick={() => setShowProfile(false)} className="px-8 py-3 rounded-full text-xs font-bold text-chocolate bg-white border border-chocolate/10 hover:bg-chocolate/5 transition-all uppercase tracking-widest">
+              Close Profile
+            </button>
+            <button 
+                onClick={() => remove(selectedAdmin?._id)} 
+                className="px-8 py-3 bg-red-50 text-red-500 rounded-full flex items-center gap-2 border border-red-100 hover:bg-red-500 hover:text-white transition-all text-xs font-bold uppercase tracking-widest"
+            >
+              <Trash2 size={16} />
+              Remove Member
+            </button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };

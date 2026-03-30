@@ -1,4 +1,4 @@
-import { Search, Mail, Phone, Users, Star, MapPin, Calendar, ShoppingBag, Award, Clock, ArrowRight, X, User, Lock } from "lucide-react";
+import { Search, Mail, Phone, Users, Star, MapPin, Calendar, ShoppingBag, Award, Clock, ArrowRight, X, User, Lock, Plus, RefreshCw, Filter } from "lucide-react";
 import { useState, useEffect } from "react";
 import { api } from "../services/api";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "../components/ui/sheet";
@@ -24,26 +24,30 @@ const Customers = () => {
 			}
 			setShowAddModal(false);
 			setAddForm({ name: "", email: "", phone: "", address: "", password: "" });
-			toast.success("Customer added successfully!");
+			toast.success("New customer added successfully!");
 		} catch (error: any) {
-			console.error("Failed to add customer:", error);
 			toast.error(error?.response?.data?.error || error.message || "Failed to add customer");
 		} finally {
 			setAddingCustomer(false);
 		}
 	};
 
-	useEffect(() => {
+	const fetchCustomers = () => {
+		setLoading(true);
 		api.customers.getAll()
 			.then((data) => {
 				setCustomers(data || []);
 			})
 			.catch((err) => {
-				console.error("Failed to fetch customers:", err);
+				toast.error("Failed to load customer records.");
 			})
 			.finally(() => {
 				setLoading(false);
 			});
+	};
+
+	useEffect(() => {
+		fetchCustomers();
 	}, []);
 
 	const filteredCustomers = customers.filter(c =>
@@ -59,121 +63,137 @@ const Customers = () => {
 	};
 
 	return (
-		<div className="space-y-8 animate-fade-in font-inter">
-			<div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+		<div className="space-y-8 animate-in fade-in duration-700 font-lora">
+			<div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
 				<div>
-					<h2 className="text-3xl font-bold font-playfair text-[#1A2744]">
-						Our Customers{" "}
-						<span className="inline-block animate-bounce text-[#D4A373]">
-							👥
-						</span>
-					</h2>
-					<p className="text-[#8D6E63] mt-1 font-medium">
-						Manage profiles, contact details, and view loyalty information.
+					<h2 className="text-4xl font-bold font-dancing text-chocolate">Customers</h2>
+					<p className="text-sm text-chocolate-light font-medium mt-1">
+						Manage your bakery's customer database.
 					</p>
 				</div>
-				<button onClick={() => setShowAddModal(true)} className="px-6 py-3 bg-[#1A2744] text-[#F5ECD7] rounded-xl font-bold shadow-lg hover:shadow-xl hover:bg-[#D4A373] hover:text-[#1A2744] transition-all duration-300 flex items-center gap-2 group">
-					<Users size={18} className="group-hover:scale-110 transition-transform" />
-					<span className="uppercase tracking-wider text-xs">Add Customer</span>
-				</button>
+				<div className="flex items-center gap-4">
+          <button 
+            onClick={fetchCustomers}
+            className="p-3 bg-white border border-chocolate/10 rounded-full text-chocolate hover:bg-strawberry/5 transition-all shadow-sm group"
+          >
+            <RefreshCw size={18} className={loading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'} />
+          </button>
+					<button 
+						onClick={() => setShowAddModal(true)} 
+						className="px-6 py-3 bg-chocolate text-white rounded-full flex items-center gap-2 shadow-bakery hover:shadow-bakery-lg hover:bg-strawberry transition-all duration-300"
+					>
+						<Plus size={18} />
+						<span className="font-bold text-xs uppercase tracking-widest text-[#F5ECD7]">Add Customer</span>
+					</button>
+				</div>
 			</div>
 
-			<div className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-[#D4A373]/20">
+			<div className="flex items-center gap-4 bg-white/60 backdrop-blur-md p-4 rounded-[2rem] shadow-bakery border border-chocolate/5">
 				<div className="relative flex-1 group">
-					<Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#1A2744]/40 group-focus-within:text-[#D4A373] transition-colors w-5 h-5" />
+					<Search className="absolute left-5 top-1/2 -translate-y-1/2 text-chocolate/30 group-focus-within:text-strawberry transition-colors w-5 h-5" />
 					<input
 						type="text"
 						value={searchQuery}
 						onChange={(e) => setSearchQuery(e.target.value)}
-						placeholder="Search by name, email, or phone..."
-						className="w-full pl-12 pr-4 py-3 rounded-xl bg-[#FAF6E6] text-[#1A2744] outline-none border border-transparent focus:border-[#D4A373]/30 focus:bg-white focus:ring-4 focus:ring-[#D4A373]/10 transition-all font-medium placeholder:text-[#1A2744]/40 placeholder:font-normal"
+						placeholder="Search customers..."
+						className="w-full pl-14 pr-6 py-4 rounded-2xl bg-[#FAF6E6]/50 text-chocolate outline-none border border-transparent focus:border-strawberry/20 focus:bg-white focus:ring-8 focus:ring-strawberry/5 transition-all font-medium placeholder:text-chocolate/20"
 					/>
 				</div>
+        <button className="p-4 bg-white border border-chocolate/10 rounded-2xl text-chocolate hover:bg-strawberry/5 transition-all shadow-sm">
+          <Filter size={20} />
+        </button>
 			</div>
 
-			<div className="bg-white rounded-2xl border border-[#D4A373]/20 shadow-lg overflow-hidden relative">
-				{/* Decorative background accent */}
-				<div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#D4A373] to-[#F5ECD7]"></div>
+			<div className="bg-white/40 backdrop-blur-md rounded-[2.5rem] border border-chocolate/5 shadow-bakery overflow-hidden relative">
+				<div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-chocolate via-strawberry to-chocolate/20 opacity-80"></div>
 
 				<div className="overflow-x-auto">
-					<table className="w-full text-left">
-						<thead className="bg-[#FAF6E6] text-[#1A2744]/60 font-bold uppercase tracking-wider text-xs border-b border-[#D4A373]/20">
+					<table className="w-full text-left border-collapse">
+						<thead className="bg-[#FAF6E6]/40 text-chocolate/40 font-bold uppercase tracking-widest text-[10px] border-b border-chocolate/5">
 							<tr>
-								<th className="p-5 pl-8">Customer</th>
-								<th className="p-5">Contact Details</th>
-								<th className="p-5">Address</th>
-								<th className="p-5 text-right pr-8">Actions</th>
+								<th className="p-8 pl-10">Customer</th>
+								<th className="p-8">Contact Info</th>
+								<th className="p-8">Address</th>
+								<th className="p-8 text-right pr-10">Actions</th>
 							</tr>
 						</thead>
-						<tbody className="divide-y divide-[#D4A373]/10">
-							{loading ? (
+						<tbody className="divide-y divide-chocolate/5">
+							{loading && customers.length === 0 ? (
 								<tr>
-									<td colSpan={4} className="p-12 text-center">
-										<div className="flex flex-col items-center justify-center gap-3">
-											<div className="w-8 h-8 border-4 border-[#D4A373]/30 border-t-[#D4A373] rounded-full animate-spin"></div>
-											<span className="text-[#8D6E63] font-medium animate-pulse">Loading customers...</span>
+									<td colSpan={4} className="p-24 text-center">
+										<div className="flex flex-col items-center justify-center gap-4">
+											<div className="w-12 h-12 border-4 border-chocolate/10 border-t-chocolate rounded-full animate-spin"></div>
+											<span className="text-chocolate-light font-medium animate-pulse italic">Loading customer data...</span>
 										</div>
 									</td>
 								</tr>
 							) : filteredCustomers.length === 0 ? (
 								<tr>
-									<td colSpan={4} className="p-12 text-center">
-										<div className="flex flex-col items-center justify-center gap-2 text-[#8D6E63]">
-											<Users size={32} className="opacity-20 mb-2" />
-											<span className="font-medium">No customers found.</span>
-											{searchQuery && <span className="text-sm">Try adjusting your search query.</span>}
+									<td colSpan={4} className="p-24 text-center">
+										<div className="flex flex-col items-center justify-center gap-3 text-chocolate/20">
+											<Users size={48} strokeWidth={1} />
+											<span className="font-medium italic">No customers found.</span>
 										</div>
 									</td>
 								</tr>
 							) : filteredCustomers.map((customer) => (
 								<tr
 									key={customer._id || customer.id}
-									className="hover:bg-[#FAF6E6]/40 transition-colors group"
+									className="group hover:bg-white/60 transition-all duration-300"
 								>
-									<td className="p-4 pl-8">
-										<div className="flex items-center gap-4">
-											<div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#D4A373] to-[#c49265] flex items-center justify-center text-white font-playfair font-bold text-xl shadow-md border border-white group-hover:scale-105 transition-transform">
-												{customer.name?.charAt(0) || '?'}
+									<td className="p-6 pl-10 border-none">
+										<div className="flex items-center gap-5">
+											<div className="relative">
+												<div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-chocolate/10 to-chocolate/5 flex items-center justify-center text-chocolate font-dancing font-bold text-2xl shadow-inner border border-chocolate/5 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
+													{customer.name?.charAt(0) || '?'}
+												</div>
+												<div className="absolute -bottom-1 -right-1 w-5 h-5 bg-cream border-2 border-white rounded-full flex items-center justify-center shadow-sm">
+													<Star size={10} className="text-strawberry fill-strawberry" />
+												</div>
 											</div>
 											<div className="flex flex-col">
-												<span className="font-bold text-[#1A2744] text-base group-hover:text-[#D4A373] transition-colors">
+												<span className="font-bold text-chocolate text-base group-hover:text-strawberry transition-colors">
 													{customer.name}
 												</span>
-												<span className="text-xs font-mono text-[#8D6E63]/70 font-medium">
-													#{String(customer._id || customer.id || '').substring(0, 8)}
+												<span className="text-[10px] font-bold text-chocolate/30 uppercase tracking-widest mt-0.5">
+													ID: {String(customer._id || customer.id || '').substring(0, 8)}
 												</span>
 											</div>
 										</div>
 									</td>
-									<td className="p-4">
-										<div className="flex flex-col gap-1.5 text-sm text-[#1A2744]/80 font-medium">
-											<div className="flex items-center gap-2">
-												<Mail size={14} className="text-[#D4A373]" />
+									<td className="p-6 border-none">
+										<div className="flex flex-col gap-2 text-xs text-chocolate-light font-medium">
+											<div className="flex items-center gap-2.5">
+												<div className="w-6 h-6 rounded-lg bg-strawberry/5 flex items-center justify-center text-strawberry">
+													<Mail size={12} />
+												</div>
 												{customer.email}
 											</div>
 											{customer.phone && (
-												<div className="flex items-center gap-2">
-													<Phone size={14} className="text-[#D4A373]" />
+												<div className="flex items-center gap-2.5">
+													<div className="w-6 h-6 rounded-lg bg-chocolate/5 flex items-center justify-center text-chocolate">
+														<Phone size={12} />
+													</div>
 													{customer.phone}
 												</div>
 											)}
 										</div>
 									</td>
-									<td className="p-4">
-										<div className="flex items-start gap-2 text-sm text-[#1A2744]/70 font-medium max-w-[250px]">
-											<MapPin size={16} className="text-[#D4A373] flex-shrink-0 mt-0.5" />
-											<span className="truncate whitespace-normal line-clamp-2">
-												{customer.address || <span className="text-[#1A2744]/40 italic">No address provided</span>}
+									<td className="p-6 border-none">
+										<div className="flex items-start gap-2.5 text-xs text-chocolate-light font-medium max-w-[250px]">
+											<MapPin size={16} className="text-strawberry/40 flex-shrink-0 mt-0.5" />
+											<span className="line-clamp-2 italic leading-relaxed">
+												{customer.address || <span className="opacity-30">No address provided</span>}
 											</span>
 										</div>
 									</td>
-									<td className="p-4 pr-8 text-right">
+									<td className="p-6 pr-10 text-right border-none">
 										<button
 											onClick={() => setSelectedCustomer(customer)}
-											className="px-4 py-2 rounded-lg text-sm font-bold text-[#D4A373] bg-[#D4A373]/10 hover:bg-[#D4A373] hover:text-white transition-all flex items-center gap-2 ml-auto"
+											className="ml-auto px-5 py-2.5 rounded-full text-xs font-bold text-chocolate bg-white border border-chocolate/10 hover:border-strawberry hover:bg-strawberry hover:text-white transition-all flex items-center gap-2 shadow-sm group/btn"
 										>
-											View Profile
-											<ArrowRight size={14} />
+											Details
+											<ArrowRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
 										</button>
 									</td>
 								</tr>
@@ -184,117 +204,78 @@ const Customers = () => {
 			</div>
 
 			<Sheet open={!!selectedCustomer} onOpenChange={(open) => !open && setSelectedCustomer(null)}>
-				<SheetContent side="right" className="w-full md:w-[35vw] lg:w-[35vw] p-0 flex flex-col gap-0 bg-[#FAFAFA] border-l-[#D4A373]/20 shadow-2xl">
+				<SheetContent side="right" className="flex flex-col h-full bg-[#FAFBFD] p-0 border-l border-chocolate/10">
 					{selectedCustomer && (
 						<>
-							{/* Premium Modal Header */}
-							<div className="relative h-40 bg-gradient-to-br from-[#1A2744] to-[#2c3e50] p-6 flex items-end">
-								{/* Decorative Background Elements */}
-								<div className="absolute top-0 right-0 w-32 h-32 bg-white flex items-center justify-center opacity-5 rounded-bl-full">
-									<Star size={100} />
-								</div>
+							<SheetHeader className="p-10 bg-white border-b border-chocolate/5 relative overflow-hidden">
+								<div className="absolute top-0 right-0 w-48 h-48 bg-strawberry/5 rounded-full -mr-24 -mt-24 blur-3xl" />
+                <div className="relative flex items-end gap-6">
+                  <div className="w-24 h-24 rounded-[1.5rem] bg-chocolate text-white flex items-center justify-center font-dancing text-5xl shadow-bakery transform -rotate-3 hover:rotate-0 transition-transform">
+                    {selectedCustomer.name?.charAt(0) || '?'}
+                  </div>
+                  <div className="mb-2">
+                    <SheetTitle className="text-4xl font-bold text-chocolate font-dancing">
+                      {selectedCustomer.name}
+                    </SheetTitle>
+                    <SheetDescription className="text-chocolate-light font-medium flex items-center gap-2 mt-1">
+                      <Award size={14} className="text-strawberry" />
+                       Customer since {formatDate(selectedCustomer.createdAt)}
+                    </SheetDescription>
+                  </div>
+                </div>
+							</SheetHeader>
 
-								{/* Close Button */}
-								<button
-									onClick={() => setSelectedCustomer(null)}
-									className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors backdrop-blur-sm shadow-sm"
-								>
-									<X size={20} />
-								</button>
+							<div className="flex-1 overflow-y-auto p-10 space-y-10">
+                <section className="space-y-4">
+                  <h4 className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] flex items-center gap-2">
+                    <User size={12} className="text-strawberry" />
+                    Customer Details
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-6 rounded-3xl bg-white border border-chocolate/5 shadow-sm space-y-1 hover:shadow-md transition-shadow">
+                      <p className="text-[10px] font-bold text-strawberry/60 uppercase tracking-widest">Email</p>
+                      <p className="text-sm font-bold text-chocolate truncate">{selectedCustomer.email}</p>
+                    </div>
+                    <div className="p-6 rounded-3xl bg-white border border-chocolate/5 shadow-sm space-y-1 hover:shadow-md transition-shadow">
+                      <p className="text-[10px] font-bold text-strawberry/60 uppercase tracking-widest">Phone</p>
+                      <p className="text-sm font-bold text-chocolate">{selectedCustomer.phone || "No phone provided"}</p>
+                    </div>
+                  </div>
+                </section>
 
-								<div className="absolute -bottom-12 left-8 p-1 bg-[#FAFAFA] rounded-3xl shadow-xl">
-									<div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-[#D4A373] to-[#c49265] flex items-center justify-center text-white font-playfair font-bold text-4xl shadow-inner border border-white/20">
-										{selectedCustomer.name?.charAt(0) || '?'}
-									</div>
-								</div>
+                <section className="space-y-4">
+                  <h4 className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] flex items-center gap-2">
+                    <MapPin size={12} className="text-strawberry" />
+                    Delivery Address
+                  </h4>
+                  <div className="p-8 rounded-[2rem] bg-chocolate/5 border border-chocolate/5 italic text-chocolate-light text-sm leading-relaxed relative overflow-hidden">
+                    <MapPin size={60} className="absolute -right-4 -bottom-4 text-chocolate/5 opacity-50" />
+                    {selectedCustomer.address ? selectedCustomer.address : "No address provided for this customer."}
+                  </div>
+                </section>
+
+                <section className="space-y-4">
+                  <h4 className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] flex items-center gap-2">
+                    <ShoppingBag size={12} className="text-strawberry" />
+                    Order History
+                  </h4>
+                  <div className="bg-white rounded-3xl border border-chocolate/5 p-8 text-center space-y-2">
+                    <p className="text-xs text-chocolate-light font-medium italic">Order history loading...</p>
+                    <p className="text-[10px] text-chocolate/20 uppercase tracking-widest font-bold">Coming Soon</p>
+                  </div>
+                </section>
 							</div>
 
-							<div className="flex-1 overflow-y-auto px-8 pt-16 pb-8 space-y-8">
-								{/* Title Section */}
-								<div>
-									<h2 className="text-3xl font-playfair font-bold text-[#1A2744]">
-										{selectedCustomer.name}
-									</h2>
-									<div className="flex items-center gap-2 text-[#8D6E63] font-mono text-xs mt-1 bg-[#D4A373]/10 px-2 py-1 rounded inline-flex">
-										ID: {selectedCustomer._id || selectedCustomer.id}
-									</div>
-								</div>
-
-								{/* Info Cards */}
-								<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-									{/* Contact Card */}
-									<div className="p-5 rounded-2xl bg-white border border-[#D4A373]/20 shadow-sm space-y-4 col-span-1 md:col-span-2 hover:shadow-md transition-shadow">
-										<div className="flex items-center gap-2 text-[#1A2744] font-bold text-sm uppercase tracking-wider mb-2">
-											<User size={16} className="text-[#D4A373]" />
-											Contact Information
-										</div>
-										<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-											<div className="flex items-start gap-3">
-												<div className="p-2 bg-[#FAF6E6] rounded-lg text-[#D4A373]">
-													<Mail size={16} />
-												</div>
-												<div className="overflow-hidden">
-													<p className="text-[10px] font-bold text-[#8D6E63] uppercase tracking-wider">Email</p>
-													<p className="text-sm font-medium text-[#1A2744] truncate">{selectedCustomer.email}</p>
-												</div>
-											</div>
-											<div className="flex items-start gap-3">
-												<div className="p-2 bg-[#FAF6E6] rounded-lg text-[#D4A373]">
-													<Phone size={16} />
-												</div>
-												<div>
-													<p className="text-[10px] font-bold text-[#8D6E63] uppercase tracking-wider">Phone</p>
-													<p className="text-sm font-medium text-[#1A2744]">{selectedCustomer.phone || "Not provided"}</p>
-												</div>
-											</div>
-										</div>
-									</div>
-
-									{/* Address Card */}
-									<div className="p-5 rounded-2xl bg-white border border-[#D4A373]/20 shadow-sm space-y-3 col-span-1 md:col-span-2 hover:shadow-md transition-shadow">
-										<div className="flex items-center gap-2 text-[#1A2744] font-bold text-sm uppercase tracking-wider mb-1">
-											<MapPin size={16} className="text-[#D4A373]" />
-											Delivery Address
-										</div>
-										<div className="bg-[#FAF6E6]/50 p-4 rounded-xl border border-[#D4A373]/10">
-											<p className="text-sm text-[#1A2744] font-medium leading-relaxed">
-												{selectedCustomer.address ? selectedCustomer.address : <span className="text-[#1A2744]/40 italic">No delivery address provided by this customer.</span>}
-											</p>
-										</div>
-									</div>
-
-									{/* Member Since Card */}
-									<div className="p-5 rounded-2xl bg-gradient-to-br from-[#1A2744] to-[#2c3e50] shadow-md text-white space-y-1 relative overflow-hidden group">
-										<div className="absolute -right-4 -top-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
-											<Calendar size={80} />
-										</div>
-										<p className="text-[10px] font-bold text-white/60 uppercase tracking-wider">Member Since</p>
-										<p className="text-lg font-bold font-playfair">{formatDate(selectedCustomer.createdAt)}</p>
-									</div>
-
-									{/* Role / Status Card */}
-									<div className="p-5 rounded-2xl bg-gradient-to-br from-[#D4A373] to-[#c49265] shadow-md text-white space-y-1 relative overflow-hidden group">
-										<div className="absolute -right-4 -top-4 opacity-20 group-hover:scale-110 transition-transform duration-500">
-											<Award size={80} />
-										</div>
-										<p className="text-[10px] font-bold text-white/70 uppercase tracking-wider">Account Role</p>
-										<p className="text-lg font-bold font-playfair capitalize">{selectedCustomer.role || 'Customer'}</p>
-									</div>
-								</div>
-
-							</div>
-
-							{/* Footer */}
-							<SheetFooter className="p-6 bg-white border-t border-[#D4A373]/10 flex flex-row justify-between items-center sm:justify-between">
-								<p className="text-xs text-[#8D6E63] font-medium flex items-center gap-1">
+							<SheetFooter className="p-8 bg-white border-t border-chocolate/5 flex flex-row items-center justify-between">
+								<div className="text-[10px] font-bold text-chocolate/30 uppercase tracking-widest flex items-center gap-2">
 									<Clock size={12} />
-									Last updated: Today
-								</p>
+									Updated: Just now
+								</div>
 								<button
 									onClick={() => setSelectedCustomer(null)}
-									className="px-6 py-2.5 rounded-xl text-sm font-bold text-[#1A2744] bg-[#FAF6E6] border border-transparent hover:border-[#D4A373]/30 hover:bg-[#D4A373] hover:text-white transition-colors"
+									className="px-8 py-3 rounded-full text-xs font-bold text-[#F5ECD7] bg-chocolate hover:bg-strawberry transition-all shadow-bakery uppercase tracking-widest"
 								>
-									Close Profile
+									Close
 								</button>
 							</SheetFooter>
 						</>
@@ -302,77 +283,86 @@ const Customers = () => {
 				</SheetContent>
 			</Sheet>
 
-			{/* Add Customer Modal */}
-			<Sheet open={showAddModal} onOpenChange={(open) => !open && setShowAddModal(false)}>
-				<SheetContent side="right" className="w-full md:w-[32vw] lg:w-[32vw] p-0 flex flex-col gap-0 bg-[#FAFAFA] border-l-[#D4A373]/20 shadow-2xl">
-					<SheetHeader className="p-6 bg-white border-b border-[#D4A373]/10">
-						<div className="flex items-center gap-3">
-							<div className="w-10 h-10 rounded-xl bg-[#1A2744] flex items-center justify-center text-white">
-								<Users size={20} />
+			<Sheet open={showAddModal} onOpenChange={setShowAddModal}>
+				<SheetContent side="right" className="flex flex-col h-full bg-[#FAFBFD] p-0 border-l border-chocolate/10">
+					<SheetHeader className="p-10 bg-white border-b border-chocolate/5 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-strawberry/5 rounded-full -mr-24 -mt-24 blur-3xl" />
+						<div className="relative flex items-center gap-5">
+							<div className="w-16 h-16 rounded-2xl bg-chocolate text-white flex items-center justify-center shadow-bakery">
+								<Plus size={32} />
 							</div>
 							<div>
-								<SheetTitle className="font-playfair text-2xl font-bold text-[#1A2744]">
+								<SheetTitle className="font-dancing text-4xl font-bold text-chocolate">
 									Add New Customer
 								</SheetTitle>
-								<SheetDescription className="text-[#8D6E63] font-medium">
-									Register a new customer to the bakery.
+								<SheetDescription className="text-chocolate-light font-medium italic">
+									Create a new customer account.
 								</SheetDescription>
 							</div>
 						</div>
 					</SheetHeader>
 
-					<form id="add-customer-form" onSubmit={handleAddCustomer} className="flex-1 overflow-y-auto p-6 space-y-6">
-						<div className="space-y-5">
-							<div className="space-y-1.5 group">
-								<label className="text-xs font-bold text-[#1A2744] uppercase tracking-wider ml-1">Full Name</label>
+					<form id="add-customer-form" onSubmit={handleAddCustomer} className="flex-1 overflow-y-auto p-10 space-y-8">
+						<div className="space-y-6">
+							<div className="space-y-2 group">
+								<label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Full Name</label>
 								<div className="relative">
-									<User size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#1A2744]/30 group-focus-within:text-[#D4A373] transition-colors" />
-									<input required value={addForm.name} onChange={e => setAddForm({ ...addForm, name: e.target.value })} className="w-full pl-11 pr-4 py-3 bg-white border border-[#D4A373]/20 focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/20 rounded-xl text-sm outline-none transition-all" placeholder="Enter Full Name" />
+									<User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
+									<input required value={addForm.name} onChange={e => setAddForm({ ...form, name: e.target.value })} className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium placeholder:text-chocolate/10" placeholder="e.g. John Doe" />
 								</div>
 							</div>
 
-							<div className="space-y-1.5 group">
-								<label className="text-xs font-bold text-[#1A2744] uppercase tracking-wider ml-1">Email Address</label>
+							<div className="space-y-2 group">
+								<label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Email</label>
 								<div className="relative">
-									<Mail size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#1A2744]/30 group-focus-within:text-[#D4A373] transition-colors" />
-									<input type="email" required value={addForm.email} onChange={e => setAddForm({ ...addForm, email: e.target.value })} className="w-full pl-11 pr-4 py-3 bg-white border border-[#D4A373]/20 focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/20 rounded-xl text-sm outline-none transition-all" placeholder="Enter Email Address" />
+									<Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
+									<input type="email" required value={addForm.email} onChange={e => setAddForm({ ...addForm, email: e.target.value })} className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium placeholder:text-chocolate/10" placeholder="john@example.com" />
 								</div>
 							</div>
 
-							<div className="space-y-1.5 group">
-								<label className="text-xs font-bold text-[#1A2744] uppercase tracking-wider ml-1">Phone Number</label>
+							<div className="space-y-2 group">
+								<label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Phone Number</label>
 								<div className="relative">
-									<Phone size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#1A2744]/30 group-focus-within:text-[#D4A373] transition-colors" />
-									<input type="tel" required value={addForm.phone} onChange={e => setAddForm({ ...addForm, phone: e.target.value })} className="w-full pl-11 pr-4 py-3 bg-white border border-[#D4A373]/20 focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/20 rounded-xl text-sm outline-none transition-all" placeholder="Enter Phone Number" />
+									<Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
+									<input type="tel" required value={addForm.phone} onChange={e => setAddForm({ ...addForm, phone: e.target.value })} className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium placeholder:text-chocolate/10" placeholder="+1 (234) 567-890" />
 								</div>
 							</div>
 
-							<div className="space-y-1.5 group">
-								<label className="text-xs font-bold text-[#1A2744] uppercase tracking-wider ml-1">Delivery Address</label>
+							<div className="space-y-2 group">
+								<label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Address</label>
 								<div className="relative">
-									<MapPin size={18} className="absolute left-3.5 top-3.5 text-[#1A2744]/30 group-focus-within:text-[#D4A373] transition-colors" />
-									<textarea value={addForm.address} onChange={e => setAddForm({ ...addForm, address: e.target.value })} className="w-full pl-11 pr-4 py-3 bg-white border border-[#D4A373]/20 focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/20 rounded-xl text-sm outline-none transition-all min-h-[100px] resize-none" placeholder="Enter Complete Delivery Address" />
+									<MapPin size={18} className="absolute left-4 top-5 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
+									<textarea value={addForm.address} onChange={e => setAddForm({ ...addForm, address: e.target.value })} className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all min-h-[120px] resize-none font-medium placeholder:text-chocolate/10" placeholder="Enter delivery address..." />
 								</div>
 							</div>
 
-							<div className="space-y-1.5 group">
-								<label className="text-xs font-bold text-[#1A2744] uppercase tracking-wider ml-1">Account Password</label>
+							<div className="space-y-2 group">
+								<label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Password</label>
 								<div className="relative">
-									<Lock size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#1A2744]/30 group-focus-within:text-[#D4A373] transition-colors" />
-									<input type="password" required value={addForm.password} onChange={e => setAddForm({ ...addForm, password: e.target.value })} className="w-full pl-11 pr-4 py-3 bg-white border border-[#D4A373]/20 focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/20 rounded-xl text-sm outline-none transition-all" placeholder="Create a password" />
+									<Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
+									<input type="password" required value={addForm.password} onChange={e => setAddForm({ ...addForm, password: e.target.value })} className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium placeholder:text-chocolate/10" placeholder="Enter secure password" />
 								</div>
 							</div>
 						</div>
 					</form>
 
-					<SheetFooter className="p-6 bg-white border-t border-[#D4A373]/10 flex flex-row justify-end gap-3">
-						<button type="button" onClick={() => setShowAddModal(false)} className="px-6 py-2.5 rounded-xl text-sm font-bold text-[#1A2744] hover:bg-[#FAF6E6] border border-[#D4A373]/10 transition-colors">
+					<SheetFooter className="p-10 bg-white border-t border-chocolate/5 flex flex-row items-center justify-between">
+						<button 
+              type="button" 
+              onClick={() => setShowAddModal(false)} 
+              className="px-8 py-3 rounded-full text-xs font-bold text-chocolate bg-white border border-chocolate/10 hover:bg-chocolate/5 transition-all uppercase tracking-widest"
+            >
 							Cancel
 						</button>
-						<button type="submit" form="add-customer-form" disabled={addingCustomer} className="px-8 py-2.5 rounded-xl text-sm font-bold text-[#F5ECD7] flex items-center gap-2 shadow-lg hover:shadow-xl transition-all bg-[#1A2744] hover:bg-[#D4A373] hover:text-[#1A2744] disabled:opacity-70">
+						<button 
+              type="submit" 
+              form="add-customer-form" 
+              disabled={addingCustomer} 
+              className="px-10 py-4 rounded-full text-xs font-bold text-white bg-chocolate hover:bg-strawberry transition-all shadow-bakery disabled:opacity-50 flex items-center gap-3 uppercase tracking-widest"
+            >
 							{addingCustomer ? (
-								<><div className="w-4 h-4 border-2 border-[#1A2744]/20 border-t-[#D4A373] rounded-full animate-spin" /> Saving</>
-							) : "Save Customer"}
+								<RefreshCw size={16} className="animate-spin" />
+							) : "Add Customer"}
 						</button>
 					</SheetFooter>
 				</SheetContent>

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { toast } from 'sonner';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Image as ImageIcon, X } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '../components/ui/sheet';
 
 interface GalleryItem {
   _id?: string;
@@ -27,7 +28,6 @@ export default function AdminGallery() {
     setLoading(true);
     try {
       const res = await api.gallery.getAll();
-      // api wrapper normalizes response to the data payload; ensure array
       const list = Array.isArray(res) ? res : (res && (res as any).data) || [];
       setItems(list as GalleryItem[]);
     } catch (e) {
@@ -95,34 +95,67 @@ export default function AdminGallery() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-8 animate-in fade-in duration-700">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-playfair">Gallery Admin</h2>
-          <p className="text-sm text-[#8D6E63]">Add, edit and remove gallery images shown on public gallery.</p>
+          <h2 className="text-3xl font-bold font-dancing text-chocolate">Gallery Master</h2>
+          <p className="text-sm text-chocolate-light font-medium mt-1">Curate your bakery's visual story and showcase your sweet creations.</p>
         </div>
-        <button onClick={openAdd} className="px-4 py-2 bg-[#1A2744] text-white rounded-lg flex items-center gap-2">
-          <Plus size={16}/> Add Image
+        <button 
+          onClick={openAdd} 
+          className="px-6 py-3 bg-chocolate text-white rounded-full flex items-center gap-2 shadow-bakery hover:shadow-bakery-lg hover:bg-strawberry transition-all duration-300 group"
+        >
+          <Plus size={18} className="group-hover:rotate-90 transition-transform" />
+          <span className="font-bold text-xs uppercase tracking-widest">Add New Masterpiece</span>
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl p-4 border border-[#D4A373]/20">
-        {loading ? <div>Loading…</div> : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="bg-white/50 backdrop-blur-sm rounded-[2rem] p-8 border border-chocolate/10 shadow-bakery">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <div className="w-12 h-12 border-4 border-chocolate/10 border-t-chocolate rounded-full animate-spin" />
+            <p className="text-chocolate-light font-medium animate-pulse">Loading gallery items...</p>
+          </div>
+        ) : items.length === 0 ? (
+          <div className="text-center py-20 space-y-4">
+            <div className="w-20 h-20 bg-chocolate/5 rounded-full flex items-center justify-center mx-auto">
+              <ImageIcon className="text-chocolate/20" size={40} />
+            </div>
+            <div>
+              <p className="text-xl font-bold text-chocolate font-dancing">No sweet memories yet</p>
+              <p className="text-sm text-chocolate-light">Start by adding your first gallery image.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {items.map(it => (
-              <div key={it._id || it.id} className="border rounded-lg overflow-hidden bg-[#FAF6E6]">
-                <img src={it.src?.startsWith('data:') ? it.src : (it.src ? (it.src.startsWith('/') ? it.src : `/${it.src}`) : '/placeholder.svg')} alt={it.alt || it.title} className="w-full h-40 object-cover" />
-                <div className="p-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="font-medium">{it.title}</div>
-                      <div className="text-xs text-[#8D6E63]">{it.category}</div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => openEdit(it)} className="p-2 bg-white/60 rounded"><Edit size={14}/></button>
-                      <button onClick={() => handleDelete(it._id || it.id)} className="p-2 bg-white/60 rounded"><Trash2 size={14}/></button>
-                    </div>
+              <div key={it._id || it.id} className="group relative bg-white rounded-3xl overflow-hidden border border-chocolate/5 shadow-bakery hover:shadow-bakery-lg transition-all duration-500">
+                <div className="aspect-[4/3] overflow-hidden relative">
+                  <img 
+                    src={it.src?.startsWith('data:') ? it.src : (it.src ? (it.src.startsWith('/') ? it.src : `/${it.src}`) : '/placeholder.svg')} 
+                    alt={it.alt || it.title} 
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-chocolate/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute top-4 right-4 flex gap-2 translate-y-[-10px] opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+                    <button onClick={() => openEdit(it)} className="p-2.5 bg-white/90 backdrop-blur-md rounded-full shadow-lg hover:bg-strawberry hover:text-white transition-colors">
+                      <Edit size={16}/>
+                    </button>
+                    <button onClick={() => handleDelete(it._id || it.id)} className="p-2.5 bg-white/90 backdrop-blur-md rounded-full shadow-lg hover:bg-red-500 hover:text-white transition-colors text-red-500">
+                      <Trash2 size={16}/>
+                    </button>
                   </div>
+                  {it.category && (
+                    <div className="absolute bottom-4 left-4">
+                      <span className="px-3 py-1 bg-strawberry text-white text-[10px] font-bold uppercase tracking-widest rounded-full shadow-sm">
+                        {it.category}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="p-5">
+                  <h4 className="font-bold text-chocolate text-lg leading-tight truncate">{it.title}</h4>
+                  {it.price && <p className="text-strawberry font-bold mt-1 text-sm">{it.price}</p>}
                 </div>
               </div>
             ))}
@@ -130,53 +163,90 @@ export default function AdminGallery() {
         )}
       </div>
 
-      {/* form modal simple */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <form onSubmit={handleSubmit} className="bg-white rounded-2xl w-full max-w-xl p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold">{editing ? 'Edit Image' : 'Add Image'}</h3>
-              <button type="button" onClick={() => setShowForm(false)} className="text-sm text-[#8D6E63]">Close</button>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs mb-1">Title</label>
-                <input name="title" defaultValue={editing?.title || ''} className="w-full p-2 border rounded" />
+      <Sheet open={showForm} onOpenChange={setShowForm}>
+        <SheetContent side="right" className="flex flex-col h-full bg-[#FAFBFD] p-0 border-l border-chocolate/10">
+          <SheetHeader className="p-8 bg-white border-b border-chocolate/5 relative overflow-hidden">
+             <div className="absolute top-0 right-0 w-32 h-32 bg-strawberry/5 rounded-full -mr-16 -mt-16 blur-3xl" />
+             <div className="relative flex items-center gap-4">
+                <div className="w-12 h-12 bg-chocolate text-white rounded-2xl flex items-center justify-center shadow-lg">
+                  <ImageIcon size={24} />
+                </div>
+                <div>
+                  <SheetTitle className="text-2xl font-bold text-chocolate font-dancing">
+                    {editing ? 'Edit Masterpiece' : 'Add New creation'}
+                  </SheetTitle>
+                  <SheetDescription className="text-chocolate-light font-medium">
+                    {editing ? 'Update the details for your sweet memory.' : 'Capture and share a new addition to the gallery.'}
+                  </SheetDescription>
+                </div>
+             </div>
+          </SheetHeader>
+
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 space-y-6">
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest ml-1">Title</label>
+                  <input name="title" defaultValue={editing?.title || ''} required className="w-full px-4 py-3 rounded-2xl bg-white border border-chocolate/10 focus:border-strawberry focus:ring-4 focus:ring-strawberry/5 outline-none transition-all shadow-sm" placeholder="Give your creation a name..." />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest ml-1">Category</label>
+                    <input name="category" defaultValue={editing?.category || ''} className="w-full px-4 py-3 rounded-2xl bg-white border border-chocolate/10 focus:border-strawberry focus:ring-4 focus:ring-strawberry/5 outline-none transition-all shadow-sm" placeholder="e.g. Cakes" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest ml-1">Badge</label>
+                    <input name="badge" defaultValue={editing?.badge || ''} className="w-full px-4 py-3 rounded-2xl bg-white border border-chocolate/10 focus:border-strawberry focus:ring-4 focus:ring-strawberry/5 outline-none transition-all shadow-sm" placeholder="e.g. New" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest ml-1">Price / Tag</label>
+                  <input name="price" defaultValue={editing?.price || ''} className="w-full px-4 py-3 rounded-2xl bg-white border border-chocolate/10 focus:border-strawberry focus:ring-4 focus:ring-strawberry/5 outline-none transition-all shadow-sm" placeholder="e.g. Starting from $20" />
+                </div>
               </div>
-              <div>
-                <label className="block text-xs mb-1">Category</label>
-                <input name="category" defaultValue={editing?.category || ''} className="w-full p-2 border rounded" />
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest ml-1">Description</label>
+                <textarea name="desc" defaultValue={editing?.desc || ''} className="w-full px-4 py-3 rounded-2xl bg-white border border-chocolate/10 focus:border-strawberry focus:ring-4 focus:ring-strawberry/5 outline-none transition-all shadow-sm min-h-[100px]" placeholder="Tell the story behind this delight..." />
               </div>
-              <div>
-                <label className="block text-xs mb-1">Badge</label>
-                <input name="badge" defaultValue={editing?.badge || ''} className="w-full p-2 border rounded" />
-              </div>
-              <div>
-                <label className="block text-xs mb-1">Price</label>
-                <input name="price" defaultValue={editing?.price || ''} className="w-full p-2 border rounded" />
+
+              <div className="space-y-4">
+                <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest ml-1">Image Presentation</label>
+                <div className="relative group overflow-hidden rounded-3xl border-2 border-dashed border-chocolate/20 bg-chocolate/5 flex flex-col items-center justify-center p-8 transition-all hover:border-strawberry/40 hover:bg-strawberry/5">
+                  {preview ? (
+                    <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-lg">
+                      <img src={preview} className="w-full h-full object-cover" alt="preview" />
+                      <button 
+                        type="button" 
+                        onClick={() => { setPreview(null); setFileData(null); }}
+                        className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full shadow-lg hover:scale-110 transition-transform"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-3 text-chocolate-light cursor-pointer">
+                      <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-bakery">
+                        <Plus className="text-strawberry" />
+                      </div>
+                      <div className="text-center">
+                        <span className="font-bold text-sm block">Click to upload cover</span>
+                        <span className="text-[10px] opacity-70">PNG, JPG or WEBP (Max. 5MB)</span>
+                      </div>
+                    </div>
+                  )}
+                  <input type="file" accept="image/*" onChange={(e) => handleFile(e.target.files ? e.target.files[0] : undefined)} className="absolute inset-0 opacity-0 cursor-pointer" />
+                </div>
               </div>
             </div>
 
-            <div className="mt-3">
-              <label className="block text-xs mb-1">Description</label>
-              <textarea name="desc" defaultValue={editing?.desc || ''} className="w-full p-2 border rounded" />
-            </div>
-
-            <div className="mt-3 flex items-center gap-4">
-              <div>
-                <label className="block text-xs mb-1">Image</label>
-                <input type="file" accept="image/*" onChange={(e) => handleFile(e.target.files ? e.target.files[0] : undefined)} />
-              </div>
-              {preview && <img src={preview} className="w-32 h-20 object-cover rounded" alt="preview" />}
-            </div>
-
-            <div className="mt-4 flex justify-end gap-3">
-              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded border">Cancel</button>
-              <button type="submit" className="px-4 py-2 bg-[#1A2744] text-white rounded">Save</button>
-            </div>
+            <SheetFooter className="pt-4 border-t border-chocolate/5 gap-3">
+              <button type="button" onClick={() => setShowForm(false)} className="flex-1 px-6 py-3 rounded-full border border-chocolate/10 font-bold text-chocolate hover:bg-chocolate/5 transition-colors">Cancel</button>
+              <button type="submit" className="flex-1 px-6 py-3 bg-chocolate text-white rounded-full font-bold shadow-bakery hover:shadow-bakery-lg hover:bg-strawberry transition-all">Save Changes</button>
+            </SheetFooter>
           </form>
-        </div>
-      )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
