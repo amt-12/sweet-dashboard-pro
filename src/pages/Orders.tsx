@@ -5,6 +5,7 @@ import { setOrders, setLoading, setError } from "../store/slices/orderSlice";
 import { api } from "../services/api";
 import type { Order as OrderType } from "../types";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "../components/ui/sheet";
+import { useToast } from "@/hooks/use-toast";
 
 type Order = {
   id: string | number;
@@ -17,20 +18,20 @@ type Order = {
 };
 
 const getStatusStyles = (status: string) => {
-    const s = status.toLowerCase();
+    const s = (status || '').toLowerCase();
     if (s === "delivered" || s === "completed") return "bg-emerald-50 text-emerald-600 border-emerald-100";
-    if (s === "processing" || s === "preparing") return "bg-blue-50 text-blue-600 border-blue-100";
-    if (s === "pending") return "bg-amber-50 text-amber-600 border-amber-100";
+    if (s === "processing" || s === "preparing" || s === "confirmed" || s === "out_for_delivery") return "bg-blue-50 text-blue-600 border-blue-100";
+    if (s === "pending" || s === "paid" || s === "placed") return "bg-amber-50 text-amber-600 border-amber-100";
     if (s === "cancelled") return "bg-red-50 text-red-600 border-red-100";
     if (s === "ready") return "bg-strawberry/5 text-strawberry border-strawberry/10";
     return "bg-chocolate/5 text-chocolate border-chocolate/10";
 };
 
 const getStatusIcon = (status: string) => {
-    const s = status.toLowerCase();
+    const s = (status || '').toLowerCase();
     if (s === "delivered" || s === "completed") return <CheckCircle size={12} />;
-    if (s === "processing" || s === "preparing") return <ChefHat size={12} />;
-    if (s === "pending") return <Clock size={12} />;
+    if (s === "processing" || s === "preparing" || s === "confirmed" || s === "out_for_delivery") return <ChefHat size={12} />;
+    if (s === "pending" || s === "paid" || s === "placed") return <Clock size={12} />;
     if (s === "cancelled") return <XCircle size={12} />;
     if (s === "ready") return <Package size={12} />;
     return <Truck size={12} />;
@@ -38,8 +39,10 @@ const getStatusIcon = (status: string) => {
 
 const Orders = () => {
   const dispatch = useAppDispatch();
+  const { toast } = useToast();
   const { orders, loading, error } = useAppSelector((state) => state.orders);
   const [selectedOrder, setSelectedOrder] = useState<OrderType | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
   
   const normalizeToArray = (payload: unknown): OrderType[] => {
     if (Array.isArray(payload)) return payload as unknown as OrderType[];
@@ -51,15 +54,67 @@ const Orders = () => {
     return [];
   };
   
-  const orderList = normalizeToArray(orders);
+  const normalizeCheckoutOrders = (orders: any[]): OrderType[] => {
+    return orders.map(order => ({
+      id: order._id || order.id,
+      customerId: order.customerId,
+      customerName: order.customerName,
+      items: order.items?.map((item: any) => `${item.name} (x${item.quantity})`).join(', ') || 'N/A',
+      total: order.totalAmount || 0,
+      status: order.orderStatus || 'placed',
+      date: new Date(order.createdAt).toLocaleDateString(),
+      paymentStatus: order.paymentStatus || 'pending',
+    })) as OrderType[];
+  };
+
+  const handleMarkAsDelivered = async () => {
+    if (!selectedOrder) return;
+    
+    setIsUpdating(true);
+    try {
+      await api.checkoutOrders.updateStatus(selectedOrder.id, 'delivered');
+      toast({
+        title: "Success!",
+        description: "Order marked as delivered",
+      });
+      // Refresh orders
+      const [customizeOrders, checkoutOrders] = await Promise.all([
+        api.orders.getAll().catch(() => []),
+        api.checkoutOrders.getAll().catch(() => []),
+      ]);
+      const customNormalized = normalizeToArray(customizeOrders);
+      const checkoutNormalized = normalizeCheckoutOrders(normalizeToArray(checkoutOrders) as any[]);
+      const combined = [...customNormalized, ...checkoutNormalized];
+      dispatch(setOrders(combined));
+      setSelectedOrder(null);
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to update order status",
+        variant: "destructive",
+      });
+      console.error(err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+  
+  const orderList = normalizeToArray(orders).filter(
+    order => order.status?.toLowerCase() !== 'delivered' && order.status?.toLowerCase() !== 'completed'
+  );
 
   useEffect(() => {
     const fetchOrders = async () => {
       dispatch(setLoading(true));
       try {
-        const data = await api.orders.getAll();
-        const normalized = normalizeToArray(data);
-        dispatch(setOrders(normalized));
+        const [customizeOrders, checkoutOrders] = await Promise.all([
+          api.orders.getAll().catch(() => []),
+          api.checkoutOrders.getAll().catch(() => []),
+        ]);
+        const customNormalized = normalizeToArray(customizeOrders);
+        const checkoutNormalized = normalizeCheckoutOrders(normalizeToArray(checkoutOrders) as any[]);
+        const combined = [...customNormalized, ...checkoutNormalized];
+        dispatch(setOrders(combined));
       } catch (err) {
         dispatch(setError("Failed to fetch orders"));
       } finally {
@@ -139,9 +194,6 @@ const Orders = () => {
                           className="p-2.5 bg-chocolate text-white rounded-full shadow-bakery hover:bg-strawberry transition-colors"
                         >
                           <Eye size={16} />
-                        </button>
-                        <button className="p-2.5 bg-red-50 text-red-500 rounded-full border border-red-100 hover:bg-red-500 hover:text-white transition-colors">
-                          <XCircle size={16} />
                         </button>
                     </div>
                   </td>
@@ -224,12 +276,23 @@ const Orders = () => {
           )}
 
           <SheetFooter className="p-8 bg-white border-t border-chocolate/5">
-            <button 
-              onClick={() => setSelectedOrder(null)}
-              className="w-full py-3 bg-chocolate text-white rounded-full font-bold shadow-bakery hover:bg-strawberry transition-all text-xs uppercase tracking-widest"
-            >
-              Done Reviewing
-            </button>
+            <div className="flex gap-3 w-full">
+              <button 
+                onClick={() => setSelectedOrder(null)}
+                className="flex-1 py-3 bg-chocolate/10 text-chocolate rounded-full font-bold shadow-bakery hover:bg-chocolate/20 transition-all text-xs uppercase tracking-widest"
+              >
+                Close
+              </button>
+              {selectedOrder?.status !== 'delivered' && selectedOrder?.status !== 'completed' && (
+                <button 
+                  onClick={() => void handleMarkAsDelivered()}
+                  disabled={isUpdating}
+                  className="flex-1 py-3 bg-emerald-500 text-white rounded-full font-bold shadow-bakery hover:bg-emerald-600 transition-all text-xs uppercase tracking-widest disabled:opacity-50"
+                >
+                  {isUpdating ? 'Updating...' : 'Mark Delivered'}
+                </button>
+              )}
+            </div>
           </SheetFooter>
         </SheetContent>
       </Sheet>
