@@ -1,3 +1,5 @@
+import { getPermissionForPath } from '@/utils/menuConfig';
+
 const TOKEN_KEY = 'admin_token';
 const ROLE_KEY = 'admin_role';
 const USER_KEY = 'admin_user';
@@ -67,6 +69,17 @@ export function getPermissions() {
     }
   }
   return [];
+}
+
+export function hasPermission(feature?: string) {
+  if (!feature) return true;
+  if (getRole() === 'superadmin') return true;
+  return getPermissions().includes(feature);
+}
+
+export function hasAccessToPath(path: string) {
+  const requiredPermission = getPermissionForPath(path);
+  return hasPermission(requiredPermission);
 }
 
 export function logout() {

@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { RefreshCw, Lock, CheckCircle2 } from 'lucide-react';
-import { ALL_FEATURES } from '@/utils/menuConfig';
+import { RefreshCw, Lock } from 'lucide-react';
+import { ALL_FEATURES, FEATURE_GROUPS } from '@/utils/menuConfig';
 
 interface PermissionsDrawerProps {
   open: boolean;
@@ -22,6 +21,19 @@ export const PermissionsDrawer: React.FC<PermissionsDrawerProps> = ({
 }) => {
   const [permissions, setPermissions] = useState<string[]>(currentPermissions);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setPermissions(currentPermissions);
+  }, [currentPermissions, open]);
+
+  const groupedFeatures = useMemo(
+    () => [
+      { label: 'Main Features', items: FEATURE_GROUPS.main },
+      { label: 'Product Details', items: FEATURE_GROUPS.productDetails },
+      { label: 'About Pages', items: FEATURE_GROUPS.about },
+    ],
+    []
+  );
 
   const handleToggle = (feature: string) => {
     setPermissions((prev) =>
@@ -88,47 +100,28 @@ export const PermissionsDrawer: React.FC<PermissionsDrawerProps> = ({
           </div>
 
           <div className="space-y-6">
-            <div>
-              <h4 className="text-[10px] font-bold text-chocolate/40 uppercase tracking-widest mb-4">Main Features</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {ALL_FEATURES.slice(0, 13).map((feature) => (
-                  <label
-                    key={feature}
-                    className="flex items-center gap-3 p-4 bg-white border border-chocolate/5 rounded-2xl hover:border-strawberry/30 cursor-pointer transition-all group"
-                  >
-                    <Checkbox
-                      checked={permissions.includes(feature)}
-                      onCheckedChange={() => handleToggle(feature)}
-                      className="w-5 h-5 border-chocolate/20 accent-chocolate"
-                    />
-                    <span className="text-sm font-medium text-chocolate group-hover:text-strawberry transition-colors">
-                      {feature}
-                    </span>
-                  </label>
-                ))}
+            {groupedFeatures.map((group) => (
+              <div key={group.label}>
+                <h4 className="text-[10px] font-bold text-chocolate/40 uppercase tracking-widest mb-4">{group.label}</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {group.items.map((feature) => (
+                    <label
+                      key={feature}
+                      className="flex items-center gap-3 p-4 bg-white border border-chocolate/5 rounded-2xl hover:border-strawberry/30 cursor-pointer transition-all group"
+                    >
+                      <Checkbox
+                        checked={permissions.includes(feature)}
+                        onCheckedChange={() => handleToggle(feature)}
+                        className="w-5 h-5 border-chocolate/20 accent-chocolate"
+                      />
+                      <span className="text-sm font-medium text-chocolate group-hover:text-strawberry transition-colors">
+                        {feature}
+                      </span>
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
-
-            <div>
-              <h4 className="text-[10px] font-bold text-chocolate/40 uppercase tracking-widest mb-4">Sub Features</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {ALL_FEATURES.slice(13).map((feature) => (
-                  <label
-                    key={feature}
-                    className="flex items-center gap-3 p-4 bg-white border border-chocolate/5 rounded-2xl hover:border-strawberry/30 cursor-pointer transition-all group"
-                  >
-                    <Checkbox
-                      checked={permissions.includes(feature)}
-                      onCheckedChange={() => handleToggle(feature)}
-                      className="w-5 h-5 border-chocolate/20 accent-chocolate"
-                    />
-                    <span className="text-sm font-medium text-chocolate group-hover:text-strawberry transition-colors">
-                      {feature}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
+            ))}
 
             <div className="p-6 bg-chocolate/5 rounded-2xl border border-chocolate/10">
               <p className="text-xs font-medium text-chocolate-light italic">

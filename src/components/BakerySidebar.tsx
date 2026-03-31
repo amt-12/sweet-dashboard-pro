@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useLocation, Link, NavLink } from "react-router-dom";
+import { useState, useEffect, useMemo } from "react";
+import { useLocation, Link } from "react-router-dom";
 import {
   ShoppingBag,
   Package,
@@ -21,7 +21,7 @@ import {
   ChefHat,
 } from "lucide-react";
 import cupcakeIcon from "@/assets/cupcake-icon.png";
-import { getRole, getPermissions } from '@/services/auth';
+import { getRole, hasPermission } from '@/services/auth';
 
 const menuItems = [
   { title: "Dashboard", icon: LayoutDashboard, path: "/admin" },
@@ -35,7 +35,6 @@ const menuItems = [
     icon: Info,
     path: "/admin/about",
     children: [
-      { title: "About Us", icon: Info, path: "/admin/about" },
       { title: "Origin Story", icon: Info, path: "/admin/about/origin-story" },
       { title: "Values", icon: Star, path: "/admin/about/values" },
       { title: "Team", icon: ChefHat, path: "/admin/team" },
@@ -74,7 +73,6 @@ const BakerySidebar = () => {
   const [openAbout, setOpenAbout] = useState(false);
   const location = useLocation();
   const role = getRole();
-  const permissions = getPermissions();
   
   const getVisibleMenu = () => {
     // Superadmin sees everything
@@ -82,42 +80,55 @@ const BakerySidebar = () => {
       return menuItems;
     }
     
-    // Admin sees only items in their permissions
+    // Admin sees only pages included in assigned permissions.
     return menuItems.map(item => {
       // Always show Dashboard
       if (item.title === 'Dashboard') return item;
-      
-      // Filter by permissions
-      if (permissions.includes(item.title)) {
-        // If item has children, filter those too
-        if (item.children) {
-          return {
-            ...item,
-            children: item.children.filter(child => permissions.includes(child.title))
-          };
+
+      if (item.title === 'Admins') return null;
+
+      if (item.children) {
+        const visibleChildren = item.children.filter((child) => hasPermission(child.title));
+        const canViewParent = hasPermission(item.title);
+
+        if (!canViewParent && visibleChildren.length === 0) {
+          return null;
         }
+
+        return {
+          ...item,
+          children: visibleChildren,
+        };
+      }
+
+      if (hasPermission(item.title)) {
         return item;
       }
+
       return null;
     }).filter(Boolean);
   };
   
-  const visibleMenu = getVisibleMenu();
+  const visibleMenu = useMemo(() => getVisibleMenu(), [role, location.pathname]);
 
-  // auto-open product/about submenu when navigating to one of its child routes
+  // Auto-open submenu when current route is inside it, but don't force-close on unrelated routes.
   useEffect(() => {
     const product = visibleMenu.find(m => m.title === 'Products');
     if (product && product.children) {
       const activeChild = product.children.some(c => location.pathname.startsWith(c.path));
       const activeParent = location.pathname === product.path || location.pathname.startsWith(product.path + "/");
-      setOpenProducts(activeChild || activeParent);
+      if (activeChild || activeParent) {
+        setOpenProducts(true);
+      }
     }
 
     const about = visibleMenu.find(m => m.title === 'About');
     if (about && about.children) {
       const activeChild = about.children.some(c => location.pathname.startsWith(c.path));
       const activeParent = location.pathname === about.path || location.pathname.startsWith(about.path + "/");
-      setOpenAbout(activeChild || activeParent);
+      if (activeChild || activeParent) {
+        setOpenAbout(true);
+      }
     }
   }, [location.pathname, visibleMenu]);
 
