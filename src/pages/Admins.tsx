@@ -17,7 +17,8 @@ import {
   CheckCircle2,
   RefreshCw,
   Hash,
-  Crown
+  Crown,
+  Phone
 } from 'lucide-react';
 import { fetchWithAuth } from '@/services/auth';
 import { toast } from 'sonner';
@@ -93,7 +94,7 @@ const Avatar = ({ name, size = 'md' }: { name?: string; size?: 'sm' | 'md' | 'lg
 const Admins = () => {
   const [admins, setAdmins] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ email: '', password: '', name: '', role: 'admin' });
+  const [form, setForm] = useState({ email: '', password: '', name: '', phone: '', role: 'admin' });
   const [creating, setCreating] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<any | null>(null);
   const [showSheet, setShowSheet] = useState(false);
@@ -245,7 +246,7 @@ const Admins = () => {
         throw new Error(err.error || 'Failed to add member');
       }
       toast.success('New team member added!');
-      setForm({ email: '', password: '', name: '', role: 'admin' });
+      setForm({ email: '', password: '', name: '', phone: '', role: 'admin' });
       setShowSheet(false);
       load();
     } catch (err: any) {
@@ -584,6 +585,20 @@ const Admins = () => {
                     value={form.password} 
                     onChange={(e) => setForm({ ...form, password: e.target.value })} 
                     placeholder="••••••••"
+                    className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium placeholder:text-chocolate/10"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2 group">
+                <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Phone Number <span className="text-orange-400 font-medium">(Optional)</span></label>
+                <div className="relative">
+                  <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
+                  <input 
+                    type="tel"
+                    value={form.phone} 
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })} 
+                    placeholder="e.g., +91-9876543210"
                     className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium placeholder:text-chocolate/10"
                   />
                 </div>
