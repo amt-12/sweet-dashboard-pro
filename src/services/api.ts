@@ -101,11 +101,12 @@ export const api = {
     getAll: (): Promise<any[]> => axiosInstance.get('/orders').then(res => normalize<any[]>(res)),
     getById: (id: string | number) => axiosInstance.get(`/orders/${id}`).then(res => normalize(res)),
     delete: (id: string | number) => axiosInstance.delete(`/orders/${id}`).then(() => undefined),
+    updateStatus: (orderId: string | number, status: string, data?: any) => axiosInstance.patch(`/orders/${orderId}/status`, { status, ...data }).then(res => normalize(res)),
   },
   checkoutOrders: {
     getAll: (): Promise<any[]> => axiosInstance.get('/checkout-orders').then(res => normalize<any[]>(res)),
     getById: (id: string | number) => axiosInstance.get(`/checkout-orders/${id}`).then(res => normalize(res)),
-    updateStatus: (orderId: string | number, status: string) => axiosInstance.patch(`/checkout-orders/${orderId}/status`, { status }).then(res => normalize(res)),
+    updateStatus: (orderId: string | number, status: string, data?: any) => axiosInstance.patch(`/checkout-orders/${orderId}/status`, { status, ...data }).then(res => normalize(res)),
   },
   customers: {
     getAll: (): Promise<any[]> => axiosInstance.get('/customers').then(res => normalize<any[]>(res)),

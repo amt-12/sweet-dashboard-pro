@@ -36,6 +36,7 @@ const ValuesAdmin = lazy(() => import("./pages/admin/ValuesAdmin"));
 const TeamAdmin = lazy(() => import("./pages/admin/TeamAdmin"));
 const IngredientConfig = lazy(() => import("./pages/IngredientConfig"));
 const NutritionConfig = lazy(() => import("./pages/NutritionConfig"));
+const Roles = lazy(() => import("./pages/Roles"));
 
 const queryClient = new QueryClient();
 
@@ -108,6 +109,7 @@ const App = () => (
               <Route path="about/values" element={<RequirePermission path="/admin/about/values"><ValuesAdmin /></RequirePermission>} />
               <Route path="team" element={<RequirePermission path="/admin/team"><TeamAdmin /></RequirePermission>} />
               <Route path="admins" element={<RequireRole role="superadmin"><Admins /></RequireRole>} />
+              <Route path="roles" element={<RequireRole role="superadmin"><Roles /></RequireRole>} />
               <Route path="customize-order" element={<RequirePermission path="/admin/customize-order"><CustomizeOrderAdmin /></RequirePermission>} />
               <Route path="settings" element={<RequirePermission path="/admin/settings"><Settings /></RequirePermission>} />
             </Route>

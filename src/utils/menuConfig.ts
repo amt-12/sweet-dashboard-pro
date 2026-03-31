@@ -52,6 +52,7 @@ export const ADMIN_ROUTE_PERMISSIONS: Record<string, string> = {
   '/admin/analytics': 'Analytics',
   '/admin/settings': 'Settings',
   '/admin/admins': 'Admins',
+  '/admin/roles': 'Roles',
   '/admin/about/origin-story': 'Origin Story',
   '/admin/about/values': 'Values',
   '/admin/team': 'Team',

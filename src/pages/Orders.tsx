@@ -43,6 +43,11 @@ const Orders = () => {
   const { orders, loading, error } = useAppSelector((state) => state.orders);
   const [selectedOrder, setSelectedOrder] = useState<OrderType | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showStatusForm, setShowStatusForm] = useState(false);
+  const [newStatus, setNewStatus] = useState('');
+  const [deliveryPartner, setDeliveryPartner] = useState('');
+  const [deliveryPartnerPhone, setDeliveryPartnerPhone] = useState('');
+  const [deliveryEstimatedTime, setDeliveryEstimatedTime] = useState('');
   
   const normalizeToArray = (payload: unknown): OrderType[] => {
     if (Array.isArray(payload)) return payload as unknown as OrderType[];
@@ -64,6 +69,19 @@ const Orders = () => {
       status: order.orderStatus || 'placed',
       date: new Date(order.createdAt).toLocaleDateString(),
       paymentStatus: order.paymentStatus || 'pending',
+      orderType: 'checkout',
+    })) as OrderType[];
+  };
+  
+  const normalizeCustomOrders = (orders: any[]): OrderType[] => {
+    return orders.map(order => ({
+      id: order._id || order.id,
+      customerName: order.name,
+      items: `${order.flavor} ${order.shape} cake - Weight: ${order.weight}`,
+      total: 0, // Custom orders don't have total in this context
+      status: order.orderStatus || 'placed',
+      date: new Date(order.createdAt).toLocaleDateString(),
+      orderType: 'custom',
     })) as OrderType[];
   };
 
@@ -72,18 +90,87 @@ const Orders = () => {
     
     setIsUpdating(true);
     try {
-      await api.checkoutOrders.updateStatus(selectedOrder.id, 'delivered');
+      // Use the appropriate API endpoint based on order type
+      if ((selectedOrder as any).orderType === 'custom') {
+        await api.orders.updateStatus(selectedOrder.id, 'delivered');
+      } else {
+        await api.checkoutOrders.updateStatus(selectedOrder.id, 'delivered');
+      }
+      
       toast({
         title: "Success!",
         description: "Order marked as delivered",
       });
+      
       // Refresh orders
       const [customizeOrders, checkoutOrders] = await Promise.all([
         api.orders.getAll().catch(() => []),
         api.checkoutOrders.getAll().catch(() => []),
       ]);
-      const customNormalized = normalizeToArray(customizeOrders);
       const checkoutNormalized = normalizeCheckoutOrders(normalizeToArray(checkoutOrders) as any[]);
+      const customNormalized = normalizeCustomOrders(normalizeToArray(customizeOrders) as any[]);
+      const combined = [...customNormalized, ...checkoutNormalized];
+      dispatch(setOrders(combined));
+      setSelectedOrder(null);
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to update order status",
+        variant: "destructive",
+      });
+      console.error(err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleStatusUpdate = async () => {
+    if (!selectedOrder || !newStatus) return;
+
+    // Validate delivery partner info for out_for_delivery
+    if (newStatus === 'out_for_delivery' && (!deliveryPartner || !deliveryPartnerPhone)) {
+      toast({
+        title: "Error",
+        description: "Delivery partner name and phone are required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      const updateData: any = {};
+      if (newStatus === 'out_for_delivery') {
+        updateData.deliveryPartner = deliveryPartner;
+        updateData.deliveryPartnerPhone = deliveryPartnerPhone;
+        updateData.deliveryEstimatedTime = deliveryEstimatedTime;
+      }
+
+      if ((selectedOrder as any).orderType === 'custom') {
+        await api.orders.updateStatus(selectedOrder.id, newStatus, updateData);
+      } else {
+        await api.checkoutOrders.updateStatus(selectedOrder.id, newStatus, updateData);
+      }
+
+      toast({
+        title: "Success!",
+        description: `Order status updated to ${newStatus}`,
+      });
+
+      // Reset form
+      setShowStatusForm(false);
+      setNewStatus('');
+      setDeliveryPartner('');
+      setDeliveryPartnerPhone('');
+      setDeliveryEstimatedTime('');
+
+      // Refresh orders
+      const [customizeOrders, checkoutOrders] = await Promise.all([
+        api.orders.getAll().catch(() => []),
+        api.checkoutOrders.getAll().catch(() => []),
+      ]);
+      const checkoutNormalized = normalizeCheckoutOrders(normalizeToArray(checkoutOrders) as any[]);
+      const customNormalized = normalizeCustomOrders(normalizeToArray(customizeOrders) as any[]);
       const combined = [...customNormalized, ...checkoutNormalized];
       dispatch(setOrders(combined));
       setSelectedOrder(null);
@@ -111,8 +198,8 @@ const Orders = () => {
           api.orders.getAll().catch(() => []),
           api.checkoutOrders.getAll().catch(() => []),
         ]);
-        const customNormalized = normalizeToArray(customizeOrders);
         const checkoutNormalized = normalizeCheckoutOrders(normalizeToArray(checkoutOrders) as any[]);
+        const customNormalized = normalizeCustomOrders(normalizeToArray(customizeOrders) as any[]);
         const combined = [...customNormalized, ...checkoutNormalized];
         dispatch(setOrders(combined));
       } catch (err) {
@@ -275,24 +362,109 @@ const Orders = () => {
             </div>
           )}
 
-          <SheetFooter className="p-8 bg-white border-t border-chocolate/5">
-            <div className="flex gap-3 w-full">
-              <button 
-                onClick={() => setSelectedOrder(null)}
-                className="flex-1 py-3 bg-chocolate/10 text-chocolate rounded-full font-bold shadow-bakery hover:bg-chocolate/20 transition-all text-xs uppercase tracking-widest"
-              >
-                Close
-              </button>
-              {selectedOrder?.status !== 'delivered' && selectedOrder?.status !== 'completed' && (
+          <SheetFooter className="p-8 bg-white border-t border-chocolate/5 flex flex-col gap-4">
+            {showStatusForm ? (
+              <div className="space-y-4 w-full">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-chocolate/40 uppercase tracking-widest">Select Status</label>
+                  <select 
+                    value={newStatus}
+                    onChange={(e) => setNewStatus(e.target.value)}
+                    className="w-full px-4 py-2 border border-chocolate/10 rounded-lg focus:border-strawberry outline-none bg-white text-sm font-medium"
+                  >
+                    <option value="">-- Select --</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="preparing">Preparing</option>
+                    <option value="out_for_delivery">Out for Delivery</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+
+                {newStatus === 'out_for_delivery' && (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-chocolate/40 uppercase tracking-widest">Delivery Partner Name</label>
+                      <input 
+                        type="text" 
+                        placeholder="Enter partner name"
+                        value={deliveryPartner}
+                        onChange={(e) => setDeliveryPartner(e.target.value)}
+                        className="w-full px-4 py-2 border border-chocolate/10 rounded-lg focus:border-strawberry outline-none bg-white text-sm font-medium"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-chocolate/40 uppercase tracking-widest">Partner Phone</label>
+                      <input 
+                        type="tel" 
+                        placeholder="Enter phone number"
+                        value={deliveryPartnerPhone}
+                        onChange={(e) => setDeliveryPartnerPhone(e.target.value)}
+                        className="w-full px-4 py-2 border border-chocolate/10 rounded-lg focus:border-strawberry outline-none bg-white text-sm font-medium"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-chocolate/40 uppercase tracking-widest">Estimated Delivery Time (Optional)</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g., 02:30 PM"
+                        value={deliveryEstimatedTime}
+                        onChange={(e) => setDeliveryEstimatedTime(e.target.value)}
+                        className="w-full px-4 py-2 border border-chocolate/10 rounded-lg focus:border-strawberry outline-none bg-white text-sm font-medium"
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => {
+                      setShowStatusForm(false);
+                      setNewStatus('');
+                      setDeliveryPartner('');
+                      setDeliveryPartnerPhone('');
+                      setDeliveryEstimatedTime('');
+                    }}
+                    className="flex-1 py-2 bg-chocolate/10 text-chocolate rounded-full font-bold text-xs uppercase tracking-widest hover:bg-chocolate/20 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={() => void handleStatusUpdate()}
+                    disabled={isUpdating || !newStatus}
+                    className="flex-1 py-2 bg-chocolate text-white rounded-full font-bold text-xs uppercase tracking-widest hover:bg-strawberry transition-all disabled:opacity-50"
+                  >
+                    {isUpdating ? 'Updating...' : 'Update Status'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex gap-3 w-full">
                 <button 
-                  onClick={() => void handleMarkAsDelivered()}
-                  disabled={isUpdating}
-                  className="flex-1 py-3 bg-emerald-500 text-white rounded-full font-bold shadow-bakery hover:bg-emerald-600 transition-all text-xs uppercase tracking-widest disabled:opacity-50"
+                  onClick={() => setSelectedOrder(null)}
+                  className="flex-1 py-3 bg-chocolate/10 text-chocolate rounded-full font-bold shadow-bakery hover:bg-chocolate/20 transition-all text-xs uppercase tracking-widest"
                 >
-                  {isUpdating ? 'Updating...' : 'Mark Delivered'}
+                  Close
                 </button>
-              )}
-            </div>
+                {selectedOrder?.status !== 'delivered' && selectedOrder?.status !== 'completed' && (
+                  <>
+                    <button 
+                      onClick={() => setShowStatusForm(true)}
+                      className="flex-1 py-3 bg-chocolate text-white rounded-full font-bold shadow-bakery hover:bg-strawberry transition-all text-xs uppercase tracking-widest"
+                    >
+                      Update Status
+                    </button>
+                    <button 
+                      onClick={() => void handleMarkAsDelivered()}
+                      disabled={isUpdating}
+                      className="flex-1 py-3 bg-emerald-500 text-white rounded-full font-bold shadow-bakery hover:bg-emerald-600 transition-all text-xs uppercase tracking-widest disabled:opacity-50"
+                    >
+                      {isUpdating ? 'Updating...' : 'Mark Delivered'}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
           </SheetFooter>
         </SheetContent>
       </Sheet>

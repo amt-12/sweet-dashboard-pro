@@ -31,38 +31,15 @@ type PermissionItem = {
   group?: string;
 };
 
-const DEFAULT_PERMISSION_GROUPS: Record<string, { name: string; url: string }[]> = {
-  main: [
-    { name: 'Dashboard', url: '/admin' },
-    { name: 'Orders', url: '/admin/orders' },
-    { name: 'Customize Order', url: '/admin/customize-order' },
-    { name: 'Products', url: '/admin/products' },
-    { name: 'Gallery', url: '/admin/gallery' },
-    { name: 'Contacts', url: '/admin/contacts' },
-    { name: 'Customers', url: '/admin/customers' },
-    { name: 'Payments', url: '/admin/payments' },
-    { name: 'Delivery', url: '/admin/delivery' },
-    { name: 'Analytics', url: '/admin/analytics' },
-    { name: 'Settings', url: '/admin/settings' },
-    { name: 'Admins', url: '/admin/admins' },
-  ],
-  productDetails: [
-    { name: 'Categories', url: '/admin/categories' },
-    { name: 'Flavors', url: '/admin/flavors' },
-    { name: 'Weights', url: '/admin/weights' },
-    { name: 'Types', url: '/admin/types' },
-    { name: 'Occasions', url: '/admin/occasions' },
-    { name: 'Shapes', url: '/admin/shapes' },
-    { name: 'Themes', url: '/admin/themes' },
-    { name: 'Nutrition', url: '/admin/nutrition' },
-    { name: 'Ingredients', url: '/admin/ingredients' },
-  ],
-  about: [
-    { name: 'Origin Story', url: '/admin/about/origin-story' },
-    { name: 'Values', url: '/admin/about/values' },
-    { name: 'Team', url: '/admin/team' },
-  ],
+type RoleItem = {
+  _id: string;
+  name: string;
+  description: string;
+  permissions: string[];
+  isSystem?: boolean;
 };
+
+const DEFAULT_PERMISSION_GROUPS: Record<string, { name: string; url: string }[]> = {};
 
 const GROUP_LABELS: Record<string, string> = {
   main: 'Main Features',
@@ -73,16 +50,29 @@ const GROUP_LABELS: Record<string, string> = {
 
 const RoleBadge = ({ role }: { role: string }) => {
   const isManager = role === 'superadmin';
+  const isAdmin = role === 'admin';
+  
+  // Determine colors and icon based on role
+  let bgColor = 'bg-orange-100 text-orange-700 border-orange-200';
+  let icon = <Shield size={12} />;
+  let displayText = role?.charAt(0).toUpperCase() + role?.slice(1).replace(/([A-Z])/g, ' $1').trim() || 'User';
+
+  if (isManager) {
+    bgColor = 'bg-chocolate text-white border-chocolate/10';
+    icon = <Crown size={12} className="text-strawberry" />;
+    displayText = 'Manager';
+  } else if (isAdmin) {
+    bgColor = 'bg-white text-chocolate border-chocolate/10';
+    icon = <Shield size={12} className="text-strawberry/60" />;
+    displayText = 'Staff';
+  }
+
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-sm border ${
-        isManager
-          ? 'bg-chocolate text-white border-chocolate/10'
-          : 'bg-white text-chocolate border-chocolate/10'
-      }`}
+      className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-sm border ${bgColor}`}
     >
-      {isManager ? <Crown size={12} className="text-strawberry" /> : <Shield size={12} className="text-strawberry/60" />}
-      {isManager ? 'Manager' : 'Staff'}
+      {icon}
+      {displayText}
     </span>
   );
 };
@@ -113,6 +103,10 @@ const Admins = () => {
   const [permissionCatalog, setPermissionCatalog] = useState<PermissionItem[]>([]);
   const [permissionForm, setPermissionForm] = useState({ name: '', url: '', group: 'custom' });
   const [permissionSubmitting, setPermissionSubmitting] = useState(false);
+  const [roles, setRoles] = useState<RoleItem[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
+  const [showRoleSelector, setShowRoleSelector] = useState(false);
+  const [updatingRole, setUpdatingRole] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -143,9 +137,25 @@ const Admins = () => {
     }
   };
 
+  const loadRoles = async () => {
+    setRolesLoading(true);
+    try {
+      const res = await fetchWithAuth('/api/roles');
+      if (!res.ok) throw new Error('Failed to load roles');
+      const data = await res.json();
+      setRoles(data.roles || []);
+    } catch (err: any) {
+      console.warn('Failed to load roles:', err.message);
+      setRoles([]);
+    } finally {
+      setRolesLoading(false);
+    }
+  };
+
   useEffect(() => {
     load();
     loadPermissions();
+    loadRoles();
   }, []);
 
   const addPermission = async (e: React.FormEvent) => {
@@ -285,6 +295,36 @@ const Admins = () => {
       toast.success('Permissions updated successfully!');
     } catch (err: any) {
       toast.error(err.message || 'Failed to update permissions');
+    }
+  };
+
+  const assignRole = async (roleData: RoleItem) => {
+    if (!selectedAdmin?._id) return;
+    
+    setUpdatingRole(true);
+    try {
+      const res = await fetchWithAuth(`/api/admins/${selectedAdmin._id}/role`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roleName: roleData.name, permissions: roleData.permissions }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to assign role');
+      }
+
+      const updatedUser = await res.json();
+      setAdmins((prev) =>
+        prev.map((a) => (a._id === selectedAdmin._id ? updatedUser : a))
+      );
+      setSelectedAdmin(updatedUser);
+      toast.success(`Role updated to ${roleData.name}`);
+      setShowRoleSelector(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to assign role');
+    } finally {
+      setUpdatingRole(false);
     }
   };
 
@@ -551,22 +591,35 @@ const Admins = () => {
 
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Assign Role</label>
-                <div className="grid grid-cols-2 gap-4">
-                  <button 
-                    type="button" 
-                    onClick={() => setForm({...form, role: 'admin'})}
-                    className={`py-4 rounded-2xl font-bold text-[10px] uppercase tracking-widest border transition-all ${form.role === 'admin' ? 'bg-chocolate text-white border-chocolate shadow-bakery' : 'bg-white text-chocolate/40 border-chocolate/10 hover:border-strawberry/30'}`}
-                  >
-                    Staff
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => setForm({...form, role: 'superadmin'})}
-                    className={`py-4 rounded-2xl font-bold text-[10px] uppercase tracking-widest border transition-all ${form.role === 'superadmin' ? 'bg-chocolate text-white border-chocolate shadow-bakery' : 'bg-white text-chocolate/40 border-chocolate/10 hover:border-strawberry/30'}`}
-                  >
-                    Manager
-                  </button>
-                </div>
+                {rolesLoading ? (
+                  <div className="text-center py-4">
+                    <RefreshCw className="w-4 h-4 animate-spin mx-auto text-chocolate/50" />
+                  </div>
+                ) : roles.length === 0 ? (
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-xs text-blue-700">No roles available. Create roles first.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    {roles.map((role) => {
+                      const isSelected = form.role?.toLowerCase() === role.name.toLowerCase();
+                      return (
+                      <button
+                        key={role._id}
+                        type="button"
+                        onClick={() => setForm({ ...form, role: role.name })}
+                        className={`py-4 px-3 rounded-2xl font-bold text-[10px] uppercase tracking-widest border transition-all ${
+                          isSelected
+                            ? 'bg-chocolate text-white border-chocolate shadow-bakery'
+                            : 'bg-white text-chocolate/40 border-chocolate/10 hover:border-strawberry/30'
+                        }`}
+                      >
+                        {role.name}
+                      </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </form>
@@ -647,8 +700,42 @@ const Admins = () => {
                     <ShieldCheck size={14} /> Permissions Overview
                 </h4>
                 <p className="text-xs text-chocolate-light font-medium italic leading-relaxed">
-                    This user has {selectedAdmin?.role === 'superadmin' ? 'unrestricted' : 'limited staff'} access to the dashboard. They can {selectedAdmin?.role === 'superadmin' ? 'manage team members, access financial reports, and edit store settings' : 'manage products, view orders, and update inventory'}.
+                    {selectedAdmin?.role === 'superadmin' 
+                      ? 'This user has unrestricted access to the dashboard. They can manage team members, access financial reports, and edit store settings.'
+                      : selectedAdmin?.role === 'admin'
+                      ? 'This user has standard admin access. They can manage products, view orders, and update inventory.'
+                      : `This user has "${selectedAdmin?.role}" role with ${selectedAdmin?.permissions?.length || 0} assigned permission${selectedAdmin?.permissions?.length !== 1 ? 's' : ''}.`
+                    }
                 </p>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] border-b border-chocolate/5 pb-2">Manage Role</h4>
+              <button
+                onClick={() => setShowRoleSelector(true)}
+                className="w-full p-4 bg-white rounded-2xl border border-chocolate/10 hover:border-chocolate/30 transition-colors flex items-center justify-between"
+              >
+                <span className="text-sm font-semibold text-chocolate capitalize">
+                  Current: {selectedAdmin?.role?.charAt(0).toUpperCase() + selectedAdmin?.role?.slice(1).replace(/([A-Z])/g, ' $1').trim() || 'admin'}
+                </span>
+                <ChevronDown size={18} className="text-chocolate/40" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] border-b border-chocolate/5 pb-2">Direct Permissions</h4>
+              <button
+                onClick={() => setShowPermissionsDrawer(true)}
+                className="w-full p-4 bg-white rounded-2xl border border-chocolate/10 hover:border-chocolate/30 transition-colors flex items-center justify-between"
+              >
+                <span className="text-sm font-semibold text-chocolate">
+                  Manage Permissions
+                </span>
+                <ChevronDown size={18} className="text-chocolate/40" />
+              </button>
+              <p className="text-xs text-chocolate/60 italic">
+                Assign or remove specific permissions independently from the role
+              </p>
             </div>
           </div>
 
@@ -676,6 +763,73 @@ const Admins = () => {
         groupedFeatures={groupedFeatures}
         allFeatures={allFeatures}
       />
+
+      <Sheet open={showRoleSelector} onOpenChange={setShowRoleSelector}>
+        <SheetContent side="right" className="flex flex-col h-full bg-white p-0">
+          <SheetHeader className="p-6 bg-chocolate text-white">
+            <SheetTitle className="text-white">Assign Role to {selectedAdmin?.name || 'Member'}</SheetTitle>
+            <SheetDescription className="text-chocolate-light">
+              Select a role to assign to this team member
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {rolesLoading ? (
+              <div className="text-center py-12">
+                <RefreshCw className="w-8 h-8 animate-spin mx-auto text-chocolate/50 mb-2" />
+                <p className="text-sm text-chocolate/60">Loading roles...</p>
+              </div>
+            ) : roles.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-sm text-chocolate/60">No roles available</p>
+              </div>
+            ) : (
+              roles.map((role) => {
+                const isCurrentRole = selectedAdmin?.role?.toLowerCase() === role.name.toLowerCase();
+                return (
+                <button
+                  key={role._id}
+                  onClick={() => assignRole(role)}
+                  disabled={updatingRole || isCurrentRole}
+                  className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
+                    isCurrentRole
+                      ? 'bg-chocolate/10 border-chocolate text-chocolate'
+                      : 'bg-white border-gray-300 text-gray-700 hover:border-chocolate hover:bg-orange-50'
+                  } ${updatingRole ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-bold capitalize">{role.name}</h4>
+                      {role.description && (
+                        <p className="text-xs mt-1 opacity-75">{role.description}</p>
+                      )}
+                      <p className="text-xs mt-2 opacity-60">
+                        {role.permissions?.length || 0} permission{role.permissions?.length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                    {isCurrentRole && (
+                      <CheckCircle2 className="w-5 h-5 text-chocolate flex-shrink-0" />
+                    )}
+                    {updatingRole && isCurrentRole && (
+                      <RefreshCw className="w-5 h-5 animate-spin text-chocolate flex-shrink-0" />
+                    )}
+                  </div>
+                </button>
+                );
+              })
+            )}
+          </div>
+
+          <SheetFooter className="p-6 bg-gray-50 border-t">
+            <button
+              onClick={() => setShowRoleSelector(false)}
+              className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
+            >
+              Cancel
+            </button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };

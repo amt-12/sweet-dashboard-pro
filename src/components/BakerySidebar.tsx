@@ -19,6 +19,7 @@ import {
   ChevronDown,
   Info,
   ChefHat,
+  ShieldCheck,
 } from "lucide-react";
 import cupcakeIcon from "@/assets/cupcake-icon.png";
 import { getRole, hasAccessToPath } from '@/services/auth';
@@ -60,6 +61,7 @@ const menuItems = [
     ],
   },
   { title: "Admins", icon: Users, path: "/admin/admins" },
+  { title: "Roles", icon: ShieldCheck, path: "/admin/roles" },
   { title: "Customers", icon: Users, path: "/admin/customers" },
   { title: "Payments", icon: CreditCard, path: "/admin/payments" },
   { title: "Delivery", icon: Truck, path: "/admin/delivery" },
@@ -85,7 +87,7 @@ const BakerySidebar = () => {
       // Always show Dashboard
       if (item.title === 'Dashboard') return item;
 
-      if (item.title === 'Admins') return null;
+      if (item.title === 'Admins' || item.title === 'Roles') return null;
 
       if (item.children) {
         const visibleChildren = item.children.filter((child) => hasAccessToPath(child.path));

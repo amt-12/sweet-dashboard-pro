@@ -13,14 +13,15 @@ export interface Product {
 }
 
 export interface Order {
-  id: string;
-  customerId: number;
+  id: string | number;
+  customerId?: number;
   customerName: string;
   items: string;
-  total: number;
-  status: 'Delivered' | 'Processing' | 'Pending' | 'Cancelled';
+  total?: number;
+  status: 'placed' | 'confirmed' | 'preparing' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'Delivered' | 'Processing' | 'Pending' | 'Cancelled';
   date: string;
-  paymentStatus: 'Paid' | 'Pending' | 'Refunded';
+  paymentStatus?: 'Paid' | 'Pending' | 'Refunded' | 'paid' | 'pending' | 'failed';
+  orderType?: 'custom' | 'checkout';
 }
 
 export interface Customer {
