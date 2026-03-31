@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Navigate } from "react-router-dom";
-import { getToken, getRole, hasPermission } from "@/services/auth";
+import { getToken, getRole, hasAccessToPath } from "@/services/auth";
 
 // Lazy-loaded pages and admin layout
 
@@ -62,10 +62,10 @@ const RequireRole: React.FC<{ role: string; children: React.ReactElement }> = ({
   }
 };
 
-const RequirePermission: React.FC<{ feature: string; children: React.ReactElement }> = ({ feature, children }) => {
+const RequirePermission: React.FC<{ path: string; children: React.ReactElement }> = ({ path, children }) => {
   try {
     if (!isAuthenticated()) return <Navigate to="/login" replace />;
-    return hasPermission(feature) ? children : <Navigate to="/admin" replace />;
+    return hasAccessToPath(path) ? children : <Navigate to="/admin" replace />;
   } catch (e) {
     return <Navigate to="/login" replace />;
   }
@@ -86,30 +86,30 @@ const App = () => (
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<AdminLogin />} />
             <Route path="/admin" element={<RequireAuth><AdminLayout /></RequireAuth>}>
-              <Route index element={<RequirePermission feature="Dashboard"><Index /></RequirePermission>} />
-              <Route path="orders" element={<RequirePermission feature="Orders"><Orders /></RequirePermission>} />
-              <Route path="products" element={<RequirePermission feature="Products"><Products /></RequirePermission>} />
-              <Route path="customers" element={<RequirePermission feature="Customers"><Customers /></RequirePermission>} />
-              <Route path="categories" element={<RequirePermission feature="Categories"><Categories /></RequirePermission>} />
-              <Route path="contacts" element={<RequirePermission feature="Contacts"><Contacts /></RequirePermission>} />
-              <Route path="payments" element={<RequirePermission feature="Payments"><Payments /></RequirePermission>} />
-              <Route path="delivery" element={<RequirePermission feature="Delivery"><Delivery /></RequirePermission>} />
-              <Route path="analytics" element={<RequirePermission feature="Analytics"><Analytics /></RequirePermission>} />
-              <Route path="flavors" element={<RequirePermission feature="Flavors"><Flavors /></RequirePermission>} />
-              <Route path="weights" element={<RequirePermission feature="Weights"><Weights /></RequirePermission>} />
-              <Route path="shapes" element={<RequirePermission feature="Shapes"><Shapes /></RequirePermission>} />
-              <Route path="themes" element={<RequirePermission feature="Themes"><Themes /></RequirePermission>} />
-              <Route path="types" element={<RequirePermission feature="Types"><Types /></RequirePermission>} />
-              <Route path="occasions" element={<RequirePermission feature="Occasions"><Occasions /></RequirePermission>} />
-              <Route path="ingredients" element={<RequirePermission feature="Ingredients"><IngredientConfig /></RequirePermission>} />
-              <Route path="nutrition" element={<RequirePermission feature="Nutrition"><NutritionConfig /></RequirePermission>} />
-              <Route path="gallery" element={<RequirePermission feature="Gallery"><GalleryAdmin /></RequirePermission>} />
-              <Route path="about/origin-story" element={<RequirePermission feature="Origin Story"><OriginStoryEditor /></RequirePermission>} />
-              <Route path="about/values" element={<RequirePermission feature="Values"><ValuesAdmin /></RequirePermission>} />
-              <Route path="team" element={<RequirePermission feature="Team"><TeamAdmin /></RequirePermission>} />
+              <Route index element={<RequirePermission path="/admin"><Index /></RequirePermission>} />
+              <Route path="orders" element={<RequirePermission path="/admin/orders"><Orders /></RequirePermission>} />
+              <Route path="products" element={<RequirePermission path="/admin/products"><Products /></RequirePermission>} />
+              <Route path="customers" element={<RequirePermission path="/admin/customers"><Customers /></RequirePermission>} />
+              <Route path="categories" element={<RequirePermission path="/admin/categories"><Categories /></RequirePermission>} />
+              <Route path="contacts" element={<RequirePermission path="/admin/contacts"><Contacts /></RequirePermission>} />
+              <Route path="payments" element={<RequirePermission path="/admin/payments"><Payments /></RequirePermission>} />
+              <Route path="delivery" element={<RequirePermission path="/admin/delivery"><Delivery /></RequirePermission>} />
+              <Route path="analytics" element={<RequirePermission path="/admin/analytics"><Analytics /></RequirePermission>} />
+              <Route path="flavors" element={<RequirePermission path="/admin/flavors"><Flavors /></RequirePermission>} />
+              <Route path="weights" element={<RequirePermission path="/admin/weights"><Weights /></RequirePermission>} />
+              <Route path="shapes" element={<RequirePermission path="/admin/shapes"><Shapes /></RequirePermission>} />
+              <Route path="themes" element={<RequirePermission path="/admin/themes"><Themes /></RequirePermission>} />
+              <Route path="types" element={<RequirePermission path="/admin/types"><Types /></RequirePermission>} />
+              <Route path="occasions" element={<RequirePermission path="/admin/occasions"><Occasions /></RequirePermission>} />
+              <Route path="ingredients" element={<RequirePermission path="/admin/ingredients"><IngredientConfig /></RequirePermission>} />
+              <Route path="nutrition" element={<RequirePermission path="/admin/nutrition"><NutritionConfig /></RequirePermission>} />
+              <Route path="gallery" element={<RequirePermission path="/admin/gallery"><GalleryAdmin /></RequirePermission>} />
+              <Route path="about/origin-story" element={<RequirePermission path="/admin/about/origin-story"><OriginStoryEditor /></RequirePermission>} />
+              <Route path="about/values" element={<RequirePermission path="/admin/about/values"><ValuesAdmin /></RequirePermission>} />
+              <Route path="team" element={<RequirePermission path="/admin/team"><TeamAdmin /></RequirePermission>} />
               <Route path="admins" element={<RequireRole role="superadmin"><Admins /></RequireRole>} />
-              <Route path="customize-order" element={<RequirePermission feature="Customize Order"><CustomizeOrderAdmin /></RequirePermission>} />
-              <Route path="settings" element={<RequirePermission feature="Settings"><Settings /></RequirePermission>} />
+              <Route path="customize-order" element={<RequirePermission path="/admin/customize-order"><CustomizeOrderAdmin /></RequirePermission>} />
+              <Route path="settings" element={<RequirePermission path="/admin/settings"><Settings /></RequirePermission>} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

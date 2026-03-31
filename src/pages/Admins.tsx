@@ -24,6 +24,53 @@ import { toast } from 'sonner';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "../components/ui/sheet";
 import { PermissionsDrawer } from '@/components/PermissionsDrawer';
 
+type PermissionItem = {
+  _id: string;
+  name: string;
+  url: string;
+  group?: string;
+};
+
+const DEFAULT_PERMISSION_GROUPS: Record<string, { name: string; url: string }[]> = {
+  main: [
+    { name: 'Dashboard', url: '/admin' },
+    { name: 'Orders', url: '/admin/orders' },
+    { name: 'Customize Order', url: '/admin/customize-order' },
+    { name: 'Products', url: '/admin/products' },
+    { name: 'Gallery', url: '/admin/gallery' },
+    { name: 'Contacts', url: '/admin/contacts' },
+    { name: 'Customers', url: '/admin/customers' },
+    { name: 'Payments', url: '/admin/payments' },
+    { name: 'Delivery', url: '/admin/delivery' },
+    { name: 'Analytics', url: '/admin/analytics' },
+    { name: 'Settings', url: '/admin/settings' },
+    { name: 'Admins', url: '/admin/admins' },
+  ],
+  productDetails: [
+    { name: 'Categories', url: '/admin/categories' },
+    { name: 'Flavors', url: '/admin/flavors' },
+    { name: 'Weights', url: '/admin/weights' },
+    { name: 'Types', url: '/admin/types' },
+    { name: 'Occasions', url: '/admin/occasions' },
+    { name: 'Shapes', url: '/admin/shapes' },
+    { name: 'Themes', url: '/admin/themes' },
+    { name: 'Nutrition', url: '/admin/nutrition' },
+    { name: 'Ingredients', url: '/admin/ingredients' },
+  ],
+  about: [
+    { name: 'Origin Story', url: '/admin/about/origin-story' },
+    { name: 'Values', url: '/admin/about/values' },
+    { name: 'Team', url: '/admin/team' },
+  ],
+};
+
+const GROUP_LABELS: Record<string, string> = {
+  main: 'Main Features',
+  productDetails: 'Product Details',
+  about: 'About Pages',
+  custom: 'Custom Permissions',
+};
+
 const RoleBadge = ({ role }: { role: string }) => {
   const isManager = role === 'superadmin';
   return (
@@ -63,6 +110,9 @@ const Admins = () => {
   const [showProfile, setShowProfile] = useState(false);
   const [showPermissionsDrawer, setShowPermissionsDrawer] = useState(false);
   const [permissionsLoading, setPermissionsLoading] = useState(false);
+  const [permissionCatalog, setPermissionCatalog] = useState<PermissionItem[]>([]);
+  const [permissionForm, setPermissionForm] = useState({ name: '', url: '', group: 'custom' });
+  const [permissionSubmitting, setPermissionSubmitting] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -78,9 +128,98 @@ const Admins = () => {
     }
   };
 
+  const loadPermissions = async () => {
+    setPermissionsLoading(true);
+    try {
+      const res = await fetchWithAuth('/api/permissions');
+      if (!res.ok) throw new Error('Failed to load permissions catalog');
+      const data = await res.json().catch(() => ({}));
+      setPermissionCatalog(data.permissions || []);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to load permissions catalog');
+      setPermissionCatalog([]);
+    } finally {
+      setPermissionsLoading(false);
+    }
+  };
+
   useEffect(() => {
     load();
+    loadPermissions();
   }, []);
+
+  const addPermission = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedName = permissionForm.name.trim();
+    const trimmedUrl = permissionForm.url.trim();
+    if (!trimmedName) {
+      toast.error('Permission name is required');
+      return;
+    }
+    if (!trimmedUrl) {
+      toast.error('Permission URL is required');
+      return;
+    }
+
+    setPermissionSubmitting(true);
+    try {
+      const res = await fetchWithAuth('/api/permissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: trimmedName, url: trimmedUrl, group: permissionForm.group }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to add permission');
+      }
+
+      toast.success('Permission added to catalog');
+  setPermissionForm({ name: '', url: '', group: permissionForm.group });
+      await loadPermissions();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to add permission');
+    } finally {
+      setPermissionSubmitting(false);
+    }
+  };
+
+  const deletePermission = async (permission: PermissionItem) => {
+    if (!confirm(`Delete permission \"${permission.name}\"? This will remove it from assigned users too.`)) return;
+
+    try {
+      const res = await fetchWithAuth(`/api/permissions/${permission._id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to delete permission');
+      }
+
+      toast.success('Permission deleted');
+      setPermissionCatalog((prev) => prev.filter((item) => item._id !== permission._id));
+      setAdmins((prev) =>
+        prev.map((admin) => ({
+          ...admin,
+          permissions: Array.isArray(admin.permissions)
+            ? admin.permissions.filter((p: string) => p !== permission.url)
+            : [],
+        }))
+      );
+      if (selectedAdmin) {
+        setSelectedAdmin((prev: any) =>
+          prev
+            ? {
+                ...prev,
+                permissions: Array.isArray(prev.permissions)
+                  ? prev.permissions.filter((p: string) => p !== permission.url)
+                  : [],
+              }
+            : prev
+        );
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete permission');
+    }
+  };
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,6 +291,30 @@ const Admins = () => {
   const managerCount = admins.filter((a) => a.role === 'superadmin').length;
   const staffCount = admins.filter((a) => a.role === 'admin').length;
 
+  const groupedFeatures = React.useMemo(() => {
+    const grouped = permissionCatalog.reduce((acc: Record<string, { name: string; url: string }[]>, item) => {
+      const key = item.group && item.group.trim() ? item.group.trim() : 'custom';
+      if (!acc[key]) acc[key] = [];
+      acc[key].push({ name: item.name, url: item.url });
+      return acc;
+    }, {});
+
+    const withFallback = Object.keys(grouped).length > 0
+      ? grouped
+      : DEFAULT_PERMISSION_GROUPS;
+
+    return Object.keys(withFallback).map((key) => ({
+      label: GROUP_LABELS[key] || key,
+      items: withFallback[key],
+    }));
+  }, [permissionCatalog]);
+
+  const allFeatures = React.useMemo(() => {
+    const fromCatalog = permissionCatalog.map((item) => item.url);
+    if (fromCatalog.length > 0) return fromCatalog;
+    return Object.values(DEFAULT_PERMISSION_GROUPS).flat().map((item) => item.url);
+  }, [permissionCatalog]);
+
   return (
     <div className="space-y-8 animate-in fade-in duration-700 font-lora">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -201,6 +364,76 @@ const Admins = () => {
             <p className="text-sm text-chocolate-light font-medium italic leading-relaxed">
               "Great things in business are never done by one person. They're done by a team of people." — Standardize access levels to keep your bakery secure.
             </p>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-[2rem] border border-chocolate/10 shadow-bakery p-8 space-y-6">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h3 className="text-2xl font-bold font-playfair text-chocolate italic">Permission Catalog</h3>
+            <p className="text-xs text-chocolate-light font-medium">Create or remove dashboard permissions used in role assignment.</p>
+          </div>
+          <button
+            onClick={loadPermissions}
+            className="p-3 bg-white border border-chocolate/10 rounded-full text-chocolate hover:bg-strawberry/5 transition-all shadow-sm group"
+          >
+            <RefreshCw size={16} className={permissionsLoading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'} />
+          </button>
+        </div>
+
+        <form onSubmit={addPermission} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <input
+            value={permissionForm.name}
+            onChange={(e) => setPermissionForm((prev) => ({ ...prev, name: e.target.value }))}
+            placeholder="Permission name (e.g. Coupons)"
+            className="w-full px-4 py-3 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium placeholder:text-chocolate/20"
+          />
+          <input
+            value={permissionForm.url}
+            onChange={(e) => setPermissionForm((prev) => ({ ...prev, url: e.target.value }))}
+            placeholder="Route URL (e.g. /admin/coupons)"
+            className="md:col-span-2 w-full px-4 py-3 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium placeholder:text-chocolate/20"
+          />
+          <div className="flex gap-3">
+            <select
+              value={permissionForm.group}
+              onChange={(e) => setPermissionForm((prev) => ({ ...prev, group: e.target.value }))}
+              className="flex-1 px-4 py-3 bg-white border border-chocolate/10 focus:border-strawberry rounded-2xl text-sm outline-none font-medium text-chocolate"
+            >
+              <option value="main">Main Features</option>
+              <option value="productDetails">Product Details</option>
+              <option value="about">About Pages</option>
+              <option value="custom">Custom</option>
+            </select>
+            <button
+              type="submit"
+              disabled={permissionSubmitting}
+              className="px-6 py-3 bg-chocolate text-white rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-strawberry transition-all disabled:opacity-50"
+            >
+              {permissionSubmitting ? 'Saving...' : 'Add'}
+            </button>
+          </div>
+        </form>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {(permissionCatalog.length > 0 ? permissionCatalog : Object.values(DEFAULT_PERMISSION_GROUPS).flat().map((item, index) => ({ _id: `fallback-${index}`, name: item.name, url: item.url, group: 'main' }))).map((permission) => (
+            <div key={permission._id} className="flex items-center justify-between gap-3 p-3 rounded-2xl border border-chocolate/10 bg-[#FAFBFD]">
+              <div>
+                <p className="text-sm font-bold text-chocolate">{permission.name}</p>
+                <p className="text-[11px] text-chocolate/50 font-mono">{permission.url}</p>
+                <p className="text-[10px] uppercase tracking-widest text-chocolate/40">{GROUP_LABELS[permission.group || 'custom'] || permission.group || 'custom'}</p>
+              </div>
+              {permissionCatalog.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => deletePermission(permission)}
+                  className="p-2 rounded-full text-red-400 border border-red-100 bg-white hover:bg-red-500 hover:text-white transition-all"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </div>
+          ))}
         </div>
       </div>
 
@@ -440,6 +673,8 @@ const Admins = () => {
         onSave={savePermissions}
         currentPermissions={selectedAdmin?.permissions || []}
         memberName={selectedAdmin?.name || selectedAdmin?.email || 'Team Member'}
+        groupedFeatures={groupedFeatures}
+        allFeatures={allFeatures}
       />
     </div>
   );

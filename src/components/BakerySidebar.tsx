@@ -21,7 +21,7 @@ import {
   ChefHat,
 } from "lucide-react";
 import cupcakeIcon from "@/assets/cupcake-icon.png";
-import { getRole, hasPermission } from '@/services/auth';
+import { getRole, hasAccessToPath } from '@/services/auth';
 
 const menuItems = [
   { title: "Dashboard", icon: LayoutDashboard, path: "/admin" },
@@ -88,8 +88,8 @@ const BakerySidebar = () => {
       if (item.title === 'Admins') return null;
 
       if (item.children) {
-        const visibleChildren = item.children.filter((child) => hasPermission(child.title));
-        const canViewParent = hasPermission(item.title);
+        const visibleChildren = item.children.filter((child) => hasAccessToPath(child.path));
+        const canViewParent = hasAccessToPath(item.path);
 
         if (!canViewParent && visibleChildren.length === 0) {
           return null;
@@ -101,7 +101,7 @@ const BakerySidebar = () => {
         };
       }
 
-      if (hasPermission(item.title)) {
+      if (hasAccessToPath(item.path)) {
         return item;
       }
 

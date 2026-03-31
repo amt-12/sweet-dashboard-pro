@@ -2,7 +2,16 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RefreshCw, Lock } from 'lucide-react';
-import { ALL_FEATURES, FEATURE_GROUPS } from '@/utils/menuConfig';
+
+type PermissionOption = {
+  name: string;
+  url: string;
+};
+
+type FeatureGroup = {
+  label: string;
+  items: PermissionOption[];
+};
 
 interface PermissionsDrawerProps {
   open: boolean;
@@ -10,6 +19,8 @@ interface PermissionsDrawerProps {
   onSave: (permissions: string[]) => Promise<void>;
   currentPermissions?: string[];
   memberName?: string;
+  groupedFeatures?: FeatureGroup[];
+  allFeatures?: string[];
 }
 
 export const PermissionsDrawer: React.FC<PermissionsDrawerProps> = ({
@@ -18,6 +29,8 @@ export const PermissionsDrawer: React.FC<PermissionsDrawerProps> = ({
   onSave,
   currentPermissions = [],
   memberName = 'Team Member',
+  groupedFeatures = [],
+  allFeatures = [],
 }) => {
   const [permissions, setPermissions] = useState<string[]>(currentPermissions);
   const [loading, setLoading] = useState(false);
@@ -26,25 +39,21 @@ export const PermissionsDrawer: React.FC<PermissionsDrawerProps> = ({
     setPermissions(currentPermissions);
   }, [currentPermissions, open]);
 
-  const groupedFeatures = useMemo(
-    () => [
-      { label: 'Main Features', items: FEATURE_GROUPS.main },
-      { label: 'Product Details', items: FEATURE_GROUPS.productDetails },
-      { label: 'About Pages', items: FEATURE_GROUPS.about },
-    ],
-    []
+  const visibleGroups = useMemo(
+    () => groupedFeatures.filter((group) => Array.isArray(group.items) && group.items.length > 0),
+    [groupedFeatures]
   );
 
-  const handleToggle = (feature: string) => {
+  const handleToggle = (url: string) => {
     setPermissions((prev) =>
-      prev.includes(feature)
-        ? prev.filter((p) => p !== feature)
-        : [...prev, feature]
+      prev.includes(url)
+        ? prev.filter((p) => p !== url)
+        : [...prev, url]
     );
   };
 
   const handleSelectAll = () => {
-    setPermissions(ALL_FEATURES);
+    setPermissions(allFeatures);
   };
 
   const handleDeselectAll = () => {
@@ -100,23 +109,28 @@ export const PermissionsDrawer: React.FC<PermissionsDrawerProps> = ({
           </div>
 
           <div className="space-y-6">
-            {groupedFeatures.map((group) => (
+            {visibleGroups.map((group) => (
               <div key={group.label}>
                 <h4 className="text-[10px] font-bold text-chocolate/40 uppercase tracking-widest mb-4">{group.label}</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {group.items.map((feature) => (
                     <label
-                      key={feature}
+                      key={feature.url}
                       className="flex items-center gap-3 p-4 bg-white border border-chocolate/5 rounded-2xl hover:border-strawberry/30 cursor-pointer transition-all group"
                     >
                       <Checkbox
-                        checked={permissions.includes(feature)}
-                        onCheckedChange={() => handleToggle(feature)}
+                        checked={permissions.includes(feature.url)}
+                        onCheckedChange={() => handleToggle(feature.url)}
                         className="w-5 h-5 border-chocolate/20 accent-chocolate"
                       />
-                      <span className="text-sm font-medium text-chocolate group-hover:text-strawberry transition-colors">
-                        {feature}
-                      </span>
+                      <div className="min-w-0">
+                        <span className="block text-sm font-medium text-chocolate group-hover:text-strawberry transition-colors">
+                          {feature.name}
+                        </span>
+                        <span className="block text-[10px] text-chocolate/40 truncate">
+                          {feature.url}
+                        </span>
+                      </div>
                     </label>
                   ))}
                 </div>
@@ -127,7 +141,7 @@ export const PermissionsDrawer: React.FC<PermissionsDrawerProps> = ({
               <p className="text-xs font-medium text-chocolate-light italic">
                 {permissions.length === 0
                   ? 'No permissions selected. This member will have no access to the dashboard.'
-                  : permissions.length === ALL_FEATURES.length
+                  : permissions.length === allFeatures.length
                   ? 'Full access granted. This member can access all features.'
                   : `${permissions.length} permission${permissions.length !== 1 ? 's' : ''} selected for this member.`}
               </p>

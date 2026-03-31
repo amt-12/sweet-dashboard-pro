@@ -1,8 +1,14 @@
-import { getPermissionForPath } from '@/utils/menuConfig';
-
 const TOKEN_KEY = 'admin_token';
 const ROLE_KEY = 'admin_role';
 const USER_KEY = 'admin_user';
+
+function normalizePath(path?: string) {
+  if (!path) return '';
+  const trimmed = path.trim();
+  if (!trimmed) return '';
+  const withSlash = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return withSlash.length > 1 ? withSlash.replace(/\/+$/, '') : withSlash;
+}
 
 function decodeJwt(token: string | null) {
   if (!token) return null;
@@ -78,8 +84,16 @@ export function hasPermission(feature?: string) {
 }
 
 export function hasAccessToPath(path: string) {
-  const requiredPermission = getPermissionForPath(path);
-  return hasPermission(requiredPermission);
+  if (getRole() === 'superadmin') return true;
+
+  const targetPath = normalizePath(path);
+  if (!targetPath) return true;
+
+  const grantedPaths = getPermissions().map((permission) => normalizePath(permission)).filter(Boolean);
+  return grantedPaths.some((grantedPath) => {
+    if (grantedPath === '/admin') return targetPath === '/admin';
+    return targetPath === grantedPath || targetPath.startsWith(`${grantedPath}/`);
+  });
 }
 
 export function logout() {
