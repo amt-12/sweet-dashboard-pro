@@ -157,9 +157,6 @@ const Delivery = () => {
                                         </div>
                                         
                                         <div className="flex gap-4 pt-2 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 duration-300">
-                                            <button className="text-[9px] font-bold text-strawberry uppercase tracking-widest flex items-center gap-1.5 hover:underline decoration-2 underline-offset-4">
-                                                <Navigation size={12} /> View Map
-                                            </button>
                                             {delivery.driverPhone && delivery.driverPhone !== 'N/A' && (
                                                 <button className="text-[9px] font-bold text-chocolate-light uppercase tracking-widest flex items-center gap-1.5 hover:underline decoration-2 underline-offset-4">
                                                     <Phone size={12} /> {delivery.driverPhone}
