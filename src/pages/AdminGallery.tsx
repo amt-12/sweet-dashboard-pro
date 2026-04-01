@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../services/api';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Image as ImageIcon, X } from 'lucide-react';
@@ -26,18 +26,42 @@ export default function AdminGallery() {
   const [preview, setPreview] = useState<string | null>(null);
   const [fileData, setFileData] = useState<string | null>(null);
 
-  const fetch = async () => {
+  // Helper to normalize API responses which may be: Array, { data: Array }, { data: item }, or { data: { data: Array } }
+  function unwrapResult<T>(res: unknown): T | T[] | undefined {
+    if (res == null) return undefined;
+    if (Array.isArray(res)) return res as unknown as T[];
+    if (typeof res === 'object') {
+      const r = res as Record<string, unknown>;
+      const d = r.data;
+      if (d !== undefined) {
+        if (Array.isArray(d)) return d as unknown as T[];
+        if (d && typeof d === 'object') {
+          const dd = (d as Record<string, unknown>).data;
+          if (Array.isArray(dd)) return dd as unknown as T[];
+          return d as unknown as T;
+        }
+      }
+    }
+    return undefined;
+  }
+
+  const fetch = useCallback(async () => {
     setLoading(true);
     try {
       const res = await api.gallery.getAll();
-      const list = Array.isArray(res) ? res : (res && (res as any).data) || [];
-      setItems(list as GalleryItem[]);
+      const out = unwrapResult<GalleryItem>(res);
+      let list: GalleryItem[] = [];
+      if (Array.isArray(out)) list = out as GalleryItem[];
+      else if (out && typeof out === 'object') list = [out as GalleryItem];
+      else list = [];
+      console.log('Gallery items loaded:', list.map(l => l.src));
+      setItems(list);
     } catch (e) {
       toast.error('Failed to load gallery');
     } finally { setLoading(false); }
-  };
+  }, []);
 
-  useEffect(() => { fetch(); }, []);
+  useEffect(() => { fetch(); }, [fetch]);
 
   const openAdd = () => { setEditing(null); setPreview(null); setFileData(null); setShowForm(true); };
   const openEdit = (it: GalleryItem) => { setEditing(it); setPreview(it.src || null); setFileData(null); setShowForm(true); };
@@ -74,12 +98,14 @@ export default function AdminGallery() {
       if (editing && (editing._id || editing.id)) {
         const id = editing._id || editing.id!;
         const updatedRes = await api.gallery.update(id, payload as object);
-        const updatedItem: GalleryItem = (updatedRes && ((updatedRes as any).data || updatedRes)) as GalleryItem;
+        const updatedOut = unwrapResult<GalleryItem>(updatedRes);
+        const updatedItem: GalleryItem = Array.isArray(updatedOut) ? (updatedOut as GalleryItem[])[0] : (updatedOut as GalleryItem) || (updatedRes as unknown as GalleryItem);
         setItems(items.map(it => ((it._id === id || it.id === id) ? { ...it, ...updatedItem } : it)));
         toast.success('Gallery item updated');
       } else {
         const createdRes = await api.gallery.create(payload as object);
-        const createdItem: GalleryItem = (createdRes && ((createdRes as any).data || createdRes)) as GalleryItem;
+        const createdOut = unwrapResult<GalleryItem>(createdRes);
+        const createdItem: GalleryItem = Array.isArray(createdOut) ? (createdOut as GalleryItem[])[0] : (createdOut as GalleryItem) || (createdRes as unknown as GalleryItem);
         setItems([createdItem, ...items]);
         toast.success('Gallery item added');
       }
@@ -99,6 +125,18 @@ export default function AdminGallery() {
     } catch (e) { toast.error('Delete failed'); }
     finally { setLoading(false); }
   };
+
+  // Resolve image source robustly and trim input
+  function resolveImageSrc(rawIn?: string) {
+    const raw = String(rawIn || '').trim();
+    if (!raw) return '/placeholder.svg';
+    if (raw.startsWith('data:')) return raw;
+    if (/^https?:\/\//i.test(raw)) return raw;
+    const backendBase = (import.meta.env.VITE_BACKEND_URL as string) || window.location.origin;
+    if (raw.startsWith('/uploads/')) return `${backendBase}${raw}`;
+    if (raw.startsWith('/')) return raw; // relative root path
+    return `/${raw}`;
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
@@ -137,11 +175,26 @@ export default function AdminGallery() {
             {items.map(it => (
               <div key={it._id || it.id} className="group relative bg-white rounded-3xl overflow-hidden border border-chocolate/5 shadow-bakery hover:shadow-bakery-lg transition-all duration-500">
                 <div className="aspect-[4/3] overflow-hidden relative">
-                  <img 
-                    src={it.src?.startsWith('data:') ? it.src : (it.src ? (it.src.startsWith('/') ? it.src : `/${it.src}`) : '/placeholder.svg')} 
-                    alt={it.alt || it.title} 
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
-                  />
+                  {
+                    (() => {
+                      const raw = it.src || '';
+                      const src = resolveImageSrc(raw);
+                      return (
+                        <div
+                          className="w-full h-full bg-center bg-cover"
+                          style={{ backgroundImage: `url(${src})` }}
+                          data-resolved-src={src}
+                        >
+                          <img
+                            src={src}
+                            alt={it.alt || it.title}
+                            onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/placeholder.svg'; }}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-0"
+                          />
+                        </div>
+                      );
+                    })()
+                  }
                   <div className="absolute inset-0 bg-gradient-to-t from-chocolate/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className="absolute top-4 right-4 flex gap-2 translate-y-[-10px] opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
                     <button onClick={() => openEdit(it)} className="p-2.5 bg-white/90 backdrop-blur-md rounded-full shadow-lg hover:bg-strawberry hover:text-white transition-colors">
@@ -160,8 +213,22 @@ export default function AdminGallery() {
                   )}
                 </div>
                 <div className="p-5">
-                  <h4 className="font-bold text-chocolate text-lg leading-tight truncate">{it.title}</h4>
+                  <div className="flex items-center justify-between gap-4">
+                    <h4 className="font-bold text-chocolate text-lg leading-tight truncate">{it.title}</h4>
+                    {it.badge && <span className="px-3 py-1 bg-chocolate/10 text-chocolate text-[11px] font-bold rounded-full uppercase">{it.badge}</span>}
+                  </div>
                   {it.price && <p className="text-strawberry font-bold mt-1 text-sm">{it.price}</p>}
+                  {it.desc && <p className="text-sm text-chocolate-light mt-2 truncate">{it.desc}</p>}
+                  <div className="mt-2 space-y-1 text-[11px] text-chocolate-light">
+                    {it.alt !== undefined && <div><strong>Alt:</strong> <span className="ml-1">{it.alt || '-'}</span></div>}
+                    {it.cloudinaryPublicId && <div><strong>Cloudinary ID:</strong> <span className="ml-1 truncate">{it.cloudinaryPublicId}</span></div>}
+                    {it.createdAt && <div><strong>Created:</strong> <span className="ml-1">{new Date(it.createdAt).toLocaleString()}</span></div>}
+                    {it.src && (
+                      <div>
+                        <a href={it.src} target="_blank" rel="noreferrer" className="underline text-[11px]">Open image</a>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

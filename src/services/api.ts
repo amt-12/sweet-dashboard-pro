@@ -113,7 +113,7 @@ export const api = {
     create: (customer: object) => axiosInstance.post('/customers/register', customer).then(res => normalize(res)),
   },
   gallery: {
-    getAll: (): Promise<any[]> => axiosInstance.get('/gallery').then(res => normalize<any[]>(res)),
+    getAll: (): Promise<any[]> => axiosInstance.get('/gallery', { params: { _ts: Date.now() }, headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' } }).then(res => normalize<any[]>(res)),
     getById: (id: string | number) => axiosInstance.get(`/gallery/${id}`).then(res => normalize(res)),
     create: (item: object) => axiosInstance.post('/gallery', item).then(res => normalize(res)),
     update: (id: string | number, item: object) => axiosInstance.put(`/gallery/${id}`, item).then(res => normalize(res)),
