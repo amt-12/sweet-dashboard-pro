@@ -78,7 +78,7 @@ const Roles = () => {
   const loadRoles = async () => {
     setLoading(true);
     try {
-      const res = await fetchWithAuth('/api/roles');
+      const res = await fetchWithAuth('https://bakery-bakend.onrender.com/api/roles');
       if (!res.ok) throw new Error('Failed to load roles');
       const data = await res.json();
       setRoles(data.roles || []);
@@ -93,7 +93,7 @@ const Roles = () => {
   const loadPermissions = async () => {
     setPermissionsLoading(true);
     try {
-      const res = await fetchWithAuth('/api/permissions');
+      const res = await fetchWithAuth('https://bakery-bakend.onrender.com/api/permissions');
       if (!res.ok) throw new Error('Failed to load permissions');
       const data = await res.json();
       setPermissions(data.permissions || []);

@@ -112,7 +112,7 @@ const Admins = () => {
   const load = async () => {
     setLoading(true);
     try {
-      const res = await fetchWithAuth('/api/admins');
+      const res = await fetchWithAuth('https://bakery-bakend.onrender.com/api/admins');
       if (!res.ok) throw new Error('Failed to load team members');
       const data = await res.json();
       setAdmins(data.users || []);
@@ -126,7 +126,7 @@ const Admins = () => {
   const loadPermissions = async () => {
     setPermissionsLoading(true);
     try {
-      const res = await fetchWithAuth('/api/permissions');
+      const res = await fetchWithAuth('https://bakery-bakend.onrender.com/api/permissions');
       if (!res.ok) throw new Error('Failed to load permissions catalog');
       const data = await res.json().catch(() => ({}));
       setPermissionCatalog(data.permissions || []);
@@ -141,7 +141,7 @@ const Admins = () => {
   const loadRoles = async () => {
     setRolesLoading(true);
     try {
-      const res = await fetchWithAuth('/api/roles');
+      const res = await fetchWithAuth('https://bakery-bakend.onrender.com/api/roles');
       if (!res.ok) throw new Error('Failed to load roles');
       const data = await res.json();
       setRoles(data.roles || []);
