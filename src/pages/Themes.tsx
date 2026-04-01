@@ -1,5 +1,5 @@
 import { Plus, Search, Edit, Trash2, X, Sparkles, FileText, Info, RefreshCw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { api } from "../services/api";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "../components/ui/sheet";
 import { toast } from "sonner";
@@ -8,11 +8,13 @@ type Theme = {
 	id: string | number;
 	name: string;
 	description?: string;
+	subthemes?: string[];
 };
 
 const emptyForm: Partial<Theme> = {
 	name: "",
 	description: "",
+	subthemes: [],
 };
 
 const Themes = () => {
@@ -27,30 +29,52 @@ const Themes = () => {
 	const [searchQuery, setSearchQuery] = useState("");
 
 	const sanitizeName = (n?: string) => (n || "").replace(/\(\s*\)/g, "").trim();
+	const sanitizeSub = (s?: string) => (s || "").trim();
 
-	const fetchThemes = () => {
+	const fetchThemes = useCallback(() => {
 		setLoading(true);
 		api.themes
 			.getAll()
-			.then((res: any) => {
-				const raw = Array.isArray(res) ? res : res && (res.data || res) ? res.data : [];
-				const normalized = (raw || []).map((t: any) => ({
-					id: t._id || t.id,
-					name: sanitizeName(t.name),
-					description: t.description || "",
-				}));
-				setThemes(normalized);
+			.then((res: unknown) => {
+				let rawArr: unknown[] = [];
+				if (Array.isArray(res)) {
+					rawArr = res as unknown[];
+				} else if (res && typeof res === "object") {
+					const maybeData = (res as Record<string, unknown>)["data"];
+					if (Array.isArray(maybeData)) rawArr = maybeData;
+				}
+
+				const normalized = (rawArr || []).map((t: unknown) => {
+					const obj = t as Record<string, unknown>;
+					const id = obj["_id"] ?? obj["id"] ?? undefined;
+					const name = sanitizeName(String(obj["name"] ?? ""));
+					const description = String(obj["description"] ?? "");
+
+					let subthemes: string[] = [];
+					const candidateKeys = ["subthemes", "subThemes", "sub_themes"];
+					for (const k of candidateKeys) {
+						const val = obj[k];
+						if (Array.isArray(val)) {
+							subthemes = (val as unknown[]).map((s) => String(s ?? "").trim()).filter(Boolean);
+							break;
+						}
+					}
+
+					return { id, name, description, subthemes };
+				});
+				setThemes(normalized as Theme[]);
 			})
-			.catch((err: any) => {
+			.catch((err: unknown) => {
+				const msg = err instanceof Error ? err.message : String(err);
 				toast.error("Failed to load themes");
-				setError(err?.message || "Failed to load themes");
+				setError(msg || "Failed to load themes");
 			})
 			.finally(() => setLoading(false));
-	};
+	}, []);
 
 	useEffect(() => {
 		fetchThemes();
-	}, []);
+	}, [fetchThemes]);
 
 	const openAdd = () => {
 		setForm(emptyForm);
@@ -60,7 +84,7 @@ const Themes = () => {
 	};
 
 	const openEdit = (t: Theme) => {
-		setForm({ name: t.name, description: t.description });
+		setForm({ name: t.name, description: t.description, subthemes: t.subthemes || [] });
 		setEditingId(String(t.id));
 		setErrors({});
 		setShowModal(true);
@@ -86,7 +110,12 @@ const Themes = () => {
 		if (Object.keys(v).length) return;
 
 		setLoading(true);
-		const payload = { name: sanitizeName(form.name), description: form.description || "" };
+		const payload = { name: sanitizeName(form.name), description: form.description || "" } as {
+			name: string;
+			description: string;
+			subthemes?: string[];
+		};
+		payload.subthemes = (form.subthemes || []).map((s) => sanitizeSub(s)).filter(Boolean);
 
 		try {
 			if (editingId) {
@@ -98,8 +127,10 @@ const Themes = () => {
 			}
 			fetchThemes();
 			closeModal();
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const msg = err instanceof Error ? err.message : String(err);
 			toast.error("Failed to save theme");
+			console.error(msg);
 		} finally {
 			setLoading(false);
 		}
@@ -112,8 +143,10 @@ const Themes = () => {
 			await api.themes.delete(id);
 			setThemes((prev) => prev.filter((c) => String(c.id) !== String(id)));
 			toast.success("Theme removed.");
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const msg = err instanceof Error ? err.message : String(err);
 			toast.error("Failed to delete theme");
+			console.error(msg);
 		} finally {
 			setLoading(false);
 		}
@@ -123,6 +156,27 @@ const Themes = () => {
 		t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
 		t.description?.toLowerCase().includes(searchQuery.toLowerCase())
 	);
+
+	// helpers to manage subthemes in the form
+	const addSubtheme = () => {
+		setForm((prev) => ({ ...(prev || {}), subthemes: [...(prev?.subthemes || []), ""] }));
+	};
+	const updateSubtheme = (index: number, value: string) => {
+		setForm((prev) => {
+			const next = { ...(prev || {}) } as Partial<Theme> & { subthemes?: string[] };
+			next.subthemes = [...(next.subthemes || [])];
+			next.subthemes[index] = value;
+			return next;
+		});
+	};
+	const removeSubtheme = (index: number) => {
+		setForm((prev) => {
+			const next = { ...(prev || {}) } as Partial<Theme> & { subthemes?: string[] };
+			next.subthemes = [...(next.subthemes || [])];
+			next.subthemes.splice(index, 1);
+			return next;
+		});
+	};
 
 	return (
 		<div className="space-y-8 animate-in fade-in duration-700 font-lora">
@@ -180,6 +234,15 @@ const Themes = () => {
 							<p className="text-sm text-chocolate-light font-medium line-clamp-2 italic leading-relaxed">
 								{theme.description || "No description provided for this theme."}
 							</p>
+
+							{/* render subthemes as small tags */}
+							{theme.subthemes && theme.subthemes.length > 0 && (
+								<div className="mt-4 flex flex-wrap gap-2">
+									{theme.subthemes.map((s, i) => (
+										<span key={i} className="text-[11px] bg-strawberry/10 text-strawberry px-3 py-1 rounded-full font-bold uppercase tracking-wider">{s}</span>
+									))}
+								</div>
+							)}
 						</div>
 
 						<div className="mt-6 pt-6 border-t border-chocolate/5 flex items-center gap-2 relative z-10">
@@ -233,6 +296,30 @@ const Themes = () => {
 									/>
 								</div>
 								{errors.name && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.name}</p>}
+							</div>
+
+							{/* Subthemes block */}
+							<div className="space-y-2 group">
+								<label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Subthemes</label>
+								<div className="space-y-2">
+									{(form.subthemes || []).map((s, idx) => (
+										<div key={idx} className="flex items-center gap-2">
+											<input
+												value={s}
+												onChange={(e) => updateSubtheme(idx, e.target.value)}
+												placeholder={`Subtheme ${idx + 1}`}
+												className="flex-1 pl-4 pr-3 py-3 bg-white border border-chocolate/10 rounded-2xl text-sm outline-none transition-all font-medium"
+											/>
+											<button type="button" onClick={() => removeSubtheme(idx)} className="p-2 bg-red-50 text-red-400 rounded-full border border-red-100 hover:bg-red-500 hover:text-white transition-all">
+												<X size={14} />
+											</button>
+										</div>
+									))}
+									<button type="button" onClick={addSubtheme} className="mt-2 inline-flex items-center gap-2 px-4 py-2 bg-white border border-chocolate/10 rounded-full shadow-sm hover:bg-chocolate/5 transition-all">
+										<Plus size={14} />
+										<span className="text-xs font-bold uppercase tracking-wider">Add Subtheme</span>
+									</button>
+								</div>
 							</div>
 
 							<div className="space-y-2 group">

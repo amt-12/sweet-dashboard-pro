@@ -15,6 +15,7 @@ export default function OriginStoryEditor() {
     const apiBase = (import.meta.env && import.meta.env.VITE_API_URL) || 'http://localhost:5000';
     fetch(`${apiBase}/api/origin-story`)
       .then((res) => res.ok ? res.json() : Promise.reject(new Error('Failed')))
+      
       .then((data) => { if (!mounted) return; if (data && data.ok) setStory(data.story); })
       .catch(() => {
         toast.error("Failed to load heritage");

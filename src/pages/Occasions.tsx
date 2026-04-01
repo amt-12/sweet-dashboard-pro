@@ -1,5 +1,5 @@
 import { Plus, Search, Edit, Trash2, X, PartyPopper, FileText, Info, RefreshCw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { api } from "../services/api";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "../components/ui/sheet";
 import { toast } from "sonner";
@@ -8,11 +8,13 @@ type Occasion = {
 	id: string | number;
 	name: string;
 	description?: string;
+	suboccasions?: string[];
 };
 
 const emptyForm: Partial<Occasion> = {
 	name: "",
 	description: "",
+	suboccasions: [],
 };
 
 const Occasions = () => {
@@ -26,29 +28,51 @@ const Occasions = () => {
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [searchQuery, setSearchQuery] = useState("");
 
-	const fetchOccasions = () => {
+	const sanitizeSub = (s?: string) => (s || "").trim();
+
+	const fetchOccasions = useCallback(() => {
 		setLoading(true);
 		api.occasions
 			.getAll()
-			.then((res: any) => {
-				const raw = Array.isArray(res) ? res : res && (res.data || res) ? res.data : [];
-				const normalized = (raw || []).map((t: any) => ({
-					id: t._id || t.id,
-					name: t.name,
-					description: t.description || "",
-				}));
-				setItems(normalized);
+			.then((res: unknown) => {
+				let rawArr: unknown[] = [];
+				if (Array.isArray(res)) rawArr = res as unknown[];
+				else if (res && typeof res === 'object') {
+					const maybeData = (res as Record<string, unknown>)['data'];
+					if (Array.isArray(maybeData)) rawArr = maybeData;
+				}
+
+				const normalized = (rawArr || []).map((t: unknown) => {
+					const obj = t as Record<string, unknown>;
+					const id = obj['_id'] ?? obj['id'] ?? undefined;
+					const name = String(obj['name'] ?? '');
+					const description = String(obj['description'] ?? '');
+
+					let suboccasions: string[] = [];
+					const candidateKeys = ['suboccasions', 'subOccasions', 'sub_occasions'];
+					for (const k of candidateKeys) {
+						const val = obj[k];
+						if (Array.isArray(val)) {
+							suboccasions = (val as unknown[]).map(s => String(s ?? '').trim()).filter(Boolean);
+							break;
+						}
+					}
+
+					return { id, name, description, suboccasions };
+				});
+				setItems(normalized as Occasion[]);
 			})
-			.catch((err: any) => {
-				toast.error("Failed to load occasions");
-				setError(err?.message || "Failed to load occasions");
+			.catch((err: unknown) => {
+				const msg = err instanceof Error ? err.message : String(err);
+				toast.error('Failed to load occasions');
+				setError(msg || 'Failed to load occasions');
 			})
 			.finally(() => setLoading(false));
-	};
+	}, []);
 
 	useEffect(() => {
 		fetchOccasions();
-	}, []);
+	}, [fetchOccasions]);
 
 	const openAdd = () => {
 		setForm(emptyForm);
@@ -58,7 +82,7 @@ const Occasions = () => {
 	};
 
 	const openEdit = (t: Occasion) => {
-		setForm({ name: t.name, description: t.description });
+		setForm({ name: t.name, description: t.description, suboccasions: t.suboccasions || [] });
 		setEditingId(String(t.id));
 		setErrors({});
 		setShowModal(true);
@@ -73,7 +97,7 @@ const Occasions = () => {
 
 	const validate = () => {
 		const next: Record<string, string> = {};
-		if (!form.name || !String(form.name).trim()) next.name = "A name is required for this occasion";
+		if (!form.name || !String(form.name).trim()) next.name = 'A name is required for this occasion';
 		return next;
 	};
 
@@ -84,42 +108,71 @@ const Occasions = () => {
 		if (Object.keys(v).length) return;
 
 		setLoading(true);
-		const payload = { name: form.name, description: form.description || "" };
+		const payload = { name: form.name as string, description: form.description || '' } as {
+			name: string;
+			description: string;
+			suboccasions?: string[];
+		};
+		payload.suboccasions = (form.suboccasions || []).map((s) => sanitizeSub(s)).filter(Boolean);
 
 		try {
 			if (editingId) {
 				await api.occasions.update(editingId, payload);
-				toast.success("Occasion updated!");
+				toast.success('Occasion updated!');
 			} else {
 				await api.occasions.create(payload);
-				toast.success("New occasion added!");
+				toast.success('New occasion added!');
 			}
 			fetchOccasions();
 			closeModal();
-		} catch (err: any) {
-			toast.error("Failed to save occasion");
+		} catch (err: unknown) {
+			toast.error('Failed to save occasion');
+			console.error(err);
 		} finally {
 			setLoading(false);
 		}
 	};
 
 	const handleDelete = async (id: string | number) => {
-		if (!confirm("Delete this occasion?")) return;
+		if (!confirm('Delete this occasion?')) return;
 		setLoading(true);
 		try {
 			await api.occasions.delete(id);
 			setItems((prev) => prev.filter((c) => String(c.id) !== String(id)));
-			toast.success("Occasion removed.");
-		} catch (err: any) {
-			toast.error("Failed to delete occasion");
+			toast.success('Occasion removed.');
+		} catch (err: unknown) {
+			toast.error('Failed to delete occasion');
+			console.error(err);
 		} finally {
 			setLoading(false);
 		}
 	};
 
+	// helpers to manage suboccasions in the form
+	const addSuboccasion = () => {
+		setForm((prev) => ({ ...(prev || {}), suboccasions: [...(prev?.suboccasions || []), ''] }));
+	};
+	const updateSuboccasion = (index: number, value: string) => {
+		setForm((prev) => {
+			const next = { ...(prev || {}) } as Partial<Occasion> & { suboccasions?: string[] };
+			next.suboccasions = [...(next.suboccasions || [])];
+			next.suboccasions[index] = value;
+			return next;
+		});
+	};
+	const removeSuboccasion = (index: number) => {
+		setForm((prev) => {
+			const next = { ...(prev || {}) } as Partial<Occasion> & { suboccasions?: string[] };
+			next.suboccasions = [...(next.suboccasions || [])];
+			next.suboccasions.splice(index, 1);
+			return next;
+		});
+	};
+
 	const filteredItems = items.filter(item => 
 		item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-		item.description?.toLowerCase().includes(searchQuery.toLowerCase())
+		item.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+		(item.suboccasions || []).some(s => s.toLowerCase().includes(searchQuery.toLowerCase()))
 	);
 
 	return (
@@ -176,8 +229,17 @@ const Occasions = () => {
 						<div className="relative z-10">
 							<h3 className="text-2xl font-bold font-playfair text-chocolate mb-2 group-hover:text-strawberry transition-colors">{item.name}</h3>
 							<p className="text-sm text-chocolate-light font-medium line-clamp-2 italic leading-relaxed">
-								{item.description || "No description provided."}
+								{item.description || 'No description provided.'}
 							</p>
+
+							{/* render suboccasions as small tags */}
+							{item.suboccasions && item.suboccasions.length > 0 && (
+								<div className="mt-4 flex flex-wrap gap-2">
+									{item.suboccasions.map((s, i) => (
+										<span key={i} className="text-[11px] bg-strawberry/10 text-strawberry px-3 py-1 rounded-full font-bold uppercase tracking-wider">{s}</span>
+									))}
+								</div>
+							)}
 						</div>
 
 						<div className="mt-6 pt-6 border-t border-chocolate/5 flex items-center gap-2 relative z-10">
@@ -243,6 +305,30 @@ const Occasions = () => {
 										placeholder="Enter details for this occasion..."
 										className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium min-h-[140px] resize-none leading-relaxed italic"
 									/>
+								</div>
+							</div>
+
+							{/* Suboccasions block */}
+							<div className="space-y-2 group">
+								<label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Sub-Occasions</label>
+								<div className="space-y-2">
+									{(form.suboccasions || []).map((s, idx) => (
+										<div key={idx} className="flex items-center gap-2">
+											<input
+												value={s}
+												onChange={(e) => updateSuboccasion(idx, e.target.value)}
+												placeholder={`Sub-Occasion ${idx + 1}`}
+												className="flex-1 pl-4 pr-3 py-3 bg-white border border-chocolate/10 rounded-2xl text-sm outline-none transition-all font-medium"
+											/>
+											<button type="button" onClick={() => removeSuboccasion(idx)} className="p-2 bg-red-50 text-red-400 rounded-full border border-red-100 hover:bg-red-500 hover:text-white transition-all">
+												<X size={14} />
+											</button>
+										</div>
+									))}
+									<button type="button" onClick={addSuboccasion} className="mt-2 inline-flex items-center gap-2 px-4 py-2 bg-white border border-chocolate/10 rounded-full shadow-sm hover:bg-chocolate/5 transition-all">
+										<Plus size={14} />
+										<span className="text-xs font-bold uppercase tracking-wider">Add Sub-Occasion</span>
+									</button>
 								</div>
 							</div>
 						</div>
