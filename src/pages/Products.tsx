@@ -334,6 +334,14 @@ const Products = () => {
     return next;
   };
 
+  // helper to convert File to data URL (used only to upload to backend which will send to Cloudinary)
+  const fileToDataUrl = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.onload = () => resolve(String(reader.result));
+    reader.readAsDataURL(file);
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const validation = validateForm();
@@ -353,55 +361,101 @@ const Products = () => {
 
     dispatch(setLoading(true));
 
-    const payload: any = {
-      name: form.name,
-      category: form.category,
-      price: Number(form.price) || 0,
-      stock: Number(form.stock) || 0,
-      img: form.image || undefined,
-      images: form.galleryPreviews.map(gp => ({ url: gp.url, base64: gp.base64 })),
-      // include dropdown selections
-      flavor: form.flavor || '',
-      type: form.type || [],
-      weight: form.weight || [],
-      occasion: form.occasion || [],
-      shape: form.shape || [],
-      theme: form.theme || [],
-      ingredients: form.ingredients || [],
-      tasteDescription: form.tasteDescription || '',
+    // prepare payload: convert any local File objects to data URLs so backend uploads to Cloudinary
+    const preparePayload = async () => {
+      const payload: any = {
+        name: form.name,
+        category: form.category,
+        price: Number(form.price) || 0,
+        stock: Number(form.stock) || 0,
+        // include dropdown selections
+        flavor: form.flavor || '',
+        type: form.type || [],
+        weight: form.weight || [],
+        occasion: form.occasion || [],
+        shape: form.shape || [],
+        theme: form.theme || [],
+        ingredients: form.ingredients || [],
+        tasteDescription: form.tasteDescription || '',
+      };
+
+      // primary image: prefer explicit remote/data URL, otherwise convert local file to data URL for upload
+      if (form.image && typeof form.image === 'string' && (form.image.startsWith('http') || form.image.startsWith('data:'))) {
+        // if it's already a URL or a data URI, send it as-is (backend will handle data URIs)
+        payload.img = form.image;
+      } else if (form.imageFile) {
+        // convert local File to data URL so backend can upload to Cloudinary
+        try {
+          payload.img = await fileToDataUrl(form.imageFile);
+        } catch (e) {
+          payload.img = '';
+        }
+      }
+
+      // gallery images: map each preview - if it has a file or base64 preview, send as base64 so backend uploads to Cloudinary
+      payload.images = await Promise.all((form.galleryPreviews || []).map(async (gp) => {
+        // if we already have a base64 string, prefer that
+        if (gp.base64 && typeof gp.base64 === 'string' && gp.base64.startsWith('data:')) {
+          return { base64: gp.base64 };
+        }
+        // if there is a File object, convert to data URL
+        if (gp.file instanceof File) {
+          try {
+            const d = await fileToDataUrl(gp.file);
+            return { base64: d };
+          } catch (e) {
+            // fallback to sending the preview URL if conversion fails
+            return { url: gp.url || '' };
+          }
+        }
+        // otherwise send the URL (could already be Cloudinary link)
+        return { url: gp.url || '' };
+      }));
+
+      return payload;
     };
 
-    if (editingId) {
-      api.products
-        .update(editingId, payload)
-        .then((res) => {
-          const updated = normalizeSingle(res || (res as any)?.data || {});
-          const next = products.map((it: any) => (it.id === editingId ? { ...it, ...updated } : it));
-          dispatch(setProducts(next));
-          toast.success("Product updated successfully! 🎂");
-          closeModal();
-        })
-        .catch((err) => {
-          dispatch(setError(err?.message || 'Failed to update product'));
-          toast.error("Failed to update product");
-        })
-        .finally(() => dispatch(setLoading(false)));
-    } else {
-      api.products
-        .create(payload)
-        .then((res) => {
-          const created = normalizeSingle(res || (res as any)?.data || {});
-          const next = [created, ...products];
-          dispatch(setProducts(next));
-          toast.success("New product added to bakery! 🥐");
-          closeModal();
-        })
-        .catch((err) => {
-          dispatch(setError(err?.message || 'Failed to create product'));
-          toast.error("Failed to create product");
-        })
-        .finally(() => dispatch(setLoading(false)));
-    }
+    (async () => {
+      try {
+        const payload = await preparePayload();
+
+        if (editingId) {
+          api.products
+            .update(editingId, payload)
+            .then((res) => {
+              const updated = normalizeSingle(res || (res as any)?.data || {});
+              const next = products.map((it: any) => (it.id === editingId ? { ...it, ...updated } : it));
+              dispatch(setProducts(next));
+              toast.success("Product updated successfully! 🎂");
+              closeModal();
+            })
+            .catch((err) => {
+              dispatch(setError(err?.message || 'Failed to update product'));
+              toast.error("Failed to update product");
+            })
+            .finally(() => dispatch(setLoading(false)));
+        } else {
+          api.products
+            .create(payload)
+            .then((res) => {
+              const created = normalizeSingle(res || (res as any)?.data || {});
+              const next = [created, ...products];
+              dispatch(setProducts(next));
+              toast.success("New product added to bakery! 🥐");
+              closeModal();
+            })
+            .catch((err) => {
+              dispatch(setError(err?.message || 'Failed to create product'));
+              toast.error("Failed to create product");
+            })
+            .finally(() => dispatch(setLoading(false)));
+        }
+      } catch (err: any) {
+        dispatch(setError(err?.message || 'Image upload failed'));
+        toast.error(err?.message || 'Image upload failed');
+        dispatch(setLoading(false));
+      }
+    })();
   };
 
   const handleDelete = (id: string) => {
@@ -792,11 +846,8 @@ const Products = () => {
                           if (f) {
                             if (f.size > MAX_BYTES) { toast.error('Work of art must be 500KB or smaller'); return; }
                             const url = URL.createObjectURL(f);
-                            const reader = new FileReader();
-                            reader.onload = () => {
-                              setForm({...form, imageFile: f, imagePreview: url, image: String(reader.result)});
-                            };
-                            reader.readAsDataURL(f);
+                            // Do not convert to base64. Keep file object and object URL preview only.
+                            setForm({...form, imageFile: f, imagePreview: url, image: ''});
                           }
                         }} 
                       />
@@ -835,17 +886,26 @@ const Products = () => {
                         className="hidden"
                         onChange={(e) => {
                           const files = Array.from(e.target.files || []);
-                          files.forEach(f => {
-                            if (f.size > MAX_BYTES) { toast.error(`${f.name} exceeds 500KB and was skipped`); return; }
+                          const readers = files.map(f => {
+                            if (f.size > MAX_BYTES) { toast.error(`${f.name} exceeds 500KB and was skipped`); return Promise.resolve(null); }
                             const url = URL.createObjectURL(f);
-                            const reader = new FileReader();
-                            reader.onload = () => {
-                              setForm(prev => ({
-                                ...prev,
-                                galleryPreviews: [...prev.galleryPreviews, { file: f, url, base64: String(reader.result) }]
-                              }));
-                            };
-                            reader.readAsDataURL(f);
+                            return new Promise((resolve) => {
+                              const fr = new FileReader();
+                              fr.onload = () => {
+                                const base64 = typeof fr.result === 'string' ? fr.result : null;
+                                resolve({ file: f, url, base64 });
+                              };
+                              fr.onerror = () => resolve({ file: f, url, base64: null });
+                              fr.readAsDataURL(f);
+                            });
+                          });
+                          Promise.all(readers).then(results => {
+                            const valid = results.filter(r => r !== null);
+                            if (valid.length === 0) return;
+                            setForm(prev => ({
+                              ...prev,
+                              galleryPreviews: [...prev.galleryPreviews, ...valid]
+                            }));
                           });
                         }}
                       />
@@ -859,6 +919,7 @@ const Products = () => {
                     value={form.image} 
                     onChange={(e) => {
                       const val = e.target.value || '';
+                      // Accept pasted data URIs or remote URLs but do not create base64 previews locally.
                       if (val.startsWith('data:')) {
                         const size = estimateDataUriSize(val);
                         if (size > MAX_BYTES) { toast.error('Pasted image must be 500KB or smaller'); return; }
