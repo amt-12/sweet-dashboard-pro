@@ -27,31 +27,38 @@ const Delivery = () => {
           api.checkoutOrders.getAll().catch(() => []),
         ]);
 
-        const allOrders = [
-          ...normalizeToArray(customOrders),
-          ...normalizeToArray(checkoutOrders),
-        ];
+        const normCustom = normalizeToArray(customOrders);
+        const normCheckout = normalizeToArray(checkoutOrders);
 
-        // Filter for out_for_delivery status
-        const outForDelivery = allOrders.filter(
-          order => order.orderStatus?.toLowerCase() === 'out_for_delivery'
-        );
-
-        // Map to delivery format
-        const mappedDeliveries = outForDelivery.map((order: any) => ({
+        // helper to map an order to delivery format
+        const mapOrder = (order: any, type: 'custom' | 'checkout') => ({
           id: `#DEL-${String(order._id || order.id).slice(-6).toUpperCase()}`,
-          orderId: `#ORD-${String(order._id || order.id).slice(-6)}`,
-          address: order.deliveryAddress || 'Address not specified',
+          orderId: type === 'checkout' ? (order.orderNumber || `#ORD-${String(order._id || order.id).slice(-6)}`) : `#ORD-${String(order._id || order.id).slice(-6)}`,
+          orderIdRaw: order._id || order.id || null,
+          orderType: type,
+          address: order.deliveryAddress || order.address || 'Address not specified',
           driver: order.deliveryPartner || 'Unassigned',
           driverPhone: order.deliveryPartnerPhone || 'N/A',
           status: 'En Route',
           time: order.deliveryEstimatedTime || 'Pending',
           customerName: order.customerName || order.name || 'Customer',
-          totalAmount: order.totalAmount || 0,
+          totalAmount: order.totalAmount || order.total || 0,
           createdAt: order.createdAt,
-        }));
+          // keep original order for any further needs
+          originalOrder: order,
+        });
 
-        setDeliveries(mappedDeliveries);
+        const customMapped = normCustom
+          .filter((o: any) => String(o.orderStatus || o.status || '').toLowerCase() === 'out_for_delivery')
+          .map((o: any) => mapOrder(o, 'custom'));
+
+        const checkoutMapped = normCheckout
+          .filter((o: any) => String(o.orderStatus || o.status || '').toLowerCase() === 'out_for_delivery')
+          .map((o: any) => mapOrder(o, 'checkout'));
+
+        const allDeliveries = [...customMapped, ...checkoutMapped];
+
+        setDeliveries(allDeliveries);
       } catch (err) {
         console.error('Failed to load deliveries:', err);
         toast({
@@ -130,7 +137,7 @@ const Delivery = () => {
                                                 <h4 className="text-xl font-bold text-chocolate group-hover:text-strawberry transition-colors italic leading-tight">{delivery.address}</h4>
                                             </div>
                                             <div className="flex flex-col items-end gap-1">
-                                                <span className="text-[9px] font-bold text-chocolate/40 uppercase tracking-widest">Expected Time</span>
+                                                <span className="text-[9px] font-bold text-chocolate/20 uppercase tracking-widest">Expected Time</span>
                                                 <span className="text-xs font-bold text-chocolate italic bg-chocolate/5 px-3 py-1 rounded-full">{delivery.time}</span>
                                             </div>
                                         </div>
@@ -153,6 +160,20 @@ const Delivery = () => {
                                                 <span className="text-[10px] font-bold uppercase tracking-[0.2em] px-4 py-1.5 rounded-full border shadow-sm bg-blue-50 text-blue-700 border-blue-100">
                                                     {delivery.status}
                                                 </span>
+                                                <button
+                                                    onClick={async () => {
+                                                        try {
+                                                            await api.checkoutOrders.updateStatus(delivery.orderIdRaw || delivery.originalOrderId || delivery._id, 'delivered');
+                                                            toast({ title: 'Updated', description: 'Marked as delivered' });
+                                                            loadDeliveries();
+                                                        } catch (e) {
+                                                            toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' });
+                                                        }
+                                                    }}
+                                                    className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full bg-chocolate text-white hover:bg-strawberry transition-all"
+                                                >
+                                                    Mark Delivered
+                                                </button>
                                             </div>
                                         </div>
                                         
