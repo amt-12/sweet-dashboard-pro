@@ -116,7 +116,7 @@ const Orders = () => {
   const loadDeliveryPartners = async () => {
     setLoadingPartners(true);
     try {
-      const res = await fetchWithAuth('/api/admins');
+      const res = await fetchWithAuth('https://bakery-bakend.onrender.com/api/admins');
       if (!res.ok) throw new Error('Failed to load delivery partners');
       const data = await res.json();
       const partners = (data.users || []).filter((admin: any) => 

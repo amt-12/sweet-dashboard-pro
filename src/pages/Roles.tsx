@@ -139,7 +139,7 @@ const Roles = () => {
 
     setSubmitting(true);
     try {
-      const url = editingRole ? `/api/roles/${editingRole._id}` : '/api/roles';
+      const url = editingRole ? `https://bakery-bakend.onrender.com/api/roles/${editingRole._id}` : 'https://bakery-bakend.onrender.com/api/roles';
       const method = editingRole ? 'PATCH' : 'POST';
 
       const res = await fetchWithAuth(url, {
@@ -174,7 +174,7 @@ const Roles = () => {
     if (!confirm(`Delete role "${role.name}"? This cannot be undone.`)) return;
 
     try {
-      const res = await fetchWithAuth(`/api/roles/${role._id}`, { method: 'DELETE' });
+      const res = await fetchWithAuth(`https://bakery-bakend.onrender.com/api/roles/${role._id}`, { method: 'DELETE' });
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));

@@ -174,7 +174,7 @@ const Admins = () => {
 
     setPermissionSubmitting(true);
     try {
-      const res = await fetchWithAuth('/api/permissions', {
+      const res = await fetchWithAuth('https://bakery-bakend.onrender.com/api/permissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: trimmedName, url: trimmedUrl, group: permissionForm.group }),
@@ -199,7 +199,7 @@ const Admins = () => {
     if (!confirm(`Delete permission \"${permission.name}\"? This will remove it from assigned users too.`)) return;
 
     try {
-      const res = await fetchWithAuth(`/api/permissions/${permission._id}`, { method: 'DELETE' });
+      const res = await fetchWithAuth(`https://bakery-bakend.onrender.com/api/permissions/${permission._id}`, { method: 'DELETE' });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || 'Failed to delete permission');
@@ -236,7 +236,7 @@ const Admins = () => {
     e.preventDefault();
     setCreating(true);
     try {
-      const res = await fetchWithAuth('/api/admins', {
+      const res = await fetchWithAuth('https://bakery-bakend.onrender.com/api/admins', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
@@ -259,7 +259,7 @@ const Admins = () => {
   const remove = async (id: string) => {
     if (!confirm('Remove this team member? Access will be revoked immediately.')) return;
     try {
-      const res = await fetchWithAuth(`/api/admins/${id}`, { method: 'DELETE' });
+      const res = await fetchWithAuth(`https://bakery-bakend.onrender.com/api/admins/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to remove member');
       setAdmins((prev) => prev.filter((a) => a._id !== id));
       toast.success('Team member removed.');
@@ -279,7 +279,7 @@ const Admins = () => {
   const savePermissions = async (permissions: string[]) => {
     if (!selectedAdmin?._id) return;
     try {
-      const res = await fetchWithAuth(`/api/admins/${selectedAdmin._id}/permissions`, {
+      const res = await fetchWithAuth(`https://bakery-bakend.onrender.com/api/admins/${selectedAdmin._id}/permissions`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ permissions }),
@@ -304,7 +304,7 @@ const Admins = () => {
     
     setUpdatingRole(true);
     try {
-      const res = await fetchWithAuth(`/api/admins/${selectedAdmin._id}/role`, {
+      const res = await fetchWithAuth(`https://bakery-bakend.onrender.com/api/admins/${selectedAdmin._id}/role`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ roleName: roleData.name, permissions: roleData.permissions }),
