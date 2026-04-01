@@ -1,4 +1,4 @@
-import { Plus, Search, Edit, Trash2, Filter, X, Package, DollarSign, Layers, Info, Image as ImageIcon, Eye } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Filter, X, Package, DollarSign, Layers, Info, Image as ImageIcon, Eye, ChevronRight } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { setProducts, setLoading, setError } from "../store/slices/productSlice";
@@ -158,6 +158,101 @@ const SelectableBadgeGroup = ({
   );
 };
 
+interface GroupOption {
+  name: string;
+  sub?: string[];
+  subthemes?: string[];
+  suboccasions?: string[];
+  subitems?: string[];
+}
+
+// helper matches (case-insensitive, tolerant to simple plural)
+const matches = (a?: string | null, b?: string | null) => {
+  if (!a || !b) return false;
+  const A = String(a).toLowerCase().trim();
+  const B = String(b).toLowerCase().trim();
+  if (A === B) return true;
+  if (A === B + 's' || B === A + 's') return true;
+  return false;
+};
+
+// Grouped selectable badges: supports parent items with optional subitems. Parent has separate expand control.
+const GroupedSelectableBadgeGroup = ({
+  options,
+  selected,
+  onChange,
+  label
+}: {
+  options: GroupOption[];
+  selected: string[];
+  onChange: (next: string[]) => void;
+  label: string;
+}) => {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  const toggleSelect = (val: string) => {
+    if (!val) return;
+    if (selected.includes(val)) onChange(selected.filter(s => s !== val));
+    else onChange([...selected, val]);
+  };
+
+  const toggleExpand = (name: string) => setExpanded(prev => ({ ...prev, [name]: !prev[name] }));
+
+  return (
+    <div className="space-y-2">
+      <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">{label}</label>
+      <div className="space-y-2">
+        {options.length === 0 && <p className="text-[10px] italic text-chocolate/40 px-1">No options available</p>}
+        {options.map((opt) => {
+          const name = typeof opt === 'string' ? opt : (opt.name || String(opt));
+          const subs: string[] = Array.isArray(opt.sub) ? opt.sub : (Array.isArray(opt.suboccasions) ? opt.suboccasions : (Array.isArray(opt.subthemes) ? opt.subthemes : (Array.isArray(opt.subitems) ? opt.subitems : (opt.sub || [])))) as string[];
+          const isParentSelected = selected.some(s => s && matches(s, name));
+          const isExpanded = Boolean(expanded[name]);
+
+          return (
+            <div key={name} className="bg-white rounded-2xl p-3 border border-chocolate/10 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleSelect(name)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 border ${isParentSelected ? 'bg-chocolate text-white border-chocolate shadow-md' : 'bg-white text-chocolate/60 border-chocolate/10 hover:border-strawberry/30 hover:text-strawberry'}`}
+                  >
+                    {name}
+                  </button>
+                  {subs && subs.length > 0 && (
+                    <button type="button" onClick={() => toggleExpand(name)} className="p-2 rounded-full text-chocolate/50 hover:text-chocolate transition-colors">
+                      <ChevronRight className={`w-4 h-4 transform transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {isExpanded && subs && subs.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {subs.map((s) => {
+                    const isSel = selected.some(sel => matches(sel, s));
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => toggleSelect(s)}
+                        className={`px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all ${isSel ? 'bg-chocolate text-white' : 'bg-white text-chocolate/70 border border-chocolate/10 hover:bg-cream/20'}`}
+                      >
+                        {s}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 
 const Products = () => {
   const dispatch = useAppDispatch();
@@ -168,9 +263,9 @@ const Products = () => {
   const [flavorsList, setFlavorsList] = useState<string[]>([]);
   const [weightsList, setWeightsList] = useState<string[]>([]);
   const [typesList, setTypesList] = useState<string[]>([]);
-  const [occasionsList, setOccasionsList] = useState<string[]>([]);
+  const [occasionsList, setOccasionsList] = useState<GroupOption[]>([]);
   const [shapesList, setShapesList] = useState<string[]>([]);
-  const [themesList, setThemesList] = useState<string[]>([]);
+  const [themesList, setThemesList] = useState<GroupOption[]>([]);
 
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<ProductForm>(emptyForm);
@@ -267,9 +362,18 @@ const Products = () => {
       setFlavorsList(toNames(flvs));
       setWeightsList(toNames(wts));
       setTypesList(toNames(typesRes));
-      setOccasionsList(toNames(occ));
+      // normalize groups: preserve subitems if provided by API objects
+      const normalizeGroups = (arr: any[]): GroupOption[] => (arr || []).map((it: any) => {
+        if (!it) return null as any;
+        if (typeof it === 'string') return { name: it, sub: [] };
+        const name = it.name || it.title || it.label || it.type || '';
+        const sub = Array.isArray(it.subthemes) ? it.subthemes : (Array.isArray(it.suboccasions) ? it.suboccasions : (Array.isArray(it.sub) ? it.sub : (it.subitems || [])));
+        return { name, sub: (sub || []).map((s:any)=>String(s)).filter(Boolean) } as GroupOption;
+      }).filter(Boolean) as GroupOption[];
+
+      setOccasionsList(normalizeGroups(occ));
       setShapesList(toNames(shp));
-      setThemesList(toNames(thm));
+      setThemesList(normalizeGroups(thm));
 
       const ings = (ingredientsRes || []).map((i: any) => ({
         id: i._id || i.id,
@@ -783,11 +887,11 @@ const Products = () => {
                     onChange={(next) => setForm({...form, type: next})} 
                 />
                 
-                <SelectableBadgeGroup 
-                    label="Tailored Occasions" 
-                    options={occasionsList} 
-                    selected={form.occasion || []} 
-                    onChange={(next) => setForm({...form, occasion: next})} 
+                <GroupedSelectableBadgeGroup
+                    label="Tailored Occasions"
+                    options={occasionsList}
+                    selected={form.occasion || []}
+                    onChange={(next) => setForm({...form, occasion: next})}
                 />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -797,11 +901,11 @@ const Products = () => {
                         selected={form.shape || []} 
                         onChange={(next) => setForm({...form, shape: next})} 
                     />
-                    <SelectableBadgeGroup 
-                        label="Themes" 
-                        options={themesList} 
-                        selected={form.theme || []} 
-                        onChange={(next) => setForm({...form, theme: next})} 
+                    <GroupedSelectableBadgeGroup
+                        label="Themes"
+                        options={themesList}
+                        selected={form.theme || []}
+                        onChange={(next) => setForm({...form, theme: next})}
                     />
                 </div>
               </div>
