@@ -16,6 +16,7 @@ const Products = lazy(() => import("./pages/Products"));
 const Customers = lazy(() => import("./pages/Customers"));
 const Categories = lazy(() => import("./pages/Categories"));
 const Payments = lazy(() => import("./pages/Payments"));
+const PaymentModes = lazy(() => import("./pages/PaymentModes"));
 const Delivery = lazy(() => import("./pages/Delivery"));
 const Analytics = lazy(() => import("./pages/Analytics"));
 const Settings = lazy(() => import("./pages/Settings"));
@@ -94,6 +95,7 @@ const App = () => (
               <Route path="categories" element={<RequirePermission path="/admin/categories"><Categories /></RequirePermission>} />
               <Route path="contacts" element={<RequirePermission path="/admin/contacts"><Contacts /></RequirePermission>} />
               <Route path="payments" element={<RequirePermission path="/admin/payments"><Payments /></RequirePermission>} />
+              <Route path="payment-modes" element={<RequirePermission path="/admin/payment-modes"><PaymentModes /></RequirePermission>} />
               <Route path="delivery" element={<RequirePermission path="/admin/delivery"><Delivery /></RequirePermission>} />
               <Route path="analytics" element={<RequirePermission path="/admin/analytics"><Analytics /></RequirePermission>} />
               <Route path="flavors" element={<RequirePermission path="/admin/flavors"><Flavors /></RequirePermission>} />

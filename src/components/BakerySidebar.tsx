@@ -55,7 +55,8 @@ const menuItems = [
       { title: "Occasions", icon: IceCream, path: "/admin/occasions" },
       { title: "Shapes", icon: Heart, path: "/admin/shapes" },
       { title: "Themes", icon: Star, path: "/admin/themes" },
-       { title: "Nutrition", icon: List, path: "/admin/nutrition" },
+     
+      { title: "Nutrition", icon: List, path: "/admin/nutrition" },
       { title: "Ingredients", icon: List, path: "/admin/ingredients" },
      
     ],
@@ -63,6 +64,7 @@ const menuItems = [
   { title: "Admins", icon: Users, path: "/admin/admins" },
   { title: "Roles", icon: ShieldCheck, path: "/admin/roles" },
   { title: "Customers", icon: Users, path: "/admin/customers" },
+   { title: "Payment Modes", icon: CreditCard, path: "/admin/payment-modes" },
   { title: "Payments", icon: CreditCard, path: "/admin/payments" },
   { title: "Delivery", icon: Truck, path: "/admin/delivery" },
   { title: "Analytics", icon: BarChart3, path: "/admin/analytics" },

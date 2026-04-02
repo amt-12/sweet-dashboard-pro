@@ -97,6 +97,13 @@ export const api = {
     update: (id: string | number, typeObj: object) => axiosInstance.put(`/types/${id}`, typeObj).then(res => normalize(res)),
     delete: (id: string | number) => axiosInstance.delete(`/types/${id}`).then(() => undefined),
   },
+  paymentModes: {
+    getAll: (): Promise<any[]> => axiosInstance.get('/payment-modes').then(res => normalize<any[]>(res)),
+    getById: (id: string | number) => axiosInstance.get(`/payment-modes/${id}`).then(res => normalize(res)),
+    create: (payload: object) => axiosInstance.post('/payment-modes', payload).then(res => normalize(res)),
+    update: (id: string | number, payload: object) => axiosInstance.put(`/payment-modes/${id}`, payload).then(res => normalize(res)),
+    delete: (id: string | number) => axiosInstance.delete(`/payment-modes/${id}`).then(() => undefined),
+  },
   orders: {
     getAll: (): Promise<any[]> => axiosInstance.get('/orders').then(res => normalize<any[]>(res)),
     getById: (id: string | number) => axiosInstance.get(`/orders/${id}`).then(res => normalize(res)),
