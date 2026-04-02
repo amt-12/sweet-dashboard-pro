@@ -649,102 +649,109 @@ const Products = () => {
       </div>
 
       {/* ── Product Cards Grid ────────────────────────────────────── */}
-      {products.length === 0 ? (
-        <div className="bg-white/50 backdrop-blur-sm rounded-[2rem] border border-chocolate/10 shadow-bakery p-20 flex flex-col items-center gap-6">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-chocolate/10 to-strawberry/10 flex items-center justify-center border border-white/40 shadow-inner">
-            <Package size={40} className="text-chocolate/30" />
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold font-dancing text-chocolate">The pantry is empty</p>
-            <p className="text-sm text-chocolate-light font-medium mt-1">Shall we begin by adding an exquisite new item?</p>
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {products.map((product: any) => {
-            const imgSrc = getImageSrc(product.image, product.images?.[0]?.base64);
-            const stock = Number(product.stock) || 0;
-            const stockLow = stock > 0 && stock <= 5;
-            const stockOut = stock === 0;
-            return (
-              <div
-                key={product.id}
-                className="bg-white rounded-[2rem] border border-chocolate/5 shadow-bakery hover:shadow-bakery-lg transition-all duration-500 overflow-hidden group flex flex-col relative"
-              >
-                {/* Cover image */}
-                <div className="relative w-full h-52 bg-cream overflow-hidden">
-                  {imgSrc ? (
-                    <img
-                      src={imgSrc}
-                      alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center opacity-30">
-                      <Package size={48} className="text-chocolate" />
-                    </div>
-                  )}
+			{products.length === 0 ? (
+				<div className="bg-white/50 backdrop-blur-sm rounded-[2.5rem] border border-chocolate/5 shadow-bakery p-32 flex flex-col items-center gap-8 text-center animate-in zoom-in duration-700">
+					<div className="w-24 h-24 rounded-full bg-cream/50 flex items-center justify-center border border-white/40 shadow-inner group overflow-hidden">
+						<Package size={40} className="text-chocolate/20 group-hover:scale-110 transition-transform duration-500" />
+					</div>
+					<div className="space-y-2">
+						<h3 className="text-3xl font-bold font-dancing text-chocolate">The pantry is empty</h3>
+						<p className="text-sm text-chocolate-light font-medium italic">Shall we begin by adding an exquisite new item?</p>
+					</div>
+				</div>
+			) : (
+				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10">
+					{products.map((product: any) => {
+						const imgSrc = getImageSrc(product.image, product.images?.[0]?.base64);
+						const stock = Number(product.stock) || 0;
+						const stockLow = stock > 0 && stock <= 5;
+						const stockOut = stock === 0;
+						
+						return (
+							<div
+								key={product.id}
+								className="group relative bg-white/60 backdrop-blur-xl rounded-[2.5rem] border border-chocolate/5 shadow-bakery hover:shadow-bakery-lg transition-all duration-700 overflow-hidden flex flex-col h-full hover:-translate-y-2"
+							>
+								{/* Image Section */}
+								<div className="relative aspect-[4/5] overflow-hidden">
+									{imgSrc ? (
+										<img
+											src={imgSrc}
+											alt={product.name}
+											className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
+										/>
+									) : (
+										<div className="w-full h-full bg-cream/30 flex items-center justify-center text-chocolate/10">
+											<ImageIcon size={64} />
+										</div>
+									)}
+									
+									<div className="absolute inset-0 bg-gradient-to-t from-chocolate/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-700" />
+									
+									{/* Top Badges */}
+									<div className="absolute top-6 left-6 right-6 flex items-start justify-between pointer-events-none">
+										<div className="px-4 py-2 bg-white/90 backdrop-blur-md rounded-2xl shadow-sm border border-white/20">
+											<span className="text-[10px] font-black uppercase tracking-[0.2em] text-chocolate">{product.category}</span>
+										</div>
+										
+										<div className={`p-2.5 rounded-full backdrop-blur-md border border-white/20 shadow-lg ${
+											stockOut ? 'bg-red-500 text-white' : 
+											stockLow ? 'bg-amber-400 text-white' : 
+											'bg-emerald-500 text-white'
+										}`}>
+											<Package size={14} />
+										</div>
+									</div>
 
-                  {/* Badges overlay */}
-                  <div className="absolute top-4 inset-x-4 flex items-center justify-between pointer-events-none">
-                    {product.category && (
-                      <span className="px-3 py-1 bg-white/90 backdrop-blur-md text-chocolate text-[10px] font-bold uppercase tracking-widest rounded-full shadow-sm border border-white/20">
-                        {product.category}
-                      </span>
-                    )}
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-sm backdrop-blur-md ${
-                      stockOut
-                        ? 'bg-red-500/90 text-white'
-                        : stockLow
-                        ? 'bg-amber-400/90 text-white'
-                        : 'bg-emerald-500/90 text-white'
-                    }`}>
-                      {stockOut ? 'Out' : stockLow ? `Low: ${stock}` : `Luxury`}
-                    </span>
-                  </div>
+									{/* Bottom Info Overlay (On Hover) */}
+									<div className="absolute bottom-6 left-6 right-6 translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 delay-100 flex flex-col gap-2">
+										<div className="flex flex-wrap gap-1.5">
+											{(product.type || []).slice(0, 2).map((t: string) => (
+												<span key={t} className="text-[9px] bg-white/20 text-white px-2.5 py-1 rounded-full font-bold uppercase tracking-wider backdrop-blur-md border border-white/10">{t}</span>
+											))}
+										</div>
+										<p className="text-[10px] text-white/80 font-medium italic line-clamp-2 leading-relaxed">
+											{product.tasteDescription || "No sensory data provided."}
+										</p>
+									</div>
+								</div>
 
-                  <div className="absolute inset-0 bg-gradient-to-t from-chocolate/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
+								{/* Content Section */}
+								<div className="p-8 flex flex-col flex-1 space-y-6">
+									<div className="space-y-2">
+										<h3 className="font-bold text-chocolate text-xl leading-tight group-hover:text-strawberry transition-colors group-hover:italic">
+											{product.name}
+										</h3>
+										<div className="flex items-center gap-3">
+											<p className="text-2xl font-black text-strawberry">₹{(Number(product.price) || 0).toLocaleString()}</p>
+											<div className="h-4 w-px bg-chocolate/10" />
+											<span className="text-[10px] font-bold text-chocolate/40 uppercase tracking-widest leading-none">
+												{product.flavor || (product.ingredients?.length ? 'Crafted' : 'Classic')}
+											</span>
+										</div>
+									</div>
 
-                {/* Body */}
-                <div className="flex flex-col flex-1 p-6 space-y-4">
-                  <div className="space-y-1">
-                    <div className="flex items-start justify-between gap-3">
-                      <h3 className="font-bold text-chocolate text-base leading-tight truncate group-hover:text-strawberry transition-colors">
-                        {product.name}
-                      </h3>
-                      <p className="text-lg font-bold text-strawberry whitespace-nowrap">
-                        ₹{(Number(product.price) || 0).toLocaleString()}
-                      </p>
-                    </div>
-                    {product.tasteDescription && (
-                      <p className="text-xs text-chocolate-light line-clamp-2 italic font-medium leading-relaxed">
-                        {product.tasteDescription}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-4 mt-auto">
-                    <button
-                      onClick={() => openEdit(product)}
-                      className="flex-1 px-4 py-2.5 rounded-full text-xs font-bold text-white bg-chocolate hover:bg-strawberry transition-colors flex items-center justify-center gap-2 shadow-sm"
-                    >
-                      <Edit size={14} />
-                      Detail
-                    </button>
-                    <button
-                      onClick={() => handleDelete(product.id)}
-                      className="p-2.5 rounded-full text-red-500 hover:text-white hover:bg-red-500 border border-red-100 transition-all"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+									<div className="pt-6 border-t border-chocolate/5 mt-auto flex items-center justify-between gap-4">
+										<button
+											onClick={() => openEdit(product)}
+											className="flex-1 px-6 py-3.5 bg-chocolate text-white rounded-full text-xs font-bold uppercase tracking-widest shadow-bakery hover:bg-strawberry transition-all flex items-center justify-center gap-2"
+										>
+											<Edit size={14} />
+											Refine
+										</button>
+										<button
+											onClick={() => handleDelete(product.id)}
+											className="p-3.5 bg-white text-red-400 hover:bg-red-500 hover:text-white rounded-full border border-red-50 shadow-sm transition-all"
+										>
+											<Trash2 size={16} />
+										</button>
+									</div>
+								</div>
+							</div>
+						);
+					})}
+				</div>
+			)}
 
       <Dialog open={showModal} onOpenChange={(open) => !open && closeModal()}>
         <DialogContent className="max-w-[95vw] md:max-w-[70vw] lg:max-w-5xl h-[90vh] flex flex-col p-0 bg-[#FAFBFD] border-none overflow-hidden rounded-[2.5rem]">

@@ -13,6 +13,12 @@ import {
   Lock,
   ChevronDown,
   Copy,
+  Info,
+  Shield,
+  Search,
+  Sparkles,
+  ChevronRight,
+  UserPlus
 } from 'lucide-react';
 import { fetchWithAuth } from '@/services/auth';
 import { toast } from 'sonner';
@@ -20,14 +26,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-} from '@/components/ui/sheet';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 type Role = {
   _id: string;
@@ -64,7 +78,7 @@ const Roles = () => {
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [loading, setLoading] = useState(false);
   const [permissionsLoading, setPermissionsLoading] = useState(false);
-  const [showSheet, setShowSheet] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -73,6 +87,7 @@ const Roles = () => {
   });
   const [submitting, setSubmitting] = useState(false);
   const [expandedGroup, setExpandedGroup] = useState<string | null>('main');
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Load roles and permissions
   const loadRoles = async () => {
@@ -110,22 +125,28 @@ const Roles = () => {
     loadPermissions();
   }, []);
 
-  // Open sheet for creating new role
-  const openNewRoleSheet = () => {
+  // Open modal for creating new role
+  const openNewRoleModal = () => {
     setEditingRole(null);
     setFormData({ name: '', description: '', permissions: [] });
-    setShowSheet(true);
+    setShowModal(true);
   };
 
-  // Open sheet for editing role
-  const openEditRoleSheet = (role: Role) => {
+  // Open modal for editing role
+  const openEditRoleModal = (role: Role) => {
     setEditingRole(role);
     setFormData({
       name: role.name,
       description: role.description,
       permissions: role.permissions || [],
     });
-    setShowSheet(true);
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingRole(null);
+    setFormData({ name: '', description: '', permissions: [] });
   };
 
   // Save role (create or update)
@@ -158,9 +179,7 @@ const Roles = () => {
       }
 
       toast.success(editingRole ? 'Role updated successfully!' : 'Role created successfully!');
-      setShowSheet(false);
-      setFormData({ name: '', description: '', permissions: [] });
-      setEditingRole(null);
+      closeModal();
       await loadRoles();
     } catch (err: any) {
       toast.error(err.message || 'Failed to save role');
@@ -210,271 +229,307 @@ const Roles = () => {
 
   const permissionGroups = Object.keys(groupedPermissions).sort();
 
+  const filteredRoles = roles.filter(r => 
+    r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    r.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
-    <div className="space-y-6 p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <ShieldCheck className="w-8 h-8 text-chocolate" />
+    <div className="space-y-8 animate-in fade-in duration-700 font-lora p-6 max-w-7xl mx-auto">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-chocolate text-white flex items-center justify-center shadow-bakery transform rotate-3">
+             <ShieldCheck size={28} />
+          </div>
           <div>
-            <h1 className="text-3xl font-bold text-chocolate">Role Configuration</h1>
-            <p className="text-sm text-gray-600">Manage roles and their permissions</p>
+            <h2 className="text-4xl font-bold font-dancing text-chocolate">Role Configuration</h2>
+            <p className="text-sm text-chocolate-light font-medium mt-1">
+              Manage security roles and access permissions.
+            </p>
           </div>
         </div>
-        <Button onClick={openNewRoleSheet} className="bg-strawberry hover:bg-strawberry/90">
-          <Plus className="w-5 h-5 mr-2" />
-          Create Role
-        </Button>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={loadRoles}
+            className="p-3 bg-white border border-chocolate/10 rounded-full text-chocolate hover:bg-strawberry/5 transition-all shadow-sm group"
+          >
+            <RefreshCw size={18} className={loading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'} />
+          </button>
+          <button 
+            onClick={openNewRoleModal} 
+            className="px-6 py-3 bg-chocolate text-white rounded-full flex items-center gap-2 shadow-bakery hover:shadow-bakery-lg hover:bg-strawberry transition-all duration-300"
+          >
+            <Plus size={18} />
+            <span className="font-bold text-xs uppercase tracking-widest text-[#F5ECD7]">Create Role</span>
+          </button>
+        </div>
       </div>
 
-      {/* Roles List */}
-      <div className="grid gap-4">
-        {loading ? (
-          <div className="text-center py-12">
-            <RefreshCw className="w-8 h-8 animate-spin mx-auto text-chocolate/50 mb-2" />
-            <p className="text-gray-600">Loading roles...</p>
-          </div>
-        ) : roles.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg border border-dashed border-gray-300">
-            <ShieldCheck className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-            <p className="text-gray-600 font-medium">No roles created yet</p>
-            <p className="text-sm text-gray-500 mb-4">Create your first role to get started</p>
-            <Button onClick={openNewRoleSheet} variant="outline">
-              <Plus className="w-4 h-4 mr-2" />
-              Create Role
-            </Button>
-          </div>
-        ) : (
-          roles.map((role) => (
-            <div
-              key={role._id}
-              className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-start gap-3 flex-1">
-                  <RoleIcon roleType={role.name.toLowerCase()} />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-gray-900">{role.name}</h3>
-                      {role.isSystem && (
-                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">
-                          System
-                        </span>
-                      )}
-                    </div>
-                    {role.description && (
-                      <p className="text-sm text-gray-600 mt-1">{role.description}</p>
-                    )}
-                    {role.usersCount !== undefined && (
-                      <p className="text-xs text-gray-500 mt-2">
-                        Assigned to {role.usersCount} user{role.usersCount !== 1 ? 's' : ''}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    onClick={() => openEditRoleSheet(role)}
-                    variant="ghost"
-                    size="sm"
-                    disabled={role.isSystem}
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    onClick={() => deleteRole(role)}
-                    variant="ghost"
-                    size="sm"
-                    disabled={role.isSystem || (role.usersCount || 0) > 0}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
+      {/* Search/Filter Section */}
+      <div className="flex items-center gap-4 bg-white/60 backdrop-blur-md p-4 rounded-[2rem] shadow-bakery border border-chocolate/5">
+        <div className="relative flex-1 group">
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-chocolate/30 group-focus-within:text-strawberry transition-colors w-5 h-5" />
+          <input 
+            type="text" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search roles..." 
+            className="w-full pl-14 pr-6 py-4 rounded-2xl bg-[#FAF6E6]/50 text-chocolate outline-none border border-transparent focus:border-strawberry/20 focus:bg-white focus:ring-8 focus:ring-strawberry/5 transition-all font-medium placeholder:text-chocolate/20" 
+          />
+        </div>
+      </div>
 
-              {/* Permissions Preview */}
-              {role.permissions && role.permissions.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-gray-100">
-                  <div className="flex flex-wrap gap-2">
-                    {role.permissions.slice(0, 5).map((permUrl) => {
-                      const perm = permissions.find((p) => p.url === permUrl);
-                      return (
-                        <span
-                          key={permUrl}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-chocolate/10 text-chocolate"
-                        >
-                          <Check className="w-3 h-3" />
-                          {perm?.name || permUrl}
-                        </span>
-                      );
-                    })}
-                    {role.permissions.length > 5 && (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium text-gray-600">
-                        +{role.permissions.length - 5} more
+      {/* Roles Table */}
+      <div className="bg-white/60 backdrop-blur-md rounded-[2.5rem] border border-chocolate/5 shadow-bakery overflow-hidden">
+        <Table>
+          <TableHeader className="bg-cream/30">
+            <TableRow className="border-chocolate/5 hover:bg-transparent">
+              <TableHead className="w-20 pl-8 h-16 font-bold text-chocolate italic uppercase tracking-widest text-[10px]">Icon</TableHead>
+              <TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px]">Role Name</TableHead>
+              <TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px] hidden md:table-cell">Description</TableHead>
+              <TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px]">Users</TableHead>
+              <TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px]">Permissions</TableHead>
+              <TableHead className="pr-8 h-16 font-bold text-chocolate italic uppercase tracking-widest text-[10px] text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody className="no-scrollbar">
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={6} className="py-24 text-center">
+                   <div className="flex flex-col items-center gap-3">
+                      <RefreshCw size={32} className="animate-spin text-chocolate/20" />
+                      <p className="text-chocolate/40 font-medium italic">Consulting the archives...</p>
+                   </div>
+                </TableCell>
+              </TableRow>
+            ) : filteredRoles.length === 0 ? (
+               <TableRow>
+                <TableCell colSpan={6} className="py-24 text-center">
+                  <div className="w-16 h-16 bg-chocolate/5 rounded-full flex items-center justify-center mx-auto text-chocolate/10 mb-4">
+                    <Shield size={32} />
+                  </div>
+                  <p className="text-chocolate-light font-medium italic">No roles found in the records.</p>
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredRoles.map((role) => (
+                <TableRow key={role._id} className="group border-chocolate/5 hover:bg-cream/20 transition-colors">
+                  <TableCell className="pl-8 py-6">
+                    <div className="w-12 h-12 rounded-xl bg-chocolate text-white flex items-center justify-center shadow-sm transform group-hover:rotate-3 transition-transform duration-300">
+                      {role.name.toLowerCase() === 'superadmin' ? <Lock size={20} /> : <Shield size={20} />}
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-6">
+                    <div className="flex flex-col">
+                      <span className="font-bold text-chocolate text-lg tracking-tight group-hover:text-strawberry transition-colors">
+                        {role.name}
                       </span>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* Sheet for Create/Edit Role */}
-      <Sheet open={showSheet} onOpenChange={setShowSheet}>
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>
-              {editingRole ? `Edit Role: ${editingRole.name}` : 'Create New Role'}
-            </SheetTitle>
-            <SheetDescription>
-              {editingRole
-                ? 'Update the role details and permissions'
-                : 'Define a new role with specific permissions'}
-            </SheetDescription>
-          </SheetHeader>
-
-          <form onSubmit={saveRole} className="space-y-6 py-6">
-            {/* Role Name */}
-            <div className="space-y-2">
-              <Label htmlFor="roleName" className="text-sm font-medium">
-                Role Name *
-              </Label>
-              <Input
-                id="roleName"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, name: e.target.value }))
-                }
-                placeholder="e.g., Content Manager, Inventory Admin"
-                disabled={submitting}
-              />
-            </div>
-
-            {/* Role Description */}
-            <div className="space-y-2">
-              <Label htmlFor="roleDesc" className="text-sm font-medium">
-                Description
-              </Label>
-              <textarea
-                id="roleDesc"
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, description: e.target.value }))
-                }
-                placeholder="Brief description of this role's purpose"
-                rows={3}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-chocolate focus:border-transparent"
-                disabled={submitting}
-              />
-            </div>
-
-            {/* Permissions Selection */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium flex items-center gap-2">
-                <Lock className="w-4 h-4" />
-                Assign Permissions
-              </Label>
-
-              {permissionsLoading ? (
-                <div className="text-center py-8">
-                  <RefreshCw className="w-5 h-5 animate-spin mx-auto text-chocolate/50" />
-                </div>
-              ) : permissions.length === 0 ? (
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-blue-900">No permissions available</p>
-                      <p className="text-xs text-blue-700 mt-1">
-                        No permissions have been configured yet. Create permissions in the Admins
-                        section first.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-96 overflow-y-auto border border-gray-200 rounded-lg p-4 bg-gray-50">
-                  {permissionGroups.map((group) => (
-                    <div key={group}>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setExpandedGroup(expandedGroup === group ? null : group)
-                        }
-                        className="flex items-center gap-2 w-full px-3 py-2 rounded-md font-medium text-sm text-chocolate hover:bg-chocolate/10 transition-colors"
-                      >
-                        <ChevronDown
-                          className={`w-4 h-4 transition-transform ${
-                            expandedGroup === group ? 'rotate-180' : ''
-                          }`}
-                        />
-                        {group.charAt(0).toUpperCase() + group.slice(1)}
-                        <span className="ml-auto text-xs text-gray-600">
-                          ({groupedPermissions[group].length})
-                        </span>
-                      </button>
-
-                      {expandedGroup === group && (
-                        <div className="space-y-2 pl-6 mt-2">
-                          {groupedPermissions[group].map((perm) => (
-                            <label
-                              key={perm._id}
-                              className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-white transition-colors"
-                            >
-                              <Checkbox
-                                checked={formData.permissions.includes(perm.url)}
-                                onCheckedChange={() => togglePermission(perm.url)}
-                                disabled={submitting}
-                              />
-                              <span className="text-sm text-gray-700">{perm.name}</span>
-                              <span className="ml-auto text-xs text-gray-500">{perm.url}</span>
-                            </label>
-                          ))}
-                        </div>
+                      {role.isSystem && (
+                        <span className="text-[9px] font-bold text-strawberry uppercase tracking-tighter">System Protected</span>
                       )}
                     </div>
-                  ))}
-                </div>
-              )}
+                  </TableCell>
+                  <TableCell className="py-6 hidden md:table-cell max-w-sm">
+                    <p className="text-sm text-chocolate/40 font-medium italic line-clamp-1 leading-relaxed">
+                      {role.description || "No description provided."}
+                    </p>
+                  </TableCell>
+                  <TableCell className="py-6">
+                    <div className="flex items-center gap-2">
+                       <div className="px-3 py-1 bg-chocolate/5 rounded-full border border-chocolate/5 flex items-center gap-1.5">
+                          <Users size={12} className="text-chocolate/30" />
+                          <span className="text-[10px] font-bold text-chocolate/60">
+                            {role.usersCount || 0}
+                          </span>
+                       </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-6">
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 bg-chocolate/5 rounded-full border border-chocolate/5 text-[10px] font-bold uppercase tracking-widest text-chocolate/40 italic">
+                        {role.permissions?.length || 0} Perms
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-6 pr-8 text-right">
+                    <div className="flex items-center justify-end gap-2 shrink-0 transition-all">
+                      <button
+                        onClick={() => openEditRoleModal(role)}
+                        disabled={role.isSystem}
+                        className="p-2.5 bg-white border border-chocolate/10 rounded-full text-chocolate hover:bg-chocolate hover:text-white transition-all shadow-sm disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                      <button
+                        onClick={() => deleteRole(role)}
+                        disabled={role.isSystem || (role.usersCount || 0) > 0}
+                        className="p-2.5 bg-white border border-red-100 rounded-full text-red-400 hover:bg-red-500 hover:text-white transition-all shadow-sm disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
-              {formData.permissions.length > 0 && (
-                <p className="text-xs text-gray-600">
-                  {formData.permissions.length} permission{formData.permissions.length !== 1 ? 's' : ''}{' '}
-                  selected
-                </p>
-              )}
+      {/* Modal for Create/Edit Role */}
+      <Dialog open={showModal} onOpenChange={(open) => !open && closeModal()}>
+        <DialogContent className="max-w-3xl bg-[#FAFBFD] p-0 border-none overflow-hidden rounded-[2.5rem] shadow-2xl">
+          <DialogHeader className="p-8 bg-white border-b border-chocolate/5 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-strawberry/5 rounded-full -mr-24 -mt-24 blur-3xl" />
+            <div className="relative flex items-center gap-6">
+              <div className="w-14 h-14 rounded-2xl bg-chocolate text-white flex items-center justify-center shadow-bakery transform rotate-3 hover:rotate-0 transition-transform">
+                <ShieldCheck size={24} />
+              </div>
+              <div>
+                <DialogTitle className="text-3xl font-bold text-chocolate font-dancing">
+                  {editingRole ? `Edit Role: ${editingRole.name}` : 'Create New Role'}
+                </DialogTitle>
+                <DialogDescription className="text-chocolate-light font-medium mt-1">
+                  {editingRole ? 'Update the role details and permissions' : 'Define a new role with specific permissions'}
+                </DialogDescription>
+              </div>
             </div>
+          </DialogHeader>
 
-            {/* Form Actions */}
-            <SheetFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowSheet(false)}
-                disabled={submitting}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={submitting} className="bg-chocolate hover:bg-chocolate/90">
-                {submitting ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    {editingRole ? 'Update Role' : 'Create Role'}
-                  </>
-                )}
-              </Button>
-            </SheetFooter>
+          <form id="role-form" onSubmit={saveRole} className="flex-1 overflow-y-auto p-8 space-y-8 no-scrollbar max-h-[65vh]">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+               <div className="space-y-6">
+                  {/* Role Name */}
+                  <div className="space-y-2 group">
+                    <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Role Name</label>
+                    <div className="relative">
+                      <Sparkles size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
+                      <input
+                        required
+                        id="roleName"
+                        value={formData.name}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                        placeholder="e.g. Manager"
+                        disabled={submitting}
+                        className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium placeholder:text-chocolate/10"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Role Description */}
+                  <div className="space-y-2 group">
+                    <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Description</label>
+                    <div className="relative">
+                      <Info size={18} className="absolute left-4 top-5 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
+                      <textarea
+                        id="roleDesc"
+                        value={formData.description}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                        placeholder="Brief description..."
+                        rows={5}
+                        disabled={submitting}
+                        className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium placeholder:text-chocolate/10 resize-none leading-relaxed italic"
+                      />
+                    </div>
+                  </div>
+               </div>
+
+               {/* Permissions Selection */}
+               <div className="space-y-4">
+                  <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
+                    <Lock size={12} />
+                    Assign Permissions
+                  </label>
+
+                  {permissionsLoading ? (
+                    <div className="text-center py-12 bg-white/40 rounded-2xl border border-dashed border-chocolate/10">
+                      <RefreshCw size={24} className="animate-spin mx-auto text-chocolate/20 mb-2" />
+                      <p className="text-xs text-chocolate/40 italic">Syncing with server...</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 no-scrollbar">
+                      {permissionGroups.map((group) => (
+                        <div key={group} className="space-y-2">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedGroup(expandedGroup === group ? null : group)}
+                            className="flex items-center gap-2 w-full px-4 py-3 rounded-xl font-bold text-[10px] text-chocolate/70 bg-white border border-chocolate/5 hover:bg-strawberry/5 transition-all uppercase tracking-widest"
+                          >
+                            <ChevronRight
+                              className={`w-3 h-3 transition-transform duration-300 ${
+                                expandedGroup === group ? 'rotate-90 text-strawberry' : ''
+                              }`}
+                            />
+                            {group}
+                            <span className="ml-auto bg-chocolate/5 px-2 py-0.5 rounded-full text-[8px]">
+                              {groupedPermissions[group].length}
+                            </span>
+                          </button>
+
+                          {expandedGroup === group && (
+                            <div className="space-y-1.5 pl-4 animate-in slide-in-from-top-2 duration-300">
+                              {groupedPermissions[group].map((perm) => (
+                                <label
+                                  key={perm._id}
+                                  className="flex items-center gap-3 cursor-pointer p-3 rounded-xl hover:bg-white border border-transparent hover:border-chocolate/5 transition-all group"
+                                >
+                                  <Checkbox
+                                    checked={formData.permissions.includes(perm.url)}
+                                    onCheckedChange={() => togglePermission(perm.url)}
+                                    disabled={submitting}
+                                    className="border-chocolate/20 data-[state=checked]:bg-strawberry data-[state=checked]:border-strawberry"
+                                  />
+                                  <div className="flex flex-col">
+                                    <span className="text-xs font-bold text-chocolate/80 group-hover:text-chocolate transition-colors">{perm.name}</span>
+                                    <span className="text-[8px] text-chocolate/20 italic tracking-wider">{perm.url}</span>
+                                  </div>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {formData.permissions.length > 0 && (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-strawberry/5 rounded-full border border-strawberry/10 w-fit">
+                        <Sparkles size={10} className="text-strawberry" />
+                        <span className="text-[9px] font-bold text-strawberry uppercase">
+                          {formData.permissions.length} Authorized Actions
+                        </span>
+                    </div>
+                  )}
+               </div>
+            </div>
           </form>
-        </SheetContent>
-      </Sheet>
+
+          <DialogFooter className="p-8 bg-white border-t border-chocolate/5 flex flex-row items-center justify-between gap-4">
+            <button 
+              type="button" 
+              onClick={closeModal} 
+              disabled={submitting}
+              className="px-8 py-3 rounded-full text-xs font-bold text-chocolate/60 bg-white border border-chocolate/10 hover:bg-chocolate/5 transition-all uppercase tracking-widest font-lora"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              form="role-form" 
+              disabled={submitting} 
+              className="px-10 py-4 bg-chocolate text-white rounded-full font-bold shadow-bakery hover:bg-strawberry transition-all disabled:opacity-50 flex items-center gap-3 uppercase tracking-widest"
+            >
+              {submitting ? (
+                <RefreshCw size={16} className="animate-spin" />
+              ) : (
+                <Save size={16} />
+              )}
+              {editingRole ? 'Update Role' : 'Create Role'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

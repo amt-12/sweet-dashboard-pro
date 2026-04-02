@@ -8,7 +8,7 @@ const AdminLayout = () => {
       <BakerySidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <DashboardTopbar />
-        <main className="flex-1 p-6 space-y-6 overflow-auto">
+        <main className="flex-1 p-6 space-y-6 overflow-auto no-scrollbar">
           <Outlet />
         </main>
       </div>

@@ -240,59 +240,72 @@ export default function NutritionConfig() {
 
         <div className="lg:col-span-4 space-y-8">
           <div className="bg-white/60 backdrop-blur-md p-8 rounded-[2.5rem] shadow-bakery border border-chocolate/5 flex flex-col h-[600px]">
-            <h3 className="text-xl font-bold font-playfair text-chocolate mb-6 flex items-center gap-2">
+            <h3 className="text-xl font-bold font-playfair text-chocolate flex items-center gap-2">
               <CheckCircle2 className="text-strawberry" size={20} />
-              Saved Records
+              Saved Archives
             </h3>
             
-            <div className="relative group mb-6">
+            <div className="relative group mb-8">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/20 group-focus-within:text-strawberry transition-colors" size={16} />
               <input 
                 type="text" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Find in pantry..."
-                className="w-full pl-10 pr-4 py-3 bg-[#FAF6E6]/50 border border-transparent focus:bg-white focus:border-strawberry/20 rounded-xl text-xs outline-none transition-all font-medium italic"
+                className="w-full pl-10 pr-4 py-4 bg-white border border-chocolate/5 group-focus-within:border-strawberry/20 rounded-2xl text-xs outline-none transition-all font-medium italic shadow-sm"
               />
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar no-scrollbar">
               {loadingIngredients ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-4">
                   <RefreshCw size={24} className="animate-spin text-chocolate/20" />
-                  <p className="text-[10px] uppercase tracking-widest font-bold text-chocolate/20">Loading Pantry...</p>
+                  <p className="text-[10px] uppercase tracking-widest font-bold text-chocolate/20">Syncing Records...</p>
                 </div>
               ) : filteredIngredients.length === 0 ? (
                 <div className="text-center py-20 italic text-chocolate/30 text-sm">
-                  No records matching your search.
+                  The pantry seems empty.
                 </div>
               ) : (
-                filteredIngredients.map(si => (
-                  <div key={si._id || si.id || si.name} className="group/item flex items-center justify-between p-4 bg-white border border-chocolate/5 rounded-2xl hover:border-strawberry/20 hover:shadow-bakery transition-all duration-300">
-                    <div>
-                      <h4 className="text-sm font-bold text-chocolate group-hover/item:text-strawberry transition-colors">{si.name}</h4>
-                      <p className="text-[10px] text-chocolate/40 font-bold uppercase tracking-widest mt-0.5">{si.unit || 'No unit'}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+                  {filteredIngredients.map(si => (
+                    <div key={si._id || si.id || si.name} className="group/item relative flex flex-col p-5 bg-white border border-chocolate/5 rounded-[1.5rem] hover:border-strawberry/30 hover:shadow-bakery transition-all duration-500 overflow-hidden">
+                      <div className="absolute top-0 right-0 w-16 h-16 bg-strawberry/5 rounded-full -mr-8 -mt-8 transition-transform group-hover/item:scale-150 duration-500" />
+                      
+                      <div className="relative z-10 flex flex-col h-full">
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="w-10 h-10 rounded-xl bg-chocolate/5 text-chocolate flex items-center justify-center font-dancing font-bold text-lg group-hover/item:bg-chocolate group-hover/item:text-white transition-all duration-500">
+                             {String(si.name).charAt(0)}
+                          </div>
+                          <div className="flex gap-1 opacity-0 group-hover/item:opacity-100 transition-all">
+                            <button 
+                              type="button" 
+                              onClick={() => insertSavedIngredient(si)} 
+                              className="p-2 bg-white text-strawberry hover:bg-strawberry hover:text-white rounded-full border border-strawberry/10 shadow-sm transition-all"
+                              title="Add to Builder"
+                            >
+                              <Plus size={12} />
+                            </button>
+                            <button 
+                              type="button" 
+                              onClick={() => deleteSavedIngredient(si._id || si.id)} 
+                              className="p-2 bg-white text-red-400 hover:bg-red-500 hover:text-white rounded-full border border-red-100 shadow-sm transition-all"
+                              title="Delete record"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <h4 className="text-sm font-bold text-chocolate group-hover/item:text-strawberry transition-colors leading-tight mb-1">{si.name}</h4>
+                        <div className="mt-auto flex items-center gap-2">
+                          <span className="text-[9px] text-chocolate/30 font-black uppercase tracking-[0.1em]">{si.unit || 'Standard'}</span>
+                          <div className="h-px flex-1 bg-chocolate/5" />
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                      <button 
-                        type="button" 
-                        onClick={() => insertSavedIngredient(si)} 
-                        className="p-2 text-strawberry hover:bg-strawberry/10 rounded-lg transition-colors"
-                        title="Add to Builder"
-                      >
-                        <Plus size={16} />
-                      </button>
-                      <button 
-                        type="button" 
-                        onClick={() => deleteSavedIngredient(si._id || si.id)} 
-                        className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Delete record"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
             

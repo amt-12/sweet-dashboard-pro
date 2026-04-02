@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import animate from "tailwindcss-animate";
 
 export default {
   darkMode: ["class"],
@@ -90,6 +91,12 @@ export default {
         sm: "calc(var(--radius) - 4px)",
         bakery: "1.5rem",
       },
+      boxShadow: {
+        bakery: "0 8px 32px -8px hsl(20 30% 50% / 0.12)",
+        "bakery-lg": "0 16px 48px -12px hsl(20 30% 50% / 0.18)",
+        "bakery-xl": "0 24px 64px -16px hsl(20 30% 50% / 0.22)",
+        neu: "6px 6px 12px hsl(20 30% 50% / 0.08), -6px -6px 12px hsl(0 0% 100% / 0.8)",
+      },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },
@@ -153,5 +160,5 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [animate],
 } satisfies Config;

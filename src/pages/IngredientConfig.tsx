@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import axiosInstance, { api } from '../services/api';
-import { Plus, Search, Edit, Trash2, X, FlaskConical, FileText, RefreshCw, Save, ArrowRight, Info, Sparkles, Hash, Beaker, ChevronRight } from "lucide-react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "../components/ui/sheet";
+import { Plus, Search, Edit, Trash2, X, FlaskConical, FileText, RefreshCw, Save, ArrowRight, Info, Sparkles, Hash, Beaker, ChevronRight, Package, Calculator } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 
 interface Nutrition {
   calories: number;
@@ -176,9 +177,9 @@ export default function IngredientConfig() {
     <div className="space-y-10 animate-in fade-in duration-700 font-lora pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h2 className="text-4xl font-bold font-dancing text-chocolate">Sensory Elements</h2>
+          <h2 className="text-4xl font-bold font-dancing text-chocolate">Ingredient Details</h2>
           <p className="text-sm text-chocolate-light font-medium mt-1">
-            Define the chemical and sensory composition of your ingredients.
+            Manage the composition and nutritional breakdown of your ingredients.
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -193,7 +194,7 @@ export default function IngredientConfig() {
             className="px-6 py-3 bg-chocolate text-white rounded-full flex items-center gap-2 shadow-bakery hover:shadow-bakery-lg hover:bg-strawberry transition-all duration-300"
           >
             <Plus size={18} />
-            <span className="font-bold text-xs uppercase tracking-widest text-[#F5ECD7]">Define Element</span>
+            <span className="font-bold text-xs uppercase tracking-widest text-[#F5ECD7]">Add Ingredient</span>
           </button>
         </div>
       </div>
@@ -211,94 +212,121 @@ export default function IngredientConfig() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-        {filteredDetails.map((d) => (
-          <div key={d._id || d.id} className="group relative bg-white rounded-[2.5rem] p-10 border border-chocolate/5 shadow-bakery hover:shadow-bakery-lg transition-all duration-500 overflow-hidden flex flex-col h-full">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-strawberry/5 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:bg-strawberry/10" />
+      <div className="bg-white/60 backdrop-blur-md rounded-[2.5rem] shadow-bakery border border-chocolate/5 overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-chocolate/5 hover:bg-transparent">
+              <TableHead className="w-20 pl-8 h-16 font-bold text-chocolate italic uppercase tracking-widest text-[10px]">Icon</TableHead>
+              <TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px]">Ingredient Name</TableHead>
+              <TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px] hidden lg:table-cell">Composition Breakdown</TableHead>
+              <TableHead className="pr-8 h-16 font-bold text-chocolate italic uppercase tracking-widest text-[10px] text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredDetails.map((item) => (
+              <TableRow key={item._id || item.id} className="group border-chocolate/5 hover:bg-strawberry/[0.02] transition-colors duration-500">
+                <TableCell className="py-6 pl-8">
+                  <div className="w-12 h-12 rounded-xl bg-chocolate/5 text-chocolate flex items-center justify-center font-dancing font-bold text-xl group-hover:bg-chocolate group-hover:text-white transition-all duration-500 shadow-sm overflow-hidden">
+                    {String(item.name).charAt(0)}
+                  </div>
+                </TableCell>
+                <TableCell className="py-6">
+                  <div className="space-y-1">
+                    <span className="font-bold text-chocolate text-lg tracking-tight group-hover:text-strawberry transition-colors leading-none block">
+                      {item.name}
+                    </span>
+                    <div className="flex items-center gap-1.5 text-[9px] font-black text-chocolate/20 uppercase tracking-widest">
+                      <Calculator size={10} />
+                      Analysis per 100g
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell className="py-6 hidden lg:table-cell">
+                  <div className="flex flex-wrap gap-2 max-w-xl">
+                    {item.nutritionPer100g && Object.entries(item.nutritionPer100g).length > 0 ? (
+                      Object.entries(item.nutritionPer100g).slice(0, 4).map(([k, v]) => {
+                        let val = typeof v === 'number' ? v : (v as { value: number }).value;
+                        let unit = typeof v === 'number' ? 'g' : ((v as { unit?: string }).unit || 'g');
+                        return (
+                          <div key={k} className="flex items-center gap-2 bg-white border border-chocolate/5 px-2.5 py-1 rounded-full shadow-sm">
+                            <span className="text-[9px] font-bold text-chocolate/30 uppercase tracking-wider">{k}</span>
+                            <span className="text-[9px] font-black text-strawberry">{val}{unit}</span>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <span className="text-xs text-chocolate/20 italic">No composition defined</span>
+                    )}
+                    {item.nutritionPer100g && Object.keys(item.nutritionPer100g).length > 4 && (
+                      <span className="text-[9px] text-chocolate/20 font-bold italic pt-1.5">
+                        +{Object.keys(item.nutritionPer100g).length - 4} more nutrients
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="py-6 pr-8 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => handleEdit(item)}
+                      className="p-3 bg-white border border-chocolate/10 rounded-full text-chocolate hover:bg-chocolate hover:text-white transition-all shadow-sm active:scale-95 group/btn"
+                      title="Edit Ingredient"
+                    >
+                      <Edit size={16} className="group-hover/btn:rotate-12 transition-transform" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(item._id || item.id)}
+                      className="p-3 bg-white border border-red-100 rounded-full text-red-400 hover:bg-red-500 hover:text-white transition-all shadow-sm active:scale-95 group/btn"
+                      title="Delete Ingredient"
+                    >
+                      <Trash2 size={16} className="group-hover/btn:scale-110 transition-transform" />
+                    </button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
             
-            <div className="flex justify-between items-start mb-8 relative z-10">
-              <div className="w-16 h-16 rounded-2xl bg-chocolate text-white flex items-center justify-center font-dancing font-bold text-3xl shadow-bakery transform rotate-3 group-hover:rotate-0 transition-transform duration-500">
-                {String(d.name).charAt(0)}
-              </div>
-              <div className="flex gap-2 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                <button onClick={() => handleEdit(d)} className="p-3 bg-white border border-chocolate/10 rounded-full text-chocolate hover:bg-chocolate hover:text-white transition-all shadow-sm active:scale-95"><Edit size={16} /></button>
-                <button onClick={() => handleDelete(d._id || d.id)} className="p-3 bg-white border border-red-100 rounded-full text-red-400 hover:bg-red-500 hover:text-white transition-all shadow-sm active:scale-95"><Trash2 size={16} /></button>
-              </div>
-            </div>
-            
-            <div className="relative z-10 flex-1">
-              <h3 className="text-2xl font-bold font-playfair text-chocolate mb-6 group-hover:text-strawberry transition-colors italic leading-tight">{d.name}</h3>
-              <div className="space-y-4 p-6 bg-[#FAF6E6]/40 rounded-[2rem] border border-chocolate/5 shadow-inner">
-                {d.nutritionPer100g && Object.entries(d.nutritionPer100g).length > 0 ? (
-                  Object.entries(d.nutritionPer100g).slice(0, 5).map(([k, v]) => {
-                    let val = typeof v === 'number' ? v : (v as { value: number }).value;
-                    let unit = typeof v === 'number' ? 'g' : ((v as { unit?: string }).unit || 'g');
-                    return (
-                      <div key={k} className="flex items-center justify-between group/line">
-                        <span className="text-[10px] font-bold text-chocolate/40 uppercase tracking-widest italic group-hover/line:text-chocolate transition-colors">{k}</span>
-                        <div className="flex-1 mx-4 h-[1px] bg-chocolate/5 group-hover/line:bg-strawberry/20" />
-                        <span className="text-xs font-bold text-strawberry">{val}{unit}</span>
-                      </div>
-                    );
-                  })
-                ) : (
-                    <p className="text-[10px] text-chocolate/20 font-bold uppercase tracking-widest text-center py-4 italic">No composition defined</p>
-                )}
-                {d.nutritionPer100g && Object.keys(d.nutritionPer100g).length > 5 && (
-                  <p className="text-[9px] text-chocolate/20 font-bold uppercase tracking-widest border-t border-chocolate/5 pt-4 flex items-center justify-center gap-2">
-                    <Hash size={10} />
-                    {Object.keys(d.nutritionPer100g).length - 5} additional elements
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-8 pt-8 border-t border-chocolate/5 flex items-center justify-between relative z-10">
-              <div className="flex items-center gap-2">
-                <Beaker size={14} className="text-strawberry rotate-12" />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-chocolate/30 italic">Pure Analysis (100g)</span>
-              </div>
-              <Sparkles size={14} className="text-chocolate/10" />
-            </div>
-          </div>
-        ))}
-
-        {filteredDetails.length === 0 && !loadingDetails && (
-          <div className="col-span-full py-32 text-center space-y-6">
-            <div className="w-24 h-24 bg-chocolate/5 rounded-full flex items-center justify-center mx-auto text-chocolate/10 transform -rotate-12">
-              <FlaskConical size={48} />
-            </div>
-            <div>
-                <h3 className="text-2xl font-bold font-playfair text-chocolate">The Library is Quiet</h3>
-                <p className="text-chocolate-light font-medium italic mt-2">Start by defining the first chemical profile of your ingredients.</p>
-            </div>
-          </div>
-        )}
+            {(filteredDetails.length === 0 && !loadingDetails) && (
+              <TableRow>
+                <TableCell colSpan={4} className="py-32 text-center">
+                  <div className="flex flex-col items-center gap-6 animate-in fade-in duration-700">
+                    <div className="w-24 h-24 bg-cream/50 rounded-full flex items-center justify-center text-chocolate/10 transform -rotate-12 shadow-inner">
+                      <Beaker size={48} />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-bold font-playfair text-chocolate">The Library is Quiet</h3>
+                      <p className="text-chocolate-light font-medium italic mt-2">Start by defining the first ingredient profile in your collection.</p>
+                    </div>
+                  </div>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </div>
 
-      <Sheet open={showModal} onOpenChange={(open) => !open && setShowModal(false)}>
-        <SheetContent side="right" className="flex flex-col h-full bg-[#FAFBFD] p-0 border-l border-chocolate/10">
-          <SheetHeader className="p-10 bg-white border-b border-chocolate/5 relative overflow-hidden">
+      <Dialog open={showModal} onOpenChange={(open) => !open && setShowModal(false)}>
+        <DialogContent className="max-w-[95vw] md:max-w-2xl h-[90vh] flex flex-col p-0 bg-[#FAFBFD] border-none overflow-hidden rounded-[2.5rem]">
+          <DialogHeader className="p-10 bg-white border-b border-chocolate/5 relative shrink-0">
             <div className="absolute top-0 right-0 w-64 h-64 bg-strawberry/5 rounded-full -mr-32 -mt-32 blur-3xl" />
             <div className="relative flex items-center gap-6">
               <div className="w-16 h-16 rounded-2xl bg-chocolate text-white flex items-center justify-center shadow-bakery transform rotate-3">
                 <Beaker size={28} />
               </div>
               <div>
-                <SheetTitle className="text-4xl font-bold text-chocolate font-dancing">
-                  {editingId ? "Refine Element" : "Define Element"}
-                </SheetTitle>
-                <SheetDescription className="text-chocolate-light font-medium italic">
-                  {editingId ? "Update the chemical profile of this ingredient." : "Register a new sensory element in your library."}
-                </SheetDescription>
+                <DialogTitle className="text-4xl font-bold text-chocolate font-dancing">
+                  {editingId ? "Refine Ingredient" : "Add Ingredient"}
+                </DialogTitle>
+                <DialogDescription className="text-chocolate-light font-medium italic">
+                  {editingId ? "Update the nutrition breakdown of this ingredient." : "Register a new ingredient profile in your collection."}
+                </DialogDescription>
               </div>
             </div>
-          </SheetHeader>
+          </DialogHeader>
 
-          <form id="ingredient-form" onSubmit={handleSave} className="flex-1 overflow-y-auto p-10 space-y-10">
+          <form id="ingredient-form" onSubmit={handleSave} className="flex-1 overflow-y-auto p-10 space-y-10 no-scrollbar">
             <div className="space-y-8">
               <div className="space-y-2 group">
-                <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Element Name</label>
+                <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Ingredient Name</label>
                 <div className="relative">
                   <FileText size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
                   <input 
@@ -306,7 +334,7 @@ export default function IngredientConfig() {
                     value={name} 
                     onChange={e => setName(e.target.value)} 
                     placeholder="e.g. Madagascan Vanilla Extract"
-                    className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium placeholder:text-chocolate/10"
+                    className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium placeholder:text-chocolate/10 shadow-sm"
                   />
                 </div>
               </div>
@@ -314,11 +342,11 @@ export default function IngredientConfig() {
               <div className="space-y-6">
                 <div className="flex items-center justify-between border-b border-chocolate/5 pb-4">
                   <div>
-                    <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Molecular Composition</label>
-                    <p className="text-[9px] text-chocolate/20 italic ml-1 mt-1">Values per 100g of element</p>
+                    <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Nutritional Breakdown</label>
+                    <p className="text-[9px] text-chocolate/20 italic ml-1 mt-1">Values per 100g of ingredient</p>
                   </div>
                   <button type="button" onClick={addNutrientRow} className="px-4 py-2 bg-strawberry/5 text-strawberry text-[9px] font-bold uppercase tracking-widest rounded-full hover:bg-strawberry hover:text-white transition-all flex items-center gap-2 border border-strawberry/10">
-                    <Plus size={12} /> Add Composition
+                    <Plus size={12} /> Add Nutrient
                   </button>
                 </div>
 
@@ -332,7 +360,7 @@ export default function IngredientConfig() {
                             onChange={e => updateNutrientRow(i, { key: e.target.value })} 
                             className="w-full bg-transparent text-xs font-bold text-chocolate outline-none italic appearance-none"
                         >
-                            <option value="">Select Base Ingredient...</option>
+                            <option value="">Select Nutrient...</option>
                             {savedIngredients.map(ing => (
                             <option key={ing._id || ing.id} value={ing.name}>
                                 {ing.name}{ing.unit ? ` (${ing.unit})` : ''}
@@ -352,7 +380,7 @@ export default function IngredientConfig() {
                           className="w-full py-1 bg-transparent border-b border-chocolate/10 focus:border-strawberry text-center text-sm font-bold text-chocolate outline-none" 
                           placeholder="Amount"
                         />
-                        <span className="absolute right-0 bottom-1 text-[8px] font-bold text-chocolate/20 uppercase">Qty</span>
+                        <span className="absolute right-4 bottom-1 text-[8px] font-bold text-chocolate/20 uppercase">Qty</span>
                       </div>
 
                       <button type="button" onClick={() => removeNutrientRow(i)} className="p-3 text-chocolate/10 hover:text-red-500 hover:bg-red-50 rounded-full transition-all">
@@ -362,9 +390,9 @@ export default function IngredientConfig() {
                   ))}
                   {nutrientsList.length === 0 && (
                     <div className="text-center py-20 bg-chocolate/5 border border-dashed border-chocolate/10 rounded-[2.5rem] flex flex-col items-center gap-4">
-                      <Beaker size={40} className="text-chocolate/5" />
+                      <Calculator size={40} className="text-chocolate/5" />
                       <p className="text-[10px] text-chocolate/30 font-bold uppercase tracking-widest italic leading-relaxed px-10">
-                        No composition rows added. <br/> Press the button above to begin analysis.
+                        No nutritional values added. <br/> Press the button above to begin breakdown.
                       </p>
                     </div>
                   )}
@@ -373,17 +401,17 @@ export default function IngredientConfig() {
             </div>
           </form>
 
-          <SheetFooter className="p-10 bg-white border-t border-chocolate/5 flex flex-row justify-between items-center">
-            <button type="button" onClick={() => setShowModal(false)} className="px-10 py-4 rounded-full text-xs font-bold text-chocolate bg-white border border-chocolate/10 hover:bg-chocolate/5 transition-all uppercase tracking-[0.2em] italic active:scale-95">
+          <DialogFooter className="p-10 bg-white border-t border-chocolate/5 flex flex-row justify-between items-center shrink-0">
+            <button type="button" onClick={() => setShowModal(false)} className="px-10 py-4 rounded-full text-xs font-bold text-chocolate bg-white border border-chocolate/10 hover:bg-chocolate/5 transition-all uppercase tracking-[0.2em] italic">
               Cancel
             </button>
-            <button type="submit" form="ingredient-form" disabled={saving} className="px-12 py-4 bg-chocolate text-white rounded-full font-bold shadow-bakery hover:bg-strawberry transition-all disabled:opacity-50 flex items-center gap-3 uppercase tracking-[0.2em] active:scale-95">
+            <button type="submit" form="ingredient-form" disabled={saving} className="px-12 py-4 bg-chocolate text-white rounded-full font-bold shadow-bakery hover:bg-strawberry transition-all disabled:opacity-50 flex items-center gap-3 uppercase tracking-[0.2em]">
               {saving && <RefreshCw size={18} className="animate-spin" />}
-              {editingId ? "Save Changes" : "Save Element"}
+              {editingId ? "Update Details" : "Save Details"}
             </button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
