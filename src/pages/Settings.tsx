@@ -20,7 +20,7 @@ const Settings = () => {
     openingTime: "",
     closingTime: "",
     hours: "",
-    currency: "USD ($)",
+    currency: "CAD (CA$)",
     timezone: "(GMT-05:00) Eastern Time",
   });
   const [userRole, setUserRole] = useState<string | null>(null);

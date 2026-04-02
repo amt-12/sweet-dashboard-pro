@@ -256,7 +256,7 @@ export default function NutritionConfig() {
               />
             </div>
 
-            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar no-scrollbar">
+            <div className="flex-1 overflow-y-auto pr-2 no-scrollbar">
               {loadingIngredients ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-4">
                   <RefreshCw size={24} className="animate-spin text-chocolate/20" />

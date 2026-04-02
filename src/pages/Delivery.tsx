@@ -13,7 +13,7 @@ import {
   Sparkles, 
   Search, 
   Boxes, 
-  IndianRupee,
+  DollarSign,
   ExternalLink,
   ShieldCheck
 } from "lucide-react";
@@ -163,13 +163,13 @@ const Delivery = () => {
                 <div className="bg-white/60 backdrop-blur-md p-6 rounded-[2rem] border border-chocolate/5 shadow-bakery group hover:shadow-bakery-lg transition-all duration-500">
                     <div className="flex items-center justify-between mb-4">
                         <div className="p-3 rounded-xl bg-strawberry/5 text-strawberry border border-strawberry/10">
-                            <IndianRupee size={20} />
+                            <DollarSign size={20} />
                         </div>
                         <span className="text-[10px] font-bold text-strawberry bg-strawberry/5 px-2 py-0.5 rounded-full uppercase tracking-tighter">Revenue Float</span>
                     </div>
-                    <h4 className="text-3xl font-bold text-chocolate font-dancing">₹{(totalValue/1000).toFixed(1)}k</h4>
+                    <h4 className="text-3xl font-bold text-chocolate font-dancing">CA${(totalValue/1000).toFixed(1)}k</h4>
                     <p className="text-[10px] text-chocolate/40 font-bold uppercase tracking-widest mt-1">Manifest Value</p>
-                </div>
+                 </div>
 
                 <div className="bg-chocolate p-6 rounded-[2rem] shadow-bakery relative overflow-hidden group hover:bg-strawberry transition-all duration-500">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-white/10" />
@@ -269,7 +269,7 @@ const Delivery = () => {
                                                     <Clock size={10} className="text-chocolate/30" />
                                                     <span className="text-[10px] font-bold text-chocolate/60">{delivery.time}</span>
                                                 </div>
-                                                <span className="text-[11px] font-bold text-chocolate/40 italic ml-2">₹{delivery.totalAmount?.toLocaleString()}</span>
+                                                <span className="text-[11px] font-bold text-chocolate/40 italic ml-2">CA${delivery.totalAmount?.toLocaleString()}</span>
                                             </div>
                                         </TableCell>
                                         <TableCell className="py-6 pr-8 text-right">

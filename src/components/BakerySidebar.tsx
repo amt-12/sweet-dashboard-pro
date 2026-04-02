@@ -21,7 +21,7 @@ import {
   ChefHat,
   ShieldCheck,
 } from "lucide-react";
-import cupcakeIcon from "@/assets/cupcake-icon.png";
+import bakeryLogo from "@/assets/logo.jpg";
 import { getRole, hasAccessToPath } from '@/services/auth';
 
 const menuItems = [
@@ -142,7 +142,7 @@ const BakerySidebar = () => {
     >
       {/* Logo */}
       <div className="p-4 flex items-center gap-3 border-b border-[#D4A373]/30">
-        <img src={cupcakeIcon} alt="Bakery" className="w-10 h-10 animate-float-up bg-white rounded-full p-1 border border-[#D4A373]/20 shadow-sm" />
+        <img src={bakeryLogo} alt="Bakery" className="w-14 h-14 animate-float-up bg-white rounded-full p-1 border border-[#D4A373]/20 shadow-sm object-contain" />
         {!collapsed && (
           <div>
             <h1 className="font-playfair text-xl font-bold text-[#1A2744] tracking-widest leading-none">
@@ -158,7 +158,7 @@ const BakerySidebar = () => {
       </div>
 
       {/* Menu */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1 custom-scrollbar">
+      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1 no-scrollbar">
         {visibleMenu.map((item) => {
           const isParentWithChildren = Array.isArray(item.children) && item.children.length > 0;
 

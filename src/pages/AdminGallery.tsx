@@ -217,7 +217,14 @@ export default function AdminGallery() {
                     <h4 className="font-bold text-chocolate text-lg leading-tight truncate">{it.title}</h4>
                     {it.badge && <span className="px-3 py-1 bg-chocolate/10 text-chocolate text-[11px] font-bold rounded-full uppercase">{it.badge}</span>}
                   </div>
-                  {it.price && <p className="text-strawberry font-bold mt-1 text-sm">{it.price}</p>}
+                  {it.price && (
+                    (() => {
+                      const raw = String(it.price || '');
+                      // normalize dollar sign to Canadian Dollar marker if only $ used
+                      const normalized = raw.includes('CA$') ? raw : raw.replace(/\$/g, 'CA$');
+                      return <p className="text-strawberry font-bold mt-1 text-sm">{normalized}</p>;
+                    })()
+                  )}
                   {it.desc && <p className="text-sm text-chocolate-light mt-2 truncate">{it.desc}</p>}
                   <div className="mt-2 space-y-1 text-[11px] text-chocolate-light">
                     {it.alt !== undefined && <div><strong>Alt:</strong> <span className="ml-1">{it.alt || '-'}</span></div>}
@@ -273,8 +280,8 @@ export default function AdminGallery() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest ml-1">Price / Tag</label>
-                  <input name="price" defaultValue={editing?.price || ''} className="w-full px-4 py-3 rounded-2xl bg-white border border-chocolate/10 focus:border-strawberry focus:ring-4 focus:ring-strawberry/5 outline-none transition-all shadow-sm" placeholder="e.g. Starting from $20" />
+                  <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest ml-1">Price / Tag (CA$)</label>
+                  <input name="price" defaultValue={editing?.price || ''} className="w-full px-4 py-3 rounded-2xl bg-white border border-chocolate/10 focus:border-strawberry focus:ring-4 focus:ring-strawberry/5 outline-none transition-all shadow-sm" placeholder="e.g. Starting from CA$20" />
                 </div>
               </div>
 

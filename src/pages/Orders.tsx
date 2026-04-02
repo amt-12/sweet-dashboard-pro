@@ -369,7 +369,7 @@ const Orders = () => {
                       <div className="font-bold text-chocolate">{order.customerName}</div>
                   </td>
                   <td className="p-6 text-chocolate-light font-medium max-w-[200px] truncate italic" title={order.items}>{order.items}</td>
-                  <td className="p-6 text-strawberry font-bold text-base">₹{(order.total || 0).toLocaleString()}</td>
+                  <td className="p-6 text-strawberry font-bold text-base">CA${(order.total || 0).toLocaleString()}</td>
                   <td className="p-6">
                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border shadow-sm ${getStatusStyles(order.status)}`}>
                       {getStatusIcon(order.status)}
@@ -458,7 +458,7 @@ const Orders = () => {
                    )}
                    <div className="mt-6 pt-6 border-t border-chocolate/5 flex justify-between items-center">
                       <span className="text-sm font-bold text-chocolate-light">Grand Total</span>
-                      <span className="text-2xl font-bold text-strawberry">₹{(selectedOrder.total || 0).toLocaleString()}</span>
+                      <span className="text-2xl font-bold text-strawberry">CA${(selectedOrder.total || 0).toLocaleString()}</span>
                    </div>
                 </div>
               </div>
@@ -478,9 +478,9 @@ const Orders = () => {
                   <div className="flex justify-between text-xs font-medium gap-4"><span className="text-chocolate/40">deliveryAddress</span><span className="text-chocolate break-words text-right">{selectedOrderData?.deliveryAddress || 'N/A'}</span></div>
                   <div className="flex justify-between text-xs font-medium gap-4"><span className="text-chocolate/40">instructions</span><span className="text-chocolate break-words text-right">{selectedOrderData?.instructions || 'N/A'}</span></div>
                   <div className="flex justify-between text-xs font-medium gap-4"><span className="text-chocolate/40">items</span><span className="text-chocolate text-right">{Array.isArray(selectedOrderData?.itemsRaw) ? `${selectedOrderData.itemsRaw.length} item(s)` : 'N/A'}</span></div>
-                  <div className="flex justify-between text-xs font-medium gap-4"><span className="text-chocolate/40">subtotal</span><span className="text-chocolate text-right">₹{Number(selectedOrderData?.subtotal || 0).toLocaleString()}</span></div>
-                  <div className="flex justify-between text-xs font-medium gap-4"><span className="text-chocolate/40">deliveryFee</span><span className="text-chocolate text-right">₹{Number(selectedOrderData?.deliveryFee || 0).toLocaleString()}</span></div>
-                  <div className="flex justify-between text-xs font-medium gap-4"><span className="text-chocolate/40">totalAmount</span><span className="text-chocolate text-right">₹{Number(selectedOrderData?.total || 0).toLocaleString()}</span></div>
+                  <div className="flex justify-between text-xs font-medium gap-4"><span className="text-chocolate/40">subtotal</span><span className="text-chocolate text-right">CA${Number(selectedOrderData?.subtotal || 0).toLocaleString()}</span></div>
+                  <div className="flex justify-between text-xs font-medium gap-4"><span className="text-chocolate/40">deliveryFee</span><span className="text-chocolate text-right">CA${Number(selectedOrderData?.deliveryFee || 0).toLocaleString()}</span></div>
+                  <div className="flex justify-between text-xs font-medium gap-4"><span className="text-chocolate/40">totalAmount</span><span className="text-chocolate text-right">CA${Number(selectedOrderData?.total || 0).toLocaleString()}</span></div>
                   <div className="flex justify-between text-xs font-medium gap-4"><span className="text-chocolate/40">paymentStatus</span><span className="text-chocolate text-right">{selectedOrderData?.paymentStatus || 'N/A'}</span></div>
                   <div className="flex justify-between text-xs font-medium gap-4"><span className="text-chocolate/40">orderStatus</span><span className="text-chocolate text-right">{selectedOrderData?.status || 'N/A'}</span></div>
                   <div className="flex justify-between text-xs font-medium gap-4"><span className="text-chocolate/40">createdAt</span><span className="text-chocolate text-right">{selectedOrderData?.createdAt ? new Date(selectedOrderData.createdAt).toLocaleString() : 'N/A'}</span></div>

@@ -723,7 +723,7 @@ const Products = () => {
 											{product.name}
 										</h3>
 										<div className="flex items-center gap-3">
-											<p className="text-2xl font-black text-strawberry">₹{(Number(product.price) || 0).toLocaleString()}</p>
+											<p className="text-2xl font-black text-strawberry">CA${(Number(product.price) || 0).toLocaleString()}</p>
 											<div className="h-4 w-px bg-chocolate/10" />
 											<span className="text-[10px] font-bold text-chocolate/40 uppercase tracking-widest leading-none">
 												{product.flavor || (product.ingredients?.length ? 'Crafted' : 'Classic')}
@@ -837,9 +837,9 @@ const Products = () => {
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Price (₹)</label>
+                      <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Price (CA$)</label>
                       <div className="relative">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/30 font-bold text-sm">₹</div>
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/30 font-bold text-sm">CA$</div>
                         <input 
                           type="number" 
                           step="0.01" 

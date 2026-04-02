@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { login as apiLogin } from "@/services/auth";
+import bakeryLogo from "@/assets/logo.jpg";
+
 
 const AdminLogin: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
   const navigate = useNavigate();
@@ -51,10 +53,8 @@ const AdminLogin: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white/80 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden">
           <div className="p-8 md:p-12 flex flex-col justify-center space-y-6">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-[#FF7AA2] to-[#FFD06B] rounded-full flex items-center justify-center shadow-lg">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 2L15 7H9L12 2Z" fill="#fff"/>
-                </svg>
+              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-lg border border-slate-100 overflow-hidden">
+                <img src={bakeryLogo} alt="Bakery Logo" className="w-full h-full object-contain" />
               </div>
               <div>
                 <h2 className="text-2xl font-bold text-slate-800">Admin Sign in</h2>
@@ -124,7 +124,7 @@ const AdminLogin: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
 
           <div className="hidden md:flex items-center justify-center bg-gradient-to-b from-amber-50 to-pink-50 p-8">
             <div className="max-w-xs text-center">
-              <img src="/cake.png" alt="cake" className="mx-auto w-36 h-36 object-contain drop-shadow-xl" />
+              <img src={bakeryLogo} alt="Bakery Logo" className="mx-auto w-56 h-56 object-contain drop-shadow-xl hover:scale-105 transition-transform duration-700" />
               <h3 className="mt-4 text-lg font-semibold text-slate-800">Welcome back!</h3>
               <p className="mt-2 text-sm text-slate-600">Manage products, view orders, and customize the storefront. Make something delicious today.</p>
             </div>
