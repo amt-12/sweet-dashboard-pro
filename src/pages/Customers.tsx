@@ -1,5 +1,5 @@
 import { Search, Mail, Phone, Users, Star, MapPin, Calendar, ShoppingBag, Award, Clock, ArrowRight, X, User, Lock, Plus, RefreshCw, Filter } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { api } from "../services/api";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "../components/ui/sheet";
 import { toast } from "sonner";
@@ -50,11 +50,18 @@ const Customers = () => {
 		fetchCustomers();
 	}, []);
 
-	const filteredCustomers = customers.filter(c =>
-		c.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-		c.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-		c.phone?.includes(searchQuery)
-	);
+	const filteredCustomers = useMemo(() => {
+		const q = (searchQuery || '').trim().toLowerCase();
+		if (!q) return customers;
+		return customers.filter(c => {
+			return (
+				(c.name || '').toLowerCase().includes(q) ||
+				(c.email || '').toLowerCase().includes(q) ||
+				(c.phone || '').toString().toLowerCase().includes(q) ||
+				(c.address || '').toLowerCase().includes(q)
+			);
+		});
+	}, [customers, searchQuery]);
 
 	const formatDate = (dateStr: string) => {
 		if (!dateStr) return "N/A";
@@ -99,7 +106,8 @@ const Customers = () => {
 						className="w-full pl-14 pr-6 py-4 rounded-2xl bg-[#FAF6E6]/50 text-chocolate outline-none border border-transparent focus:border-strawberry/20 focus:bg-white focus:ring-8 focus:ring-strawberry/5 transition-all font-medium placeholder:text-chocolate/20"
 					/>
 				</div>
-        <button className="p-4 bg-white border border-chocolate/10 rounded-2xl text-chocolate hover:bg-strawberry/5 transition-all shadow-sm">
+				<button type="button" onClick={() => setSearchQuery('')} className="px-4 py-3 bg-white border border-chocolate/10 rounded-2xl text-chocolate hover:bg-strawberry/5 transition-all shadow-sm">Clear</button>
+				<button className="p-4 bg-white border border-chocolate/10 rounded-2xl text-chocolate hover:bg-strawberry/5 transition-all shadow-sm">
           <Filter size={20} />
         </button>
 			</div>
@@ -308,7 +316,7 @@ const Customers = () => {
 								<label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Full Name</label>
 								<div className="relative">
 									<User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
-									<input required value={addForm.name} onChange={e => setAddForm({ ...form, name: e.target.value })} className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium placeholder:text-chocolate/10" placeholder="e.g. John Doe" />
+									<input required value={addForm.name} onChange={e => setAddForm({ ...addForm, name: e.target.value })} className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium placeholder:text-chocolate/10" placeholder="e.g. John Doe" />
 								</div>
 							</div>
 

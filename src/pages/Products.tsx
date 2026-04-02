@@ -33,6 +33,9 @@ interface Product {
 }
 
 interface ProductForm extends Omit<Product, 'id'> {
+  // allow interim empty string values in form inputs for controlled components
+  price: number | string;
+  stock: number | string;
   imageFile?: File | null;
   imagePreview?: string | null;
   galleryPreviews: { file?: File, url: string, base64?: string }[];
@@ -273,6 +276,15 @@ const Products = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(12); // items per page
+  // Search query for product list
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Reset to first page when search or page size changes
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, pageSize]);
+
   // Ingredient modal state: show modal, options (id + name), selected id and quantity
   const [showIngredientModal, setShowIngredientModal] = useState(false);
   const [ingredientOptions, setIngredientOptions] = useState<Array<{ id: string; name: string }>>([]);
@@ -392,7 +404,7 @@ const Products = () => {
     setShowModal(true);
   };
 
-  const openEdit = (p: any) => {
+  const openEdit = (p: Product) => {
     const imgs = (p.images || []).map((it: any) => normalizeImage(it));
     setForm({
       name: p.name || '',
@@ -588,6 +600,34 @@ const Products = () => {
     return url.startsWith('/') ? url : `/${url}`;
   };
 
+  // --- Compute filtered products and pagination outside of JSX to avoid runtime reference errors ---
+  const q = (searchQuery || '').trim().toLowerCase();
+  const filteredProducts = q
+    ? products.filter((p: Product) => {
+        const id = String(p.id || '').toLowerCase();
+        const name = String(p.name || '').toLowerCase();
+        const category = String(p.category || '').toLowerCase();
+        const flavor = String(p.flavor || '').toLowerCase();
+        const items = Array.isArray(p.ingredients) ? p.ingredients.join(' ').toLowerCase() : String(p.ingredients || '').toLowerCase();
+        const orderNumber = String(p.orderNumber || '').toLowerCase();
+        const price = String(p.price || '').toLowerCase();
+        return id.includes(q) || name.includes(q) || category.includes(q) || flavor.includes(q) || items.includes(q) || orderNumber.includes(q) || price.includes(q);
+      })
+    : products;
+
+  const total = filteredProducts.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const current = Math.min(Math.max(1, currentPage), totalPages);
+  const start = (current - 1) * pageSize;
+  const pageItems = filteredProducts.slice(start, start + pageSize);
+
+  // Keep currentPage within valid bounds when filteredProducts.length or pageSize change
+  useEffect(() => {
+    const tp = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
+    const newCurrent = Math.min(Math.max(1, currentPage), tp);
+    if (newCurrent !== currentPage) setCurrentPage(newCurrent);
+  }, [filteredProducts.length, pageSize, currentPage]);
+
   // ── Loading full-panel ────────────────────────────────────────
   if (loading) return (
     <div className="bg-white rounded-2xl border border-[#D4A373]/20 shadow-sm p-20 flex flex-col items-center justify-center gap-4">
@@ -639,7 +679,9 @@ const Products = () => {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/30 group-focus-within:text-strawberry transition-colors w-4 h-4" />
           <input
             type="text"
-            placeholder="Search our fine collection..."
+            placeholder="Search by name, category, flavor, or id..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-11 pr-4 py-3 rounded-2xl bg-white border border-transparent focus:border-strawberry/20 focus:bg-white text-sm text-chocolate placeholder:text-chocolate/30 outline-none transition-all"
           />
         </div>
@@ -660,97 +702,65 @@ const Products = () => {
 					</div>
 				</div>
 			) : (
-				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10">
-					{products.map((product: any) => {
-						const imgSrc = getImageSrc(product.image, product.images?.[0]?.base64);
-						const stock = Number(product.stock) || 0;
-						const stockLow = stock > 0 && stock <= 5;
-						const stockOut = stock === 0;
-						
-						return (
-							<div
-								key={product.id}
-								className="group relative bg-white/60 backdrop-blur-xl rounded-[2.5rem] border border-chocolate/5 shadow-bakery hover:shadow-bakery-lg transition-all duration-700 overflow-hidden flex flex-col h-full hover:-translate-y-2"
-							>
-								{/* Image Section */}
-								<div className="relative aspect-[4/5] overflow-hidden">
-									{imgSrc ? (
-										<img
-											src={imgSrc}
-											alt={product.name}
-											className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
-										/>
-									) : (
-										<div className="w-full h-full bg-cream/30 flex items-center justify-center text-chocolate/10">
-											<ImageIcon size={64} />
-										</div>
-									)}
-									
-									<div className="absolute inset-0 bg-gradient-to-t from-chocolate/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-700" />
-									
-									{/* Top Badges */}
-									<div className="absolute top-6 left-6 right-6 flex items-start justify-between pointer-events-none">
-										<div className="px-4 py-2 bg-white/90 backdrop-blur-md rounded-2xl shadow-sm border border-white/20">
-											<span className="text-[10px] font-black uppercase tracking-[0.2em] text-chocolate">{product.category}</span>
-										</div>
-										
-										<div className={`p-2.5 rounded-full backdrop-blur-md border border-white/20 shadow-lg ${
-											stockOut ? 'bg-red-500 text-white' : 
-											stockLow ? 'bg-amber-400 text-white' : 
-											'bg-emerald-500 text-white'
-										}`}>
-											<Package size={14} />
-										</div>
-									</div>
+				<div className="bg-white rounded-[2rem] border border-chocolate/5 shadow-bakery overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-chocolate/[0.02] text-chocolate/40 font-bold uppercase tracking-widest text-[10px] border-b border-chocolate/5">
+                <tr>
+                  <th className="p-4 pl-6">Image</th>
+                  <th className="p-4">Name</th>
+                  <th className="p-4">Category</th>
+                  <th className="p-4">Flavor</th>
+                  <th className="p-4">Price</th>
+                  <th className="p-4">Stock</th>
+                  <th className="p-4 text-right pr-6">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-chocolate/5 text-sm">
+                {pageItems.map((product: Product) => (
+                  <tr key={product.id} className="group hover:bg-strawberry/[0.02] transition-colors">
+                    <td className="p-4 pl-6 w-24">
+                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-cream/20">
+                        <img src={getImageSrc(product.image, product.images?.[0]?.base64)} alt={product.name} className="w-full h-full object-cover" />
+                      </div>
+                    </td>
+                    <td className="p-4 font-bold text-chocolate">{product.name}</td>
+                    <td className="p-4 text-chocolate/70">{product.category}</td>
+                    <td className="p-4 text-chocolate/70">{product.flavor || (product.ingredients?.length ? 'Crafted' : 'Classic')}</td>
+                    <td className="p-4 text-strawberry font-bold">CA${(Number(product.price) || 0).toLocaleString()}</td>
+                    <td className="p-4">{Number(product.stock) || 0}</td>
+                    <td className="p-4 pr-6 text-right">
+                      <div className="inline-flex items-center gap-2">
+                        <button onClick={() => openEdit(product)} className="px-3 py-2 bg-chocolate text-white rounded-full text-xs font-bold uppercase tracking-widest hover:bg-strawberry transition-all flex items-center gap-2">
+                          <Edit size={14} /> Edit
+                        </button>
+                        <button onClick={() => handleDelete(product.id)} className="px-3 py-2 bg-white text-red-400 rounded-full border border-red-50 shadow-sm hover:bg-red-500 hover:text-white transition-all">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-									{/* Bottom Info Overlay (On Hover) */}
-									<div className="absolute bottom-6 left-6 right-6 translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 delay-100 flex flex-col gap-2">
-										<div className="flex flex-wrap gap-1.5">
-											{(product.type || []).slice(0, 2).map((t: string) => (
-												<span key={t} className="text-[9px] bg-white/20 text-white px-2.5 py-1 rounded-full font-bold uppercase tracking-wider backdrop-blur-md border border-white/10">{t}</span>
-											))}
-										</div>
-										<p className="text-[10px] text-white/80 font-medium italic line-clamp-2 leading-relaxed">
-											{product.tasteDescription || "No sensory data provided."}
-										</p>
-									</div>
-								</div>
-
-								{/* Content Section */}
-								<div className="p-8 flex flex-col flex-1 space-y-6">
-									<div className="space-y-2">
-										<h3 className="font-bold text-chocolate text-xl leading-tight group-hover:text-strawberry transition-colors group-hover:italic">
-											{product.name}
-										</h3>
-										<div className="flex items-center gap-3">
-											<p className="text-2xl font-black text-strawberry">CA${(Number(product.price) || 0).toLocaleString()}</p>
-											<div className="h-4 w-px bg-chocolate/10" />
-											<span className="text-[10px] font-bold text-chocolate/40 uppercase tracking-widest leading-none">
-												{product.flavor || (product.ingredients?.length ? 'Crafted' : 'Classic')}
-											</span>
-										</div>
-									</div>
-
-									<div className="pt-6 border-t border-chocolate/5 mt-auto flex items-center justify-between gap-4">
-										<button
-											onClick={() => openEdit(product)}
-											className="flex-1 px-6 py-3.5 bg-chocolate text-white rounded-full text-xs font-bold uppercase tracking-widest shadow-bakery hover:bg-strawberry transition-all flex items-center justify-center gap-2"
-										>
-											<Edit size={14} />
-											Refine
-										</button>
-										<button
-											onClick={() => handleDelete(product.id)}
-											className="p-3.5 bg-white text-red-400 hover:bg-red-500 hover:text-white rounded-full border border-red-50 shadow-sm transition-all"
-										>
-											<Trash2 size={16} />
-										</button>
-									</div>
-								</div>
-							</div>
-						);
-					})}
-				</div>
+          {/* Pagination Controls */}
+          <div className="flex items-center justify-between p-4 border-t border-chocolate/5 bg-white">
+            <div className="text-sm text-chocolate/70">Showing {(total === 0 ? 0 : (Math.min(total, (currentPage - 1) * pageSize + 1)))} - {Math.min(total, currentPage * pageSize)} of {total}</div>
+            <div className="flex items-center gap-2">
+              <button disabled={currentPage <= 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} className="px-3 py-2 rounded-xl bg-white border border-chocolate/10 hover:bg-chocolate/5 disabled:opacity-50">Prev</button>
+              {/* pages */}
+              {Array.from({ length: Math.max(1, Math.ceil(total / pageSize)) }).map((_, i) => {
+                 const p = i + 1;
+                 return (
+                   <button key={p} onClick={() => setCurrentPage(p)} className={`px-3 py-2 rounded-xl ${currentPage===p ? 'bg-strawberry text-white' : 'bg-white border border-chocolate/10 hover:bg-chocolate/5'}`}>{p}</button>
+                 );
+               })}
+              <button disabled={currentPage >= Math.ceil(total / pageSize)} onClick={() => setCurrentPage(p => Math.min(Math.ceil(total / pageSize), p + 1))} className="px-3 py-2 rounded-xl bg-white border border-chocolate/10 hover:bg-chocolate/5 disabled:opacity-50">Next</button>
+            </div>
+          </div>
+        </div>
 			)}
 
       <Dialog open={showModal} onOpenChange={(open) => !open && closeModal()}>
@@ -844,7 +854,7 @@ const Products = () => {
                           type="number" 
                           step="0.01" 
                           value={form.price} 
-                          onChange={(e) => setForm({...form, price: e.target.value === '' ? '' as any : Number(e.target.value)})} 
+                          onChange={(e) => setForm({...form, price: e.target.value === '' ? '' : Number(e.target.value)})} 
                           className={`w-full pl-10 pr-4 py-4 rounded-2xl bg-white border ${errors.price ? 'border-red-500' : 'border-chocolate/10'} outline-none shadow-sm transition-all focus:border-strawberry/30 text-chocolate font-bold text-sm`} 
                         />
                       </div>
@@ -859,7 +869,7 @@ const Products = () => {
                         <input 
                           type="number" 
                           value={form.stock} 
-                          onChange={(e) => setForm({...form, stock: e.target.value === '' ? '' as any : Number(e.target.value)})} 
+                          onChange={(e) => setForm({...form, stock: e.target.value === '' ? '' : Number(e.target.value)})} 
                           className={`w-full pl-11 pr-4 py-4 rounded-2xl bg-white border ${errors.stock ? 'border-red-500' : 'border-chocolate/10'} outline-none shadow-sm transition-all focus:border-strawberry/30 text-chocolate font-medium text-sm`} 
                         />
                       </div>

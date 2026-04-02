@@ -76,11 +76,19 @@ const Contacts = () => {
     }
   };
 
-  const filteredContacts = contacts.filter(c => 
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (c.subject || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.message.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredContacts = React.useMemo(() => {
+    const q = (searchQuery || '').trim().toLowerCase();
+    if (!q) return contacts;
+    return contacts.filter(c => {
+      return (
+        (c.name || '').toLowerCase().includes(q) ||
+        (c.subject || '').toLowerCase().includes(q) ||
+        (c.message || '').toLowerCase().includes(q) ||
+        (c.phone || '').toLowerCase().includes(q) ||
+        (c.createdAt || '').toLowerCase().includes(q)
+      );
+    });
+  }, [contacts, searchQuery]);
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700 font-lora max-w-7xl mx-auto pb-20">
@@ -137,6 +145,7 @@ const Contacts = () => {
           <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-chocolate/30 group-focus-within:text-strawberry transition-colors w-5 h-5" />
           <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search patron archives..." className="w-full pl-14 pr-6 py-4 rounded-2xl bg-[#FAF6E6]/50 text-chocolate outline-none border border-transparent focus:border-strawberry/20 focus:bg-white focus:ring-8 focus:ring-strawberry/5 transition-all font-medium placeholder:text-chocolate/20 italic" />
         </div>
+        <button type="button" onClick={() => setSearchQuery('')} title="Clear search" className="px-4 py-3 bg-white border border-chocolate/5 rounded-2xl text-chocolate hover:bg-strawberry/5 transition-all shadow-sm">Clear</button>
       </div>
 
       {loading && contacts.length === 0 ? (

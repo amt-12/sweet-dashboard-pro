@@ -52,6 +52,22 @@ const Orders = () => {
   const [deliveryEstimatedTime, setDeliveryEstimatedTime] = useState('');
   const [deliveryPartners, setDeliveryPartners] = useState<any[]>([]);
   const [loadingPartners, setLoadingPartners] = useState(false);
+  // Status filter for quick buttons above the table
+  const [filterStatus, setFilterStatus] = useState('');
+  // Search query for the top search bar
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const STATUS_OPTIONS = [
+    { key: '', label: 'Open' },
+    { key: 'all', label: 'All' },
+    { key: 'confirmed', label: 'Confirmed' },
+    { key: 'preparing', label: 'Preparing' },
+    { key: 'out_for_delivery', label: 'Out for Delivery' },
+    { key: 'delivered', label: 'Delivered' },
+    { key: 'cancelled', label: 'Cancelled' },
+    { key: 'ready', label: 'Ready' },
+    { key: 'pending', label: 'Pending' },
+  ];
   
   const normalizeToArray = (payload: unknown): OrderType[] => {
     if (Array.isArray(payload)) return payload as unknown as OrderType[];
@@ -287,9 +303,31 @@ const Orders = () => {
     }
   };
   
-  const orderList = normalizeToArray(orders).filter(
-    order => order.status?.toLowerCase() !== 'delivered' && order.status?.toLowerCase() !== 'completed'
-  );
+  const allOrders = normalizeToArray(orders) as any[];
+  let orderList = allOrders;
+  if (filterStatus === '') {
+    // Default view: exclude delivered/completed
+    orderList = allOrders.filter(order => {
+      const s = (order.status || '').toLowerCase();
+      return s !== 'delivered' && s !== 'completed';
+    });
+  } else if (filterStatus === 'all') {
+    orderList = allOrders;
+  } else {
+    orderList = allOrders.filter(order => (order.status || '').toLowerCase() === filterStatus);
+  }
+
+  // Apply search filter if query present (search by id, customerName, items, or orderNumber)
+  if (searchQuery && searchQuery.trim().length > 0) {
+    const q = searchQuery.trim().toLowerCase();
+    orderList = orderList.filter((order: any) => {
+      const idStr = String(order.id || '').toLowerCase();
+      const name = (order.customerName || '').toString().toLowerCase();
+      const items = (order.items || '').toString().toLowerCase();
+      const orderNumber = (order.orderNumber || '').toString().toLowerCase();
+      return idStr.includes(q) || name.includes(q) || items.includes(q) || orderNumber.includes(q);
+    });
+  }
   const selectedOrderData = selectedOrder as any;
 
   useEffect(() => {
@@ -338,13 +376,29 @@ const Orders = () => {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/30 group-focus-within:text-strawberry transition-colors w-5 h-5" />
           <input 
             type="text" 
-            placeholder="Search by name, ID, or items..." 
+            placeholder="Search by name, ID, order#, or items..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-11 pr-4 py-3 rounded-2xl bg-white border border-transparent focus:border-strawberry/20 focus:bg-white text-sm text-chocolate placeholder:text-chocolate/30 outline-none transition-all shadow-sm"
           />
         </div>
         <button className="p-3 bg-white rounded-2xl text-chocolate hover:bg-strawberry hover:text-white transition-all shadow-sm border border-chocolate/5">
           <Filter size={20} />
         </button>
+      </div>
+
+      {/* Status filter buttons above the table */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {STATUS_OPTIONS.map((opt) => (
+          <button
+            key={opt.key}
+            type="button"
+            onClick={() => setFilterStatus(opt.key)}
+            className={`px-3 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${filterStatus === opt.key ? 'bg-strawberry text-white' : 'bg-white border border-chocolate/10 text-chocolate hover:bg-chocolate/5'}`}
+          >
+            {opt.label}
+          </button>
+        ))}
       </div>
 
       <div className="bg-white rounded-[2rem] border border-chocolate/5 shadow-bakery overflow-hidden">

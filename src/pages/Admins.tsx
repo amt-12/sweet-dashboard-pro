@@ -113,6 +113,8 @@ const Admins = () => {
   const [updatingRole, setUpdatingRole] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [searchQuery, setSearchQuery] = useState("");
+  const [permissionSearch, setPermissionSearch] = useState("");
+  const [roleSearch, setRoleSearch] = useState("");
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -283,6 +285,16 @@ const Admins = () => {
     (a.email || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const filteredPermissionCatalog = permissionCatalog.filter(p =>
+    (p.name || '').toLowerCase().includes(permissionSearch.toLowerCase()) ||
+    (p.url || '').toLowerCase().includes(permissionSearch.toLowerCase())
+  );
+  
+  const filteredRoles = roles.filter(r =>
+    (r.name || '').toLowerCase().includes(roleSearch.toLowerCase()) ||
+    (r.description || '').toLowerCase().includes(roleSearch.toLowerCase())
+  );
+  
   const groupedFeatures = React.useMemo(() => {
     const grouped = permissionCatalog.reduce((acc: Record<string, { name: string; url: string }[]>, item) => {
       const key = item.group && item.group.trim() ? item.group.trim() : 'custom';
@@ -374,6 +386,10 @@ const Admins = () => {
 
         {isCatalogOpen && (
           <div className="space-y-8 animate-in slide-in-from-top-4 duration-500">
+            <div className="flex items-center gap-4">
+              <input value={permissionSearch} onChange={e => setPermissionSearch(e.target.value)} placeholder="Search permission realms..." className="flex-1 px-6 py-3 bg-[#FAFBFD] border border-chocolate/5 rounded-2xl text-sm outline-none transition-all font-bold text-chocolate italic placeholder:text-chocolate/30" />
+              <button onClick={() => setPermissionSearch('')} className="px-4 py-3 bg-white border border-chocolate/5 rounded-2xl text-chocolate hover:bg-strawberry/5">Clear</button>
+            </div>
             <form onSubmit={addPermission} className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <input value={permissionForm.name} onChange={e => setPermissionForm(p => ({ ...p, name: e.target.value }))} placeholder="Identity (e.g. Analytics Viewer)" className="w-full px-6 py-4 bg-[#FAFBFD] border border-chocolate/5 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-bold text-chocolate italic placeholder:text-chocolate/20" />
               <input value={permissionForm.url} onChange={e => setPermissionForm(p => ({ ...p, url: e.target.value }))} placeholder="Realm Route (e.g. /admin/analytics)" className="md:col-span-2 w-full px-6 py-4 bg-[#FAFBFD] border border-chocolate/5 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-mono font-bold text-chocolate italic placeholder:text-chocolate/20" />
@@ -389,7 +405,7 @@ const Admins = () => {
             </form>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-               {permissionCatalog.map((p) => (
+               {filteredPermissionCatalog.map((p) => (
                  <div key={p._id} className="group flex items-center justify-between gap-4 p-4 rounded-2xl border border-chocolate/5 bg-[#FAFBFD] hover:border-strawberry/20 hover:bg-white transition-all duration-300">
                     <div className="flex items-center gap-3">
                        <div className="w-8 h-8 rounded-lg bg-cream flex items-center justify-center text-chocolate/40 group-hover:bg-strawberry/10 group-hover:text-strawberry transition-colors"><ShieldCheck size={14} /></div>
@@ -654,7 +670,10 @@ const Admins = () => {
                <DialogDescription className="text-cream font-medium italic">Adjust the hierarchy for {selectedAdmin?.name || 'Member'}</DialogDescription>
             </DialogHeader>
             <div className="p-10 space-y-4">
-               {roles.map(r => (
+               <div className="mb-4">
+                 <input value={roleSearch} onChange={e => setRoleSearch(e.target.value)} placeholder="Filter roles..." className="w-full px-4 py-3 bg-[#FAFBFD] border border-chocolate/5 rounded-2xl text-sm outline-none transition-all font-bold text-chocolate italic placeholder:text-chocolate/30" />
+               </div>
+               {filteredRoles.map(r => (
                  <button key={r._id} onClick={() => assignRole(r)} disabled={updatingRole} className="w-full p-6 bg-white rounded-2xl border border-chocolate/5 hover:border-strawberry hover:translate-y-[-2px] transition-all flex items-center justify-between group shadow-sm">
                     <div className="text-left">
                        <p className="text-xs font-bold text-chocolate uppercase tracking-widest italic mb-1">{r.name}</p>
