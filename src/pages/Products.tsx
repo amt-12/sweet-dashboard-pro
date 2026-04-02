@@ -4,7 +4,8 @@ import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { setProducts, setLoading, setError } from "../store/slices/productSlice";
 import { api } from "../services/api";
 import axiosInstance from "../services/api";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "../components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { toast } from "sonner";
 import { Link } from 'react-router-dom';
 
@@ -745,427 +746,435 @@ const Products = () => {
         </div>
       )}
 
-      <Sheet open={showModal} onOpenChange={(open) => !open && closeModal()}>
-        <SheetContent side="right" className="flex flex-col h-full bg-[#FAFBFD] p-0 border-l border-chocolate/10">
-          <SheetHeader className="p-8 bg-white border-b border-chocolate/5 relative overflow-hidden">
+      <Dialog open={showModal} onOpenChange={(open) => !open && closeModal()}>
+        <DialogContent className="max-w-[95vw] md:max-w-[70vw] lg:max-w-5xl h-[90vh] flex flex-col p-0 bg-[#FAFBFD] border-none overflow-hidden rounded-[2.5rem]">
+          <DialogHeader className="p-8 bg-white border-b border-chocolate/5 relative shrink-0">
              <div className="absolute top-0 right-0 w-32 h-32 bg-strawberry/5 rounded-full -mr-16 -mt-16 blur-3xl" />
              <div className="relative flex items-center gap-4">
-                <div className="w-14 h-14 bg-chocolate text-white rounded-2xl flex items-center justify-center shadow-lg transform -rotate-3 hover:rotate-0 transition-transform">
+                <div className="w-14 h-14 bg-chocolate text-white rounded-2xl flex items-center justify-center shadow-lg transform -rotate-3 hover:rotate-0 transition-transform shrink-0">
                   <Package size={28} />
                 </div>
                 <div>
-                  <SheetTitle className="text-3xl font-bold text-chocolate font-dancing">
-                    {editingId ? 'Edit Couture Item' : 'New creation'}
-                  </SheetTitle>
-                  <SheetDescription className="text-chocolate-light font-medium flex items-center gap-1.5 mt-0.5">
+                  <DialogTitle className="text-3xl font-bold text-chocolate font-dancing">
+                    {editingId ? 'Edit Product' : 'Add New Product'}
+                  </DialogTitle>
+                  <DialogDescription className="text-chocolate-light font-medium flex items-center gap-1.5 mt-0.5">
                     {editingId ? (
-                      <>Refining the artistry of <span className="text-strawberry font-bold">{form.name}</span></>
-                    ) : 'Introduce a new sensory delight to your collection.'}
-                  </SheetDescription>
+                      <>Updating details for <span className="text-strawberry font-bold">{form.name}</span></>
+                    ) : 'Create a new item for your bakery menu.'}
+                  </DialogDescription>
                 </div>
              </div>
-          </SheetHeader>
+          </DialogHeader>
 
-          <form id="product-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 space-y-10 custom-scrollbar">
-            {/* Basic Information Section */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-3 pb-3 border-b border-chocolate/10">
-                <div className="p-2 bg-cream rounded-xl">
-                    <Info size={18} className="text-chocolate" />
-                </div>
-                <h4 className="text-sm font-bold uppercase tracking-[0.2em] text-chocolate/80">Essence of Creation</h4>
-              </div>
+          <form id="product-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 no-scrollbar">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
               
-              <div className="grid grid-cols-1 gap-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">
-                    Delight Name <span className="text-strawberry">*</span>
-                  </label>
-                  <input 
-                    required
-                    value={form.name} 
-                    onChange={(e) => setForm({...form, name: e.target.value})} 
-                    placeholder="e.g. Midnight Velvet Truffle"
-                    className={`w-full p-4 rounded-2xl bg-white border ${errors.name ? 'border-red-500 focus:ring-red-100' : 'border-chocolate/10 focus:border-strawberry/30'} outline-none shadow-sm transition-all focus:ring-4 focus:ring-strawberry/5 text-chocolate font-medium placeholder:text-chocolate/20`} 
-                  />
-                  {errors.name && <p className="text-[10px] font-bold text-red-500 mt-1 uppercase tracking-wider">{errors.name}</p>}
-                </div>
-
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Collection</label>
-                    <div className="relative">
-                        <select
-                        value={form.category}
-                        onChange={(e) => setForm({...form, category: e.target.value})}
-                        className="w-full p-4 rounded-2xl bg-white border border-chocolate/10 outline-none shadow-sm transition-all focus:border-strawberry/30 text-chocolate font-medium appearance-none cursor-pointer"
-                        >
-                        {categoriesList && categoriesList.length > 0 ? (
-                            categoriesList.map((c) => (
-                            <option key={c} value={c}>{c}</option>
-                            ))
-                        ) : (
-                            <>
-                            <option value="Cakes">Cakes</option>
-                            <option value="Breads">Breads</option>
-                            <option value="Pastries">Pastries</option>
-                            <option value="Cookies">Cookies</option>
-                            <option value="Custom">Custom</option>
-                            </>
-                        )}
-                        </select>
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-40">
-                            <Layers size={14} />
-                        </div>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Investment (₹)</label>
-                    <div className="relative">
-                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/30 font-bold">₹</div>
-                      <input 
-                        type="number" 
-                        step="0.01" 
-                        value={form.price} 
-                        onChange={(e) => setForm({...form, price: e.target.value === '' ? '' as any : Number(e.target.value)})} 
-                        className={`w-full pl-10 pr-4 py-4 rounded-2xl bg-white border ${errors.price ? 'border-red-500' : 'border-chocolate/10'} outline-none shadow-sm transition-all focus:border-strawberry/30 text-chocolate font-bold`} 
-                      />
-                    </div>
-                    {errors.price && <p className="text-[10px] font-bold text-red-500 mt-1 uppercase tracking-wider">{errors.price}</p>}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Available Reserve (Stock)</label>
-                  <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/30">
-                        <Package size={16} />
-                    </div>
-                    <input 
-                      type="number" 
-                      value={form.stock} 
-                      onChange={(e) => setForm({...form, stock: e.target.value === '' ? '' as any : Number(e.target.value)})} 
-                      className={`w-full pl-11 pr-4 py-4 rounded-2xl bg-white border ${errors.stock ? 'border-red-500' : 'border-chocolate/10'} outline-none shadow-sm transition-all focus:border-strawberry/30 text-chocolate font-medium`} 
-                    />
-                  </div>
-                  {errors.stock && <p className="text-[10px] font-bold text-red-500 mt-1 uppercase tracking-wider">{errors.stock}</p>}
-                </div>
-              </div>
-
-              {/* Character Details */}
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Primary Flavor</label>
-                  <select
-                    value={form.flavor}
-                    onChange={(e) => setForm({...form, flavor: e.target.value})}
-                    className="w-full p-4 rounded-2xl bg-white border border-chocolate/10 outline-none shadow-sm transition-all focus:border-strawberry/30 text-chocolate font-medium appearance-none cursor-pointer text-sm"
-                  >
-                    <option value="">Select Signature Flavor</option>
-                    {flavorsList.map((f) => (<option key={f} value={f}>{f}</option>))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Standard Weight</label>
-                  <select
-                    value={(form.weight && form.weight[0]) || ''}
-                    onChange={(e) => setForm({...form, weight: e.target.value ? [e.target.value] : []})}
-                    className="w-full p-4 rounded-2xl bg-white border border-chocolate/10 outline-none shadow-sm transition-all focus:border-strawberry/30 text-chocolate font-medium appearance-none cursor-pointer text-sm"
-                  >
-                    <option value="">Choose Scale</option>
-                    {weightsList.map((w) => (<option key={w} value={w}>{w}</option>))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Selectable Badges for Multi-selects */}
-              <div className="space-y-6">
-                <SelectableBadgeGroup 
-                    label="Artistry Types" 
-                    options={typesList} 
-                    selected={form.type || []} 
-                    onChange={(next) => setForm({...form, type: next})} 
-                />
+              {/* Left Column: Form Details (8/12) */}
+              <div className="lg:col-span-12 space-y-10">
                 
-                <GroupedSelectableBadgeGroup
-                    label="Tailored Occasions"
-                    options={occasionsList}
-                    selected={form.occasion || []}
-                    onChange={(next) => setForm({...form, occasion: next})}
-                />
+                {/* 1. Essence Section */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3 pb-3 border-b border-chocolate/10">
+                    <div className="p-2 bg-cream rounded-xl">
+                      <Info size={18} className="text-chocolate" />
+                    </div>
+                    <h4 className="text-sm font-bold uppercase tracking-[0.2em] text-chocolate/80">Essence of Creation</h4>
+                  </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <SelectableBadgeGroup 
-                        label="Shapes" 
-                        options={shapesList} 
-                        selected={form.shape || []} 
-                        onChange={(next) => setForm({...form, shape: next})} 
-                    />
-                    <GroupedSelectableBadgeGroup
-                        label="Themes"
-                        options={themesList}
-                        selected={form.theme || []}
-                        onChange={(next) => setForm({...form, theme: next})}
-                    />
-                </div>
-              </div>
-            </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="md:col-span-2 space-y-2">
+                      <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">
+                        Product Name <span className="text-strawberry">*</span>
+                      </label>
+                      <input 
+                        required
+                        value={form.name} 
+                        onChange={(e) => setForm({...form, name: e.target.value})} 
+                        placeholder="e.g. Chocolate Truffle Cake"
+                        className={`w-full p-4 rounded-2xl bg-white border ${errors.name ? 'border-red-500 focus:ring-red-100' : 'border-chocolate/10 focus:border-strawberry/30'} outline-none shadow-sm transition-all focus:ring-4 focus:ring-strawberry/5 text-chocolate font-medium placeholder:text-chocolate/20`} 
+                      />
+                      {errors.name && <p className="text-[10px] font-bold text-red-500 mt-1 uppercase tracking-wider">{errors.name}</p>}
+                    </div>
 
-            {/* Visuals Section */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-3 pb-3 border-b border-chocolate/10">
-                <div className="p-2 bg-cream rounded-xl">
-                    <ImageIcon size={18} className="text-chocolate" />
-                </div>
-                <h4 className="text-sm font-bold uppercase tracking-[0.2em] text-chocolate/80">Visual Identity</h4>
-              </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Category</label>
+                      <Select
+                        value={form.category}
+                        onValueChange={(val) => setForm({...form, category: val})}
+                      >
+                        <SelectTrigger className="w-full p-6 h-auto rounded-2xl bg-white border border-chocolate/10 outline-none shadow-sm transition-all focus:ring-4 focus:ring-strawberry/5 focus:border-strawberry/30 text-chocolate font-medium group">
+                          <div className="flex items-center gap-2">
+                            <Layers size={14} className="text-chocolate/40 group-hover:text-strawberry transition-colors" />
+                            <SelectValue placeholder="Select Collection" />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent className="rounded-2xl border-chocolate/10 shadow-bakery-xl font-lora">
+                          {categoriesList && categoriesList.length > 0 ? (
+                            categoriesList.map((c) => (
+                              <SelectItem key={c} value={c} className="focus:bg-strawberry/5 focus:text-strawberry py-3">{c}</SelectItem>
+                            ))
+                          ) : (
+                            <>
+                              <SelectItem value="Cakes" className="focus:bg-strawberry/5 focus:text-strawberry py-3">Cakes</SelectItem>
+                              <SelectItem value="Breads" className="focus:bg-strawberry/5 focus:text-strawberry py-3">Breads</SelectItem>
+                              <SelectItem value="Pastries" className="focus:bg-strawberry/5 focus:text-strawberry py-3">Pastries</SelectItem>
+                              <SelectItem value="Cookies" className="focus:bg-strawberry/5 focus:text-strawberry py-3">Cookies</SelectItem>
+                              <SelectItem value="Custom" className="focus:bg-strawberry/5 focus:text-strawberry py-3">Custom</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-1 gap-6">
-                <div className="space-y-3">
-                  <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Master Portrait (Cover)</label>
-                  <div className="relative group w-full aspect-[16/9] rounded-[2rem] border-2 border-dashed border-chocolate/10 bg-cream/30 overflow-hidden flex items-center justify-center transition-all hover:border-strawberry/20 hover:bg-cream/50 shadow-inner">
-                    {form.imagePreview || form.image ? (
-                      <div className="relative w-full h-full">
-                        <img src={getImageSrc(form.image, form.imagePreview || undefined)} alt="Preview" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-chocolate/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Price (₹)</label>
+                      <div className="relative">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/30 font-bold text-sm">₹</div>
+                        <input 
+                          type="number" 
+                          step="0.01" 
+                          value={form.price} 
+                          onChange={(e) => setForm({...form, price: e.target.value === '' ? '' as any : Number(e.target.value)})} 
+                          className={`w-full pl-10 pr-4 py-4 rounded-2xl bg-white border ${errors.price ? 'border-red-500' : 'border-chocolate/10'} outline-none shadow-sm transition-all focus:border-strawberry/30 text-chocolate font-bold text-sm`} 
+                        />
                       </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-3 text-chocolate/20">
-                        <div className="p-5 bg-white rounded-full shadow-bakery">
-                            <ImageIcon size={40} />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Available Stock</label>
+                      <div className="relative">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/30">
+                          <Package size={16} />
                         </div>
-                        <span className="text-xs font-bold uppercase tracking-widest">Unveil Masterpiece</span>
+                        <input 
+                          type="number" 
+                          value={form.stock} 
+                          onChange={(e) => setForm({...form, stock: e.target.value === '' ? '' as any : Number(e.target.value)})} 
+                          className={`w-full pl-11 pr-4 py-4 rounded-2xl bg-white border ${errors.stock ? 'border-red-500' : 'border-chocolate/10'} outline-none shadow-sm transition-all focus:border-strawberry/30 text-chocolate font-medium text-sm`} 
+                        />
                       </div>
-                    )}
-                    <label className="absolute inset-0 flex items-center justify-center cursor-pointer pointer-events-none group-hover:pointer-events-auto">
-                      <div className="bg-white/90 backdrop-blur-md px-6 py-2.5 rounded-full shadow-lg text-chocolate font-bold text-xs uppercase tracking-widest opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-300">
-                        {form.image || form.imagePreview ? 'Replace Canvas' : 'Select Photo'}
-                      </div>
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        className="hidden"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0] || null;
-                          if (f) {
-                            if (f.size > MAX_BYTES) { toast.error('Work of art must be 500KB or smaller'); return; }
-                            const url = URL.createObjectURL(f);
-                            // Do not convert to base64. Keep file object and object URL preview only.
-                            setForm({...form, imageFile: f, imagePreview: url, image: ''});
-                          }
-                        }} 
-                      />
-                    </label>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Primary Flavor</label>
+                      <Select
+                        value={form.flavor}
+                        onValueChange={(val) => setForm({...form, flavor: val})}
+                      >
+                        <SelectTrigger className="w-full p-4 h-auto rounded-2xl bg-white border border-chocolate/10 outline-none shadow-sm transition-all focus:ring-4 focus:ring-strawberry/5 focus:border-strawberry/30 text-chocolate font-medium text-xs group">
+                           <SelectValue placeholder="Select Flavor" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-2xl border-chocolate/10 shadow-bakery-xl font-lora">
+                          <SelectItem value="none" disabled className="text-chocolate/20 text-[10px] uppercase font-bold tracking-widest py-2">Signature Flavors</SelectItem>
+                          {flavorsList.map((f) => (
+                            <SelectItem key={f} value={f} className="focus:bg-strawberry/5 focus:text-strawberry py-3">{f}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Weight</label>
+                      <Select
+                        value={(form.weight && form.weight[0]) || ''}
+                        onValueChange={(val) => setForm({...form, weight: val ? [val] : []})}
+                      >
+                        <SelectTrigger className="w-full p-4 h-auto rounded-2xl bg-white border border-chocolate/10 outline-none shadow-sm transition-all focus:ring-4 focus:ring-strawberry/5 focus:border-strawberry/30 text-chocolate font-medium text-xs group">
+                           <SelectValue placeholder="Choose Scale" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-2xl border-chocolate/10 shadow-bakery-xl font-lora">
+                          {weightsList.map((w) => (
+                            <SelectItem key={w} value={w} className="focus:bg-strawberry/5 focus:text-strawberry py-3">{w}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Gallery Collection</label>
-                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
-                    {form.galleryPreviews.map((gp, idx) => (
-                      <div key={idx} className="relative aspect-square rounded-2xl bg-white overflow-hidden group border border-chocolate/10 shadow-sm hover:shadow-md transition-all">
-                        <img src={getImageSrc(gp.url, gp.base64)} alt={`Gallery ${idx}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                        <button 
-                          type="button" 
-                          onClick={() => {
-                            const next = [...form.galleryPreviews];
-                            next.splice(idx, 1);
-                            setForm({ ...form, galleryPreviews: next });
-                          }}
-                          className="absolute top-2 right-2 p-1.5 bg-red-500/90 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all hover:scale-110 shadow-lg"
-                        >
-                          <X size={12} />
-                        </button>
+                {/* 2. Visual Identity Grid Section */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                   <div className="space-y-6">
+                      <div className="flex items-center gap-3 pb-3 border-b border-chocolate/10">
+                        <div className="p-2 bg-cream rounded-xl">
+                          <ImageIcon size={18} className="text-chocolate" />
+                        </div>
+                        <h4 className="text-sm font-bold uppercase tracking-[0.2em] text-chocolate/80">Cover Image</h4>
                       </div>
-                    ))}
-                    <label className="aspect-square rounded-2xl border-2 border-dashed border-chocolate/10 bg-cream/10 flex flex-col items-center justify-center cursor-pointer hover:bg-cream/30 hover:border-strawberry/30 transition-all group">
-                      <div className="p-2 bg-white rounded-full shadow-sm text-chocolate group-hover:text-strawberry group-hover:scale-110 transition-all duration-300">
-                        <Plus size={20} />
+                      
+                      <div className="relative group w-full aspect-[16/10] rounded-3xl border-2 border-dashed border-chocolate/10 bg-cream/30 overflow-hidden flex items-center justify-center transition-all hover:border-strawberry/20 hover:bg-cream/50 shadow-inner">
+                        {form.imagePreview || form.image ? (
+                          <div className="relative w-full h-full">
+                            <img src={getImageSrc(form.image, form.imagePreview || undefined)} alt="Preview" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-chocolate/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                               <div className="bg-white/90 backdrop-blur-md px-6 py-2.5 rounded-full shadow-lg text-chocolate font-bold text-xs uppercase tracking-widest transform translate-y-4 group-hover:translate-y-0 transition-all duration-300">
+                                  Update Image
+                               </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center gap-3 text-chocolate/20">
+                            <div className="p-5 bg-white rounded-full shadow-bakery">
+                              <ImageIcon size={40} />
+                            </div>
+                            <span className="text-xs font-bold uppercase tracking-widest">Upload Image</span>
+                          </div>
+                        )}
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0] || null;
+                            if (f) {
+                              if (f.size > MAX_BYTES) { toast.error('Work of art must be 500KB or smaller'); return; }
+                              const url = URL.createObjectURL(f);
+                              setForm({...form, imageFile: f, imagePreview: url, image: ''});
+                            }
+                          }} 
+                        />
                       </div>
-                      <span className="text-[10px] font-bold text-chocolate/40 mt-2 uppercase tracking-widest">Add Piece</span>
                       <input 
-                        type="file" 
-                        multiple 
-                        accept="image/*" 
-                        className="hidden"
-                        onChange={(e) => {
-                          const files = Array.from(e.target.files || []);
-                          const readers = files.map(f => {
-                            if (f.size > MAX_BYTES) { toast.error(`${f.name} exceeds 500KB and was skipped`); return Promise.resolve(null); }
-                            const url = URL.createObjectURL(f);
-                            return new Promise((resolve) => {
-                              const fr = new FileReader();
-                              fr.onload = () => {
-                                const base64 = typeof fr.result === 'string' ? fr.result : null;
-                                resolve({ file: f, url, base64 });
-                              };
-                              fr.onerror = () => resolve({ file: f, url, base64: null });
-                              fr.readAsDataURL(f);
-                            });
-                          });
-                          Promise.all(readers).then(results => {
-                            const valid = results.filter(r => r !== null);
-                            if (valid.length === 0) return;
-                            setForm(prev => ({
-                              ...prev,
-                              galleryPreviews: [...prev.galleryPreviews, ...valid]
-                            }));
-                          });
-                        }}
+                        value={form.image} 
+                        onChange={(e) => setForm({...form, image: e.target.value})} 
+                        className="w-full p-4 text-[10px] rounded-xl bg-white border border-chocolate/5 focus:border-strawberry/30 outline-none text-chocolate/60 italic font-medium shadow-inner"
+                        placeholder="Or paste an image URL..."
                       />
-                    </label>
-                  </div>
+                   </div>
+
+                   <div className="space-y-6">
+                      <div className="flex items-center gap-3 pb-3 border-b border-chocolate/10">
+                        <div className="p-2 bg-cream rounded-xl">
+                          <Layers size={18} className="text-chocolate" />
+                        </div>
+                        <h4 className="text-sm font-bold uppercase tracking-[0.2em] text-chocolate/80">Product Gallery</h4>
+                      </div>
+                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                        {form.galleryPreviews.map((gp, idx) => (
+                          <div key={idx} className="relative aspect-square rounded-2xl bg-white overflow-hidden group border border-chocolate/10 shadow-sm hover:shadow-md transition-all">
+                            <img src={getImageSrc(gp.url, gp.base64)} alt={`Gallery ${idx}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                            <button 
+                              type="button" 
+                              onClick={() => {
+                                const next = [...form.galleryPreviews];
+                                next.splice(idx, 1);
+                                setForm({ ...form, galleryPreviews: next });
+                              }}
+                              className="absolute top-2 right-2 p-1.5 bg-red-500/90 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all hover:scale-110 shadow-lg"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ))}
+                        <label className="aspect-square rounded-2xl border-2 border-dashed border-chocolate/10 bg-cream/10 flex flex-col items-center justify-center cursor-pointer hover:bg-cream/30 hover:border-strawberry/30 transition-all group">
+                          <div className="p-2 bg-white rounded-full shadow-sm text-chocolate group-hover:text-strawberry group-hover:scale-110 transition-all duration-300">
+                            <Plus size={20} />
+                          </div>
+                          <span className="text-[10px] font-bold text-chocolate/40 mt-2 uppercase tracking-widest">Add Image</span>
+                          <input 
+                            type="file" 
+                            multiple 
+                            accept="image/*" 
+                            className="hidden"
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files || []);
+                              const readers = files.map(f => {
+                                if (f.size > MAX_BYTES) { toast.error(`${f.name} exceeds 500KB and was skipped`); return Promise.resolve(null); }
+                                const url = URL.createObjectURL(f);
+                                return new Promise((resolve) => {
+                                  const fr = new FileReader();
+                                  fr.onload = () => {
+                                    const base64 = typeof fr.result === 'string' ? fr.result : null;
+                                    resolve({ file: f, url, base64 });
+                                  };
+                                  fr.onerror = () => resolve({ file: f, url, base64: null });
+                                  fr.readAsDataURL(f);
+                                });
+                              });
+                              Promise.all(readers).then(results => {
+                                const valid = results.filter(r => r !== null);
+                                if (valid.length === 0) return;
+                                setForm(prev => ({
+                                  ...prev,
+                                  galleryPreviews: [...prev.galleryPreviews, ...valid]
+                                }));
+                              });
+                            }}
+                          />
+                        </label>
+                      </div>
+                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1 italic">Distant Artifact (Image URL)</label>
-                  <input 
-                    value={form.image} 
-                    onChange={(e) => {
-                      const val = e.target.value || '';
-                      // Accept pasted data URIs or remote URLs but do not create base64 previews locally.
-                      if (val.startsWith('data:')) {
-                        const size = estimateDataUriSize(val);
-                        if (size > MAX_BYTES) { toast.error('Pasted image must be 500KB or smaller'); return; }
-                        setForm({...form, image: val, imagePreview: null, imageFile: null});
-                      } else {
-                        setForm({...form, image: val, imagePreview: null, imageFile: null});
-                      }
-                    }} 
-                    className="w-full p-4 text-xs rounded-2xl bg-white border border-chocolate/5 focus:border-strawberry/30 outline-none text-chocolate/60 italic font-medium shadow-inner"
-                    placeholder="https://exquisite-bakery.com/masterpiece.jpg"
-                  />
+                {/* 3. Gastronomy & Specifications Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                   <div className="space-y-6">
+                      <div className="flex items-center gap-3 pb-3 border-b border-chocolate/10">
+                        <div className="p-2 bg-cream rounded-xl">
+                          <Filter size={18} className="text-chocolate" />
+                        </div>
+                        <h4 className="text-sm font-bold uppercase tracking-[0.2em] text-chocolate/80">Ingredients & Taste</h4>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between px-1">
+                          <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest">Secret Ingredients</label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedIngredient(ingredientOptions[0]?.id || '');
+                              setIngredientQty(100);
+                              setShowIngredientModal(true);
+                            }}
+                            className="flex items-center gap-1.5 text-[10px] font-bold text-strawberry uppercase tracking-wider hover:text-chocolate transition-colors"
+                          >
+                            <Plus size={12} /> Add New
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-2 min-h-[80px] p-4 bg-white rounded-2xl border border-chocolate/5 shadow-inner content-start">
+                          {(form.ingredients || []).length > 0 ? (form.ingredients || []).map((ing, idx) => (
+                            <span key={idx} className="flex items-center gap-2 bg-chocolate text-white px-3 py-1.5 rounded-full shadow-sm animate-in zoom-in duration-300">
+                              <span className="text-[10px] font-bold tracking-wide">{ing}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const next = [...(form.ingredients || [])];
+                                  next.splice(idx, 1);
+                                  setForm({ ...form, ingredients: next });
+                                }}
+                                className="p-1 rounded-full bg-white/20 hover:bg-white/40 transition-colors"
+                              >
+                                <X size={8} />
+                              </button>
+                            </span>
+                          )) : <p className="text-xs text-chocolate/20 italic font-medium">No ingredients added yet...</p>}
+                        </div>
+                        
+                        <div className="space-y-2">
+                           <div className="flex items-center justify-between px-1">
+                             <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest">Taste Description</label>
+                           </div>
+                           <textarea 
+                             value={form.tasteDescription} 
+                             onChange={(e) => setForm({...form, tasteDescription: e.target.value.slice(0, 300)})} 
+                             rows={4}
+                             placeholder="Describe the sensory experience..."
+                             className="w-full p-4 rounded-2xl bg-white border border-chocolate/5 outline-none shadow-sm transition-all focus:border-strawberry/30 resize-none text-chocolate font-medium placeholder:text-chocolate/20 text-xs leading-relaxed"
+                           />
+                        </div>
+                      </div>
+                   </div>
+
+                   <div className="space-y-6">
+                      <div className="flex items-center gap-3 pb-3 border-b border-chocolate/10">
+                        <div className="p-2 bg-cream rounded-xl">
+                          <Layers size={18} className="text-chocolate" />
+                        </div>
+                        <h4 className="text-sm font-bold uppercase tracking-[0.2em] text-chocolate/80">Specifications</h4>
+                      </div>
+                      <div className="space-y-8 overflow-y-auto max-h-[350px] pr-2 no-scrollbar">
+                         <SelectableBadgeGroup 
+                            label="Artistry Types" 
+                            options={typesList} 
+                            selected={form.type || []} 
+                            onChange={(next) => setForm({...form, type: next})} 
+                         />
+                         <GroupedSelectableBadgeGroup
+                            label="Tailored Occasions"
+                            options={occasionsList}
+                            selected={form.occasion || []}
+                            onChange={(next) => setForm({...form, occasion: next})}
+                         />
+                         <div className="grid grid-cols-1 gap-6">
+                            <SelectableBadgeGroup 
+                                label="Shapes" 
+                                options={shapesList} 
+                                selected={form.shape || []} 
+                                onChange={(next) => setForm({...form, shape: next})} 
+                            />
+                            <GroupedSelectableBadgeGroup
+                                label="Themes"
+                                options={themesList}
+                                selected={form.theme || []}
+                                onChange={(next) => setForm({...form, theme: next})}
+                            />
+                         </div>
+                      </div>
+                   </div>
                 </div>
+
               </div>
             </div>
 
-            {/* Gastronomy Section */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-3 pb-3 border-b border-chocolate/10">
-                <div className="p-2 bg-cream rounded-xl">
-                    <Filter size={18} className="text-chocolate" />
-                </div>
-                <h4 className="text-sm font-bold uppercase tracking-[0.2em] text-chocolate/80">Gastronomy</h4>
-              </div>
-
-              <div className="grid grid-cols-1 gap-6">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between px-1">
-                    <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest">Secret Ingredients</label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedIngredient(ingredientOptions[0]?.id || '');
-                        setIngredientQty(100);
-                        setShowIngredientModal(true);
-                      }}
-                      className="flex items-center gap-1.5 text-[10px] font-bold text-strawberry uppercase tracking-wider hover:text-chocolate transition-colors"
+            {/* Ingredient Modal Overlay */}
+            {showIngredientModal && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
+                <div className="absolute inset-0 bg-chocolate/60 backdrop-blur-sm" onClick={() => setShowIngredientModal(false)} />
+                <div className="relative bg-[#FAFBFD] rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl z-10 border border-white/20 animate-in zoom-in-95 duration-300 font-lora">
+                  <div className="text-center space-y-2 mb-8">
+                      <h4 className="text-2xl font-bold text-chocolate font-dancing">Ingredient Detail</h4>
+                      <p className="text-xs text-chocolate/40 font-bold uppercase tracking-widest">Add to your masterpiece</p>
+                  </div>
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-chocolate/60 uppercase tracking-[0.2em] px-1">Element</label>
+                      <Select 
+                          value={selectedIngredient} 
+                          onValueChange={(val) => setSelectedIngredient(val)} 
+                      >
+                        <SelectTrigger className="w-full p-4 h-auto rounded-2xl bg-white border border-chocolate/10 outline-none shadow-sm transition-all focus:ring-4 focus:ring-strawberry/5 focus:border-strawberry/30 text-chocolate font-medium group">
+                          <SelectValue placeholder="Select an ingredient" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-2xl border-chocolate/10 shadow-bakery-xl font-lora">
+                          {ingredientOptions.map((opt) => (
+                            <SelectItem key={opt.id} value={opt.id} className="focus:bg-strawberry/5 focus:text-strawberry py-3">{opt.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-chocolate/60 uppercase tracking-[0.2em] px-1">Portion (Grams)</label>
+                      <input 
+                          type="number" 
+                          value={ingredientQty} 
+                          onChange={(e) => setIngredientQty(Number(e.target.value) || 0)} 
+                          className="w-full p-4 rounded-2xl bg-white border border-chocolate/10 outline-none text-chocolate font-bold shadow-sm" 
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-4 mt-10">
+                    <button 
+                      type="button" 
+                      onClick={() => setShowIngredientModal(false)} 
+                      className="flex-1 py-4 px-6 rounded-full text-xs font-bold text-chocolate border border-chocolate/10 hover:bg-white transition-all uppercase tracking-widest"
                     >
-                      <Plus size={12} />
-                      Harvest New
+                      Discard
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        if (!selectedIngredient) { toast.error('Select an ingredient'); return; }
+                        if (!ingredientQty || ingredientQty <= 0) { toast.error('Enter valid weight'); return; }
+                        const picked = ingredientOptions.find(i => i.id === selectedIngredient);
+                        const name = picked?.name || selectedIngredient;
+                        const entry = `${name} (${ingredientQty}g)`;
+                        setForm(prev => ({ ...prev, ingredients: [...(prev.ingredients || []), entry] }));
+                        setShowIngredientModal(false);
+                      }} 
+                      className="flex-1 py-4 px-6 bg-chocolate text-white rounded-full text-xs font-bold shadow-lg hover:bg-strawberry hover:shadow-strawberry/20 transition-all uppercase tracking-widest"
+                    >
+                      Add Ingredient
                     </button>
                   </div>
-                  
-                  <div className="flex flex-wrap gap-2 min-h-[50px] p-4 bg-white rounded-2xl border border-chocolate/5 shadow-inner">
-                    {(form.ingredients || []).length > 0 ? (form.ingredients || []).map((ing, idx) => (
-                      <span key={idx} className="flex items-center gap-2 bg-chocolate text-white px-4 py-2 rounded-full shadow-sm animate-in zoom-in duration-300">
-                        <span className="text-[11px] font-bold tracking-wide">{ing}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const next = [...(form.ingredients || [])];
-                            next.splice(idx, 1);
-                            setForm({ ...form, ingredients: next });
-                          }}
-                          className="p-1 rounded-full bg-white/20 hover:bg-white/40 transition-colors"
-                        >
-                          <X size={10} />
-                        </button>
-                      </span>
-                    )) : <p className="text-xs text-chocolate/20 italic font-medium">No ingredients added yet...</p>}
-                  </div>
-
-                  {/* Redesigned Ingredient Modal */}
-                  {showIngredientModal && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
-                      <div className="absolute inset-0 bg-chocolate/60 backdrop-blur-sm" onClick={() => setShowIngredientModal(false)} />
-                      <div className="relative bg-[#FAFBFD] rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl z-10 border border-white/20 animate-in zoom-in-95 duration-300 font-lora">
-                        <div className="text-center space-y-2 mb-8">
-                            <h4 className="text-2xl font-bold text-chocolate font-dancing">Ingredient Detail</h4>
-                            <p className="text-xs text-chocolate/40 font-bold uppercase tracking-widest">Add to your masterpiece</p>
-                        </div>
-                        <div className="space-y-6">
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-chocolate/60 uppercase tracking-[0.2em] px-1">Element</label>
-                            <select 
-                                value={selectedIngredient} 
-                                onChange={(e) => setSelectedIngredient(e.target.value)} 
-                                className="w-full p-4 rounded-2xl bg-white border border-chocolate/10 outline-none text-chocolate font-medium shadow-sm"
-                            >
-                              <option value="">Select an element</option>
-                              {ingredientOptions.map((opt) => (
-                                <option key={opt.id} value={opt.id}>{opt.name}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-chocolate/60 uppercase tracking-[0.2em] px-1">Portion (Grams)</label>
-                            <input 
-                                type="number" 
-                                value={ingredientQty} 
-                                onChange={(e) => setIngredientQty(Number(e.target.value) || 0)} 
-                                className="w-full p-4 rounded-2xl bg-white border border-chocolate/10 outline-none text-chocolate font-bold shadow-sm" 
-                            />
-                          </div>
-                        </div>
-                        <div className="flex gap-4 mt-10">
-                          <button 
-                            type="button" 
-                            onClick={() => setShowIngredientModal(false)} 
-                            className="flex-1 py-4 px-6 rounded-full text-xs font-bold text-chocolate border border-chocolate/10 hover:bg-white transition-all uppercase tracking-widest"
-                          >
-                            Discard
-                          </button>
-                          <button 
-                            type="button" 
-                            onClick={() => {
-                              if (!selectedIngredient) { toast.error('Select an element'); return; }
-                              if (!ingredientQty || ingredientQty <= 0) { toast.error('Enter a valid portion'); return; }
-                              const picked = ingredientOptions.find(i => i.id === selectedIngredient);
-                              const name = picked?.name || selectedIngredient;
-                              const entry = `${name} (${ingredientQty}g)`;
-                              setForm(prev => ({ ...prev, ingredients: [...(prev.ingredients || []), entry] }));
-                              setShowIngredientModal(false);
-                            }} 
-                            className="flex-1 py-4 px-6 bg-chocolate text-white rounded-full text-xs font-bold shadow-lg hover:bg-strawberry hover:shadow-strawberry/20 transition-all uppercase tracking-widest"
-                          >
-                            Incorporate
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between px-1">
-                    <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest">Symphony of Taste (Description)</label>
-                    <span className="text-[10px] font-bold text-chocolate/30">{(form.tasteDescription || '').length}/300</span>
-                  </div>
-                  <textarea 
-                    value={form.tasteDescription} 
-                    onChange={(e) => setForm({...form, tasteDescription: e.target.value.slice(0, 300)})} 
-                    rows={5}
-                    placeholder="Describe the sensory experience, the notes of sweetness, and the lingering aftertaste..."
-                    className="w-full p-5 rounded-[1.5rem] bg-white border border-chocolate/5 outline-none shadow-sm transition-all focus:border-strawberry/30 resize-none text-chocolate font-medium placeholder:text-chocolate/20 text-sm leading-relaxed"
-                  />
                 </div>
               </div>
-            </div>
+            )}
           </form>
 
-
-          <SheetFooter className="p-8 bg-white border-t border-chocolate/10 flex flex-row items-center justify-between gap-6">
+          <DialogFooter className="p-8 bg-white border-t border-chocolate/10 flex flex-row items-center justify-between gap-6 shrink-0">
             <button 
               type="button" 
               onClick={closeModal} 
@@ -1185,12 +1194,12 @@ const Products = () => {
                   Preserving...
                 </>
               ) : (
-                editingId ? 'Save Artistry' : 'Unveil Masterpiece'
+                editingId ? 'Update Product' : 'Add Product'
               )}
             </button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
