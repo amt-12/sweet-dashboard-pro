@@ -17,21 +17,38 @@ const cartSlice = createSlice({
   name: 'cart',
   initialState,
   reducers: {
-    addToCart: (state, action: PayloadAction<Product>) => {
-      const existingItem = state.items.find(item => item.id === action.payload.id);
+    addToCart: (state, action: PayloadAction<{ product: Product; quantity?: number }>) => {
+      const payload = action.payload;
+      const qty = payload.quantity && payload.quantity > 0 ? payload.quantity : 1;
+      const existingItem = state.items.find(item => item.id === payload.product.id);
+
+      // Do not add if product stock is zero
+      if (typeof payload.product.stock === 'number' && payload.product.stock <= 0) return;
+
       if (existingItem) {
-        existingItem.quantity += 1;
+        const newQty = existingItem.quantity + qty;
+        // cap at available stock if available
+        if (typeof existingItem.stock === 'number' && existingItem.stock > 0) {
+          existingItem.quantity = Math.min(newQty, existingItem.stock);
+        } else {
+          existingItem.quantity = newQty;
+        }
       } else {
-        state.items.push({ ...action.payload, quantity: 1 });
+        const toAdd = { ...payload.product, quantity: Math.min(qty, (typeof payload.product.stock === 'number' && payload.product.stock > 0) ? payload.product.stock : qty) } as CartItem;
+        state.items.push(toAdd);
       }
     },
-    removeFromCart: (state, action: PayloadAction<number>) => {
+    removeFromCart: (state, action: PayloadAction<string>) => {
       state.items = state.items.filter(item => item.id !== action.payload);
     },
-    updateQuantity: (state, action: PayloadAction<{ id: number; quantity: number }>) => {
+    updateQuantity: (state, action: PayloadAction<{ id: string; quantity: number }>) => {
       const item = state.items.find(item => item.id === action.payload.id);
       if (item && action.payload.quantity > 0) {
-        item.quantity = action.payload.quantity;
+        if (typeof item.stock === 'number' && item.stock > 0) {
+          item.quantity = Math.min(action.payload.quantity, item.stock);
+        } else {
+          item.quantity = action.payload.quantity;
+        }
       }
     },
     clearCart: (state) => {
