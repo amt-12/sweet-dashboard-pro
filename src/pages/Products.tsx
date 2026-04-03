@@ -765,26 +765,28 @@ const Products = () => {
 
       <Dialog open={showModal} onOpenChange={(open) => !open && closeModal()}>
         <DialogContent className="max-w-[95vw] md:max-w-[70vw] lg:max-w-5xl h-[90vh] flex flex-col p-0 bg-[#FAFBFD] border-none overflow-hidden rounded-[2.5rem]">
-          <DialogHeader className="p-8 bg-white border-b border-chocolate/5 relative shrink-0">
-             <div className="absolute top-0 right-0 w-32 h-32 bg-strawberry/5 rounded-full -mr-16 -mt-16 blur-3xl" />
-             <div className="relative flex items-center gap-4">
-                <div className="w-14 h-14 bg-chocolate text-white rounded-2xl flex items-center justify-center shadow-lg transform -rotate-3 hover:rotate-0 transition-transform shrink-0">
-                  <Package size={28} />
-                </div>
-                <div>
-                  <DialogTitle className="text-3xl font-bold text-chocolate font-dancing">
-                    {editingId ? 'Edit Product' : 'Add New Product'}
-                  </DialogTitle>
-                  <DialogDescription className="text-chocolate-light font-medium flex items-center gap-1.5 mt-0.5">
-                    {editingId ? (
-                      <>Updating details for <span className="text-strawberry font-bold">{form.name}</span></>
-                    ) : 'Create a new item for your bakery menu.'}
-                  </DialogDescription>
-                </div>
-             </div>
-          </DialogHeader>
+          <form id="product-form" onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
+            <DialogHeader className="p-8 bg-white border-b border-chocolate/5 relative shrink-0">
+               <div className="absolute top-0 right-0 w-32 h-32 bg-strawberry/5 rounded-full -mr-16 -mt-16 blur-3xl" />
+               <div className="relative flex items-center gap-4">
+                  <div className="w-14 h-14 bg-chocolate text-white rounded-2xl flex items-center justify-center shadow-lg transform -rotate-3 hover:rotate-0 transition-transform shrink-0">
+                    <Package size={28} />
+                  </div>
+                  <div>
+                    <DialogTitle className="text-3xl font-bold text-chocolate font-dancing">
+                      {editingId ? 'Edit Product' : 'Add New Product'}
+                    </DialogTitle>
+                    <DialogDescription className="text-chocolate-light font-medium flex items-center gap-1.5 mt-0.5">
+                      {editingId ? (
+                        <>Updating details for <span className="text-strawberry font-bold">{form.name}</span></>
+                      ) : 'Create a new item for your bakery menu.'}
+                    </DialogDescription>
+                  </div>
+               </div>
+            </DialogHeader>
 
-          <form id="product-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 no-scrollbar">
+            <div className="flex-1 overflow-y-auto p-8 no-scrollbar">
+
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
               
               {/* Left Column: Form Details (8/12) */}
@@ -966,6 +968,7 @@ const Products = () => {
                              className={`w-full pl-10 pr-4 py-4 rounded-2xl bg-white border ${errors.price ? 'border-red-500' : 'border-chocolate/10'} outline-none shadow-sm transition-all focus:border-strawberry/30 text-chocolate font-bold text-sm`} 
                            />
                          </div>
+                         {errors.price && <p className="text-[10px] font-bold text-red-500 mt-1 uppercase tracking-wider">{errors.price}</p>}
                          <p className="text-[8px] text-chocolate/40 px-1 uppercase tracking-wider italic">Syncs with first variant if skipped</p>
                        </div>
  
@@ -982,6 +985,7 @@ const Products = () => {
                              className={`w-full pl-11 pr-4 py-4 rounded-2xl bg-white border ${errors.stock ? 'border-red-500' : 'border-chocolate/10'} outline-none shadow-sm transition-all focus:border-strawberry/30 text-chocolate font-medium text-sm`} 
                            />
                          </div>
+                         {errors.stock && <p className="text-[10px] font-bold text-red-500 mt-1 uppercase tracking-wider">{errors.stock}</p>}
                        </div>
  
                        <div className="space-y-2">
@@ -1218,6 +1222,7 @@ const Products = () => {
 
               </div>
             </div>
+          </div>
 
             {/* Ingredient Modal Overlay */}
             {showIngredientModal && (
@@ -1282,32 +1287,32 @@ const Products = () => {
                 </div>
               </div>
             )}
+
+            <DialogFooter className="p-8 bg-white border-t border-chocolate/10 flex flex-row items-center justify-between gap-6 shrink-0">
+              <button 
+                type="button" 
+                onClick={closeModal} 
+                className="px-8 py-4 rounded-full text-xs font-bold text-chocolate/60 uppercase tracking-[0.2em] hover:bg-chocolate/5 transition-all font-lora"
+              >
+                Discard Changes
+              </button>
+              <button 
+                type="submit" 
+                disabled={loading} 
+                className={`px-12 py-4 rounded-full text-xs font-bold text-white uppercase tracking-[0.2em] flex items-center gap-3 shadow-bakery-lg hover:shadow-bakery-xl hover:scale-[1.02] transition-all duration-300 ${loading ? 'bg-chocolate/40 cursor-not-allowed' : 'bg-chocolate hover:bg-strawberry'}`}
+              >
+                {loading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                    Preserving...
+                  </>
+                ) : (
+                  editingId ? 'Update Product' : 'Add Product'
+                )}
+              </button>
+            </DialogFooter>
           </form>
 
-          <DialogFooter className="p-8 bg-white border-t border-chocolate/10 flex flex-row items-center justify-between gap-6 shrink-0">
-            <button 
-              type="button" 
-              onClick={closeModal} 
-              className="px-8 py-4 rounded-full text-xs font-bold text-chocolate/60 uppercase tracking-[0.2em] hover:bg-chocolate/5 transition-all font-lora"
-            >
-              Discard Changes
-            </button>
-            <button 
-              type="submit" 
-              form="product-form"
-              disabled={loading} 
-              className={`px-12 py-4 rounded-full text-xs font-bold text-white uppercase tracking-[0.2em] flex items-center gap-3 shadow-bakery-lg hover:shadow-bakery-xl hover:scale-[1.02] transition-all duration-300 ${loading ? 'bg-chocolate/40 cursor-not-allowed' : 'bg-chocolate hover:bg-strawberry'}`}
-            >
-              {loading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  Preserving...
-                </>
-              ) : (
-                editingId ? 'Update Product' : 'Add Product'
-              )}
-            </button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
