@@ -53,11 +53,12 @@ const Orders = () => {
   const [deliveryPartners, setDeliveryPartners] = useState<any[]>([]);
   const [loadingPartners, setLoadingPartners] = useState(false);
   // Status filter for quick buttons above the table
-  const [filterStatus, setFilterStatus] = useState('');
+  const [filterStatus, setFilterStatus] = useState('placed');
   // Search query for the top search bar
   const [searchQuery, setSearchQuery] = useState('');
 
   const STATUS_OPTIONS = [
+    { key: 'placed', label: 'Placed' },
     { key: '', label: 'Open' },
     { key: 'all', label: 'All' },
     { key: 'confirmed', label: 'Confirmed' },
