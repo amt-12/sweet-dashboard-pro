@@ -724,7 +724,7 @@ const Products = () => {
                         <img src={getImageSrc(product.image, product.images?.[0]?.base64)} alt={product.name} className="w-full h-full object-cover" />
                       </div>
                     </td>
-                    <td className="p-4 font-bold text-chocolate">{product.name}</td>
+                    <td className="p-4 font-bold text-chocolate whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px] md:max-w-[200px]">{product.name}</td>
                     <td className="p-4 text-chocolate/70">{product.category}</td>
                     <td className="p-4 text-chocolate/70">{product.flavor || (product.ingredients?.length ? 'Crafted' : 'Classic')}</td>
                     <td className="p-4 text-strawberry font-bold">CA${(Number(product.price) || 0).toLocaleString()}</td>
