@@ -29,6 +29,7 @@ const Flavors = () => {
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [searchQuery, setSearchQuery] = useState("");
+	const [selectedCategoryId, setSelectedCategoryId] = useState<string | number>("All");
 
 	const [categories, setCategories] = useState<{ id: string | number; name: string }[]>([]);
 	const [categoriesLoading, setCategoriesLoading] = useState(false);
@@ -152,10 +153,12 @@ const Flavors = () => {
 		}
 	};
 
-	const filteredFlavors = flavors.filter(f => 
-		f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-		f.description?.toLowerCase().includes(searchQuery.toLowerCase())
-	);
+	const filteredFlavors = flavors.filter(f => {
+		const matchesSearch = f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			f.description?.toLowerCase().includes(searchQuery.toLowerCase());
+		const matchesCategory = selectedCategoryId === "All" || String(f.categoryId) === String(selectedCategoryId);
+		return matchesSearch && matchesCategory;
+	});
 
 	return (
 		<div className="space-y-8 animate-in fade-in duration-700 font-lora">
@@ -167,14 +170,14 @@ const Flavors = () => {
 					</p>
 				</div>
 				<div className="flex items-center gap-4">
-					<button 
+					<button
 						onClick={fetchFlavors}
 						className="p-3 bg-white border border-chocolate/10 rounded-full text-chocolate hover:bg-strawberry/5 transition-all shadow-sm group"
 					>
 						<RefreshCw size={18} className={loading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'} />
 					</button>
-					<button 
-						onClick={openAdd} 
+					<button
+						onClick={openAdd}
 						className="px-6 py-3 bg-chocolate text-white rounded-full flex items-center gap-2 shadow-bakery hover:shadow-bakery-lg hover:bg-strawberry transition-all duration-300"
 					>
 						<Plus size={18} />
@@ -186,13 +189,49 @@ const Flavors = () => {
 			<div className="flex items-center gap-4 bg-white/60 backdrop-blur-md p-4 rounded-[2rem] shadow-bakery border border-chocolate/5">
 				<div className="relative flex-1 group">
 					<Search className="absolute left-5 top-1/2 -translate-y-1/2 text-chocolate/30 group-focus-within:text-strawberry transition-colors w-5 h-5" />
-					<input 
-						type="text" 
+					<input
+						type="text"
 						value={searchQuery}
 						onChange={(e) => setSearchQuery(e.target.value)}
-						placeholder="Search flavors..." 
-						className="w-full pl-14 pr-6 py-4 rounded-2xl bg-[#FAF6E6]/50 text-chocolate outline-none border border-transparent focus:border-strawberry/20 focus:bg-white focus:ring-8 focus:ring-strawberry/5 transition-all font-medium placeholder:text-chocolate/20" 
+						placeholder="Search flavors..."
+						className="w-full pl-14 pr-6 py-4 rounded-2xl bg-[#FAF6E6]/50 text-chocolate outline-none border border-transparent focus:border-strawberry/20 focus:bg-white focus:ring-8 focus:ring-strawberry/5 transition-all font-medium placeholder:text-chocolate/20"
 					/>
+				</div>
+			</div>
+
+			{/* ── Filter Section (Category Buttons) ────────────────────── */}
+			<div className="bg-white/40 backdrop-blur-sm p-6 rounded-[2.5rem] border border-chocolate/5 space-y-4">
+				<div className="flex items-center gap-2 mb-2">
+					<div className="w-1 h-4 bg-strawberry rounded-full" />
+					<span className="text-[10px] font-bold uppercase tracking-[0.2em] text-chocolate/40">Select Category</span>
+				</div>
+				<div className="flex flex-wrap gap-3">
+					<button
+						onClick={() => setSelectedCategoryId("All")}
+						className={`px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 border ${
+							selectedCategoryId === "All"
+								? 'bg-chocolate text-white border-chocolate shadow-bakery shadow-chocolate/20 scale-105'
+								: 'bg-white text-chocolate/60 border-chocolate/10 hover:border-strawberry/30 hover:text-strawberry hover:bg-white'
+						}`}
+					>
+						All
+					</button>
+					{categories.map((cat) => {
+						const isActive = String(selectedCategoryId) === String(cat.id);
+						return (
+							<button
+								key={cat.id}
+								onClick={() => setSelectedCategoryId(cat.id)}
+								className={`px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 border ${
+									isActive
+										? 'bg-chocolate text-white border-chocolate shadow-bakery shadow-chocolate/20 scale-105'
+										: 'bg-white text-chocolate/60 border-chocolate/10 hover:border-strawberry/30 hover:text-strawberry hover:bg-white'
+								}`}
+							>
+								{cat.name}
+							</button>
+						);
+					})}
 				</div>
 			</div>
 
@@ -254,7 +293,7 @@ const Flavors = () => {
 						))}
 					</TableBody>
 				</Table>
-				
+
 				{filteredFlavors.length === 0 && !loading && (
 					<div className="py-24 text-center space-y-4 bg-white/40">
 						<div className="w-16 h-16 bg-chocolate/5 rounded-full flex items-center justify-center mx-auto text-chocolate/10">

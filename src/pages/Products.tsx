@@ -119,16 +119,16 @@ const TagInput = ({ value, onChange, placeholder }: { value: string[]; onChange:
 };
 
 // Selectable Badge Group for multiple choices
-const SelectableBadgeGroup = ({ 
-  options, 
-  selected, 
-  onChange, 
-  label 
-}: { 
-  options: string[], 
-  selected: string[], 
-  onChange: (next: string[]) => void, 
-  label: string 
+const SelectableBadgeGroup = ({
+  options,
+  selected,
+  onChange,
+  label
+}: {
+  options: string[],
+  selected: string[],
+  onChange: (next: string[]) => void,
+  label: string
 }) => {
   const toggle = (opt: string) => {
     if (selected.includes(opt)) {
@@ -149,11 +149,10 @@ const SelectableBadgeGroup = ({
               key={opt}
               type="button"
               onClick={() => toggle(opt)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 border ${
-                isSelected 
-                  ? 'bg-chocolate text-white border-chocolate shadow-md scale-105' 
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 border ${isSelected
+                  ? 'bg-chocolate text-white border-chocolate shadow-md scale-105'
                   : 'bg-white text-chocolate/60 border-chocolate/10 hover:border-strawberry/30 hover:text-strawberry'
-              }`}
+                }`}
             >
               {opt}
             </button>
@@ -284,9 +283,10 @@ const Products = () => {
   const [pageSize, setPageSize] = useState(12); // items per page
   // Search query for product list
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState("All");
 
-  // Reset to first page when search or page size changes
-  useEffect(() => { setCurrentPage(1); }, [searchQuery, pageSize]);
+  // Reset to first page when search query, selected category, or page size changes
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, selectedCategory, pageSize]);
 
   // Ingredient modal state: show modal, options (id + name), selected id and quantity
   const [showIngredientModal, setShowIngredientModal] = useState(false);
@@ -314,7 +314,7 @@ const Products = () => {
     }
     // object: try common fields
     return {
-      url: img.url || img.img || img.path || img.filename || '' ,
+      url: img.url || img.img || img.path || img.filename || '',
       base64: img.base64 || img.imgBase64 || img.data || undefined,
     };
   }, []);
@@ -385,7 +385,7 @@ const Products = () => {
         if (typeof it === 'string') return { name: it, sub: [] };
         const name = it.name || it.title || it.label || it.type || '';
         const sub = Array.isArray(it.subthemes) ? it.subthemes : (Array.isArray(it.suboccasions) ? it.suboccasions : (Array.isArray(it.sub) ? it.sub : (it.subitems || [])));
-        return { name, sub: (sub || []).map((s:any)=>String(s)).filter(Boolean) } as GroupOption;
+        return { name, sub: (sub || []).map((s: any) => String(s)).filter(Boolean) } as GroupOption;
       }).filter(Boolean) as GroupOption[];
 
       setOccasionsList(normalizeGroups(occ));
@@ -397,7 +397,7 @@ const Products = () => {
         name: i.name || ''
       })).filter((i: any) => i.name);
       setIngredientOptions(ings);
-    }).catch(() => {}).finally(() => { mounted = false; });
+    }).catch(() => { }).finally(() => { mounted = false; });
     return () => { mounted = false; };
   }, []);
 
@@ -451,7 +451,7 @@ const Products = () => {
   };
 
   const validateForm = () => {
-    const next: Record<string,string> = {};
+    const next: Record<string, string> = {};
     if (!form.name || !form.name.trim()) next.name = 'Name is required';
     if (Number.isNaN(Number(form.price)) || Number(form.price) < 0) next.price = 'Enter a valid non-negative price';
     if (!Number.isInteger(Number(form.stock)) || Number(form.stock) < 0) next.stock = 'Enter a valid non-negative stock';
@@ -602,18 +602,21 @@ const Products = () => {
 
   // --- Compute filtered products and pagination outside of JSX to avoid runtime reference errors ---
   const q = (searchQuery || '').trim().toLowerCase();
-  const filteredProducts = q
-    ? products.filter((p: Product) => {
-        const id = String(p.id || '').toLowerCase();
-        const name = String(p.name || '').toLowerCase();
-        const category = String(p.category || '').toLowerCase();
-        const flavor = String(p.flavor || '').toLowerCase();
-        const items = Array.isArray(p.ingredients) ? p.ingredients.join(' ').toLowerCase() : String(p.ingredients || '').toLowerCase();
-        const orderNumber = String(p.orderNumber || '').toLowerCase();
-        const price = String(p.price || '').toLowerCase();
-        return id.includes(q) || name.includes(q) || category.includes(q) || flavor.includes(q) || items.includes(q) || orderNumber.includes(q) || price.includes(q);
-      })
-    : products;
+  const filteredProducts = products.filter((p: Product) => {
+    // 1. Category Filter
+    if (selectedCategory !== "All" && p.category !== selectedCategory) return false;
+
+    // 2. Search Filter
+    if (!q) return true;
+    const id = String(p.id || '').toLowerCase();
+    const name = String(p.name || '').toLowerCase();
+    const category = String(p.category || '').toLowerCase();
+    const flavor = String(p.flavor || '').toLowerCase();
+    const items = Array.isArray(p.ingredients) ? p.ingredients.join(' ').toLowerCase() : String(p.ingredients || '').toLowerCase();
+    const orderNumber = String(p.orderNumber || '').toLowerCase();
+    const price = String(p.price || '').toLowerCase();
+    return id.includes(q) || name.includes(q) || category.includes(q) || flavor.includes(q) || items.includes(q) || orderNumber.includes(q) || price.includes(q);
+  });
 
   const total = filteredProducts.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -690,19 +693,45 @@ const Products = () => {
         </button>
       </div>
 
+      {/* ── Filter Section (Category Buttons) ────────────────────── */}
+      <div className="bg-white/40 backdrop-blur-sm p-6 rounded-[2rem] border border-chocolate/5 space-y-4">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-1 h-4 bg-strawberry rounded-full" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-chocolate/40">Select Category</span>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          {['All', ...categoriesList].map((cat) => {
+            const isActive = selectedCategory === cat;
+            return (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 border ${
+                  isActive 
+                    ? 'bg-chocolate text-white border-chocolate shadow-bakery shadow-chocolate/20 scale-105' 
+                    : 'bg-white text-chocolate/60 border-chocolate/10 hover:border-strawberry/30 hover:text-strawberry hover:bg-white'
+                }`}
+              >
+                {cat}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* ── Product Cards Grid ────────────────────────────────────── */}
-			{products.length === 0 ? (
-				<div className="bg-white/50 backdrop-blur-sm rounded-[2.5rem] border border-chocolate/5 shadow-bakery p-32 flex flex-col items-center gap-8 text-center animate-in zoom-in duration-700">
-					<div className="w-24 h-24 rounded-full bg-cream/50 flex items-center justify-center border border-white/40 shadow-inner group overflow-hidden">
-						<Package size={40} className="text-chocolate/20 group-hover:scale-110 transition-transform duration-500" />
-					</div>
-					<div className="space-y-2">
-						<h3 className="text-3xl font-bold font-dancing text-chocolate">The pantry is empty</h3>
-						<p className="text-sm text-chocolate-light font-medium italic">Shall we begin by adding an exquisite new item?</p>
-					</div>
-				</div>
-			) : (
-				<div className="bg-white rounded-[2rem] border border-chocolate/5 shadow-bakery overflow-hidden">
+      {products.length === 0 ? (
+        <div className="bg-white/50 backdrop-blur-sm rounded-[2.5rem] border border-chocolate/5 shadow-bakery p-32 flex flex-col items-center gap-8 text-center animate-in zoom-in duration-700">
+          <div className="w-24 h-24 rounded-full bg-cream/50 flex items-center justify-center border border-white/40 shadow-inner group overflow-hidden">
+            <Package size={40} className="text-chocolate/20 group-hover:scale-110 transition-transform duration-500" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-3xl font-bold font-dancing text-chocolate">The pantry is empty</h3>
+            <p className="text-sm text-chocolate-light font-medium italic">Shall we begin by adding an exquisite new item?</p>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white rounded-[2rem] border border-chocolate/5 shadow-bakery overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead className="bg-chocolate/[0.02] text-chocolate/40 font-bold uppercase tracking-widest text-[10px] border-b border-chocolate/5">
@@ -752,281 +781,281 @@ const Products = () => {
               <button disabled={currentPage <= 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} className="px-3 py-2 rounded-xl bg-white border border-chocolate/10 hover:bg-chocolate/5 disabled:opacity-50">Prev</button>
               {/* pages */}
               {Array.from({ length: Math.max(1, Math.ceil(total / pageSize)) }).map((_, i) => {
-                 const p = i + 1;
-                 return (
-                   <button key={p} onClick={() => setCurrentPage(p)} className={`px-3 py-2 rounded-xl ${currentPage===p ? 'bg-strawberry text-white' : 'bg-white border border-chocolate/10 hover:bg-chocolate/5'}`}>{p}</button>
-                 );
-               })}
+                const p = i + 1;
+                return (
+                  <button key={p} onClick={() => setCurrentPage(p)} className={`px-3 py-2 rounded-xl ${currentPage === p ? 'bg-strawberry text-white' : 'bg-white border border-chocolate/10 hover:bg-chocolate/5'}`}>{p}</button>
+                );
+              })}
               <button disabled={currentPage >= Math.ceil(total / pageSize)} onClick={() => setCurrentPage(p => Math.min(Math.ceil(total / pageSize), p + 1))} className="px-3 py-2 rounded-xl bg-white border border-chocolate/10 hover:bg-chocolate/5 disabled:opacity-50">Next</button>
             </div>
           </div>
         </div>
-			)}
+      )}
 
       <Dialog open={showModal} onOpenChange={(open) => !open && closeModal()}>
         <DialogContent className="max-w-[95vw] md:max-w-[70vw] lg:max-w-5xl h-[90vh] flex flex-col p-0 bg-[#FAFBFD] border-none overflow-hidden rounded-[2.5rem]">
           <form id="product-form" onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
             <DialogHeader className="p-8 bg-white border-b border-chocolate/5 relative shrink-0">
-               <div className="absolute top-0 right-0 w-32 h-32 bg-strawberry/5 rounded-full -mr-16 -mt-16 blur-3xl" />
-               <div className="relative flex items-center gap-4">
-                  <div className="w-14 h-14 bg-chocolate text-white rounded-2xl flex items-center justify-center shadow-lg transform -rotate-3 hover:rotate-0 transition-transform shrink-0">
-                    <Package size={28} />
-                  </div>
-                  <div>
-                    <DialogTitle className="text-3xl font-bold text-chocolate font-dancing">
-                      {editingId ? 'Edit Product' : 'Add New Product'}
-                    </DialogTitle>
-                    <DialogDescription className="text-chocolate-light font-medium flex items-center gap-1.5 mt-0.5">
-                      {editingId ? (
-                        <>Updating details for <span className="text-strawberry font-bold">{form.name}</span></>
-                      ) : 'Create a new item for your bakery menu.'}
-                    </DialogDescription>
-                  </div>
-               </div>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-strawberry/5 rounded-full -mr-16 -mt-16 blur-3xl" />
+              <div className="relative flex items-center gap-4">
+                <div className="w-14 h-14 bg-chocolate text-white rounded-2xl flex items-center justify-center shadow-lg transform -rotate-3 hover:rotate-0 transition-transform shrink-0">
+                  <Package size={28} />
+                </div>
+                <div>
+                  <DialogTitle className="text-3xl font-bold text-chocolate font-dancing">
+                    {editingId ? 'Edit Product' : 'Add New Product'}
+                  </DialogTitle>
+                  <DialogDescription className="text-chocolate-light font-medium flex items-center gap-1.5 mt-0.5">
+                    {editingId ? (
+                      <>Updating details for <span className="text-strawberry font-bold">{form.name}</span></>
+                    ) : 'Create a new item for your bakery menu.'}
+                  </DialogDescription>
+                </div>
+              </div>
             </DialogHeader>
 
             <div className="flex-1 overflow-y-auto p-8 no-scrollbar">
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-              
-              {/* Left Column: Form Details (8/12) */}
-              <div className="lg:col-span-12 space-y-10">
-                
-                {/* 1. Essence Section */}
-                <div className="space-y-6">
-                  <div className="flex items-center gap-3 pb-3 border-b border-chocolate/10">
-                    <div className="p-2 bg-cream rounded-xl">
-                      <Info size={18} className="text-chocolate" />
-                    </div>
-                    <h4 className="text-sm font-bold uppercase tracking-[0.2em] text-chocolate/80">Essence of Creation</h4>
-                  </div>
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="md:col-span-2 space-y-2">
-                      <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">
-                        Product Name <span className="text-strawberry">*</span>
-                      </label>
-                      <input 
-                        required
-                        value={form.name} 
-                        onChange={(e) => setForm({...form, name: e.target.value})} 
-                        placeholder="e.g. Chocolate Truffle Cake"
-                        className={`w-full p-4 rounded-2xl bg-white border ${errors.name ? 'border-red-500 focus:ring-red-100' : 'border-chocolate/10 focus:border-strawberry/30'} outline-none shadow-sm transition-all focus:ring-4 focus:ring-strawberry/5 text-chocolate font-medium placeholder:text-chocolate/20`} 
-                      />
-                      {errors.name && <p className="text-[10px] font-bold text-red-500 mt-1 uppercase tracking-wider">{errors.name}</p>}
+                {/* Left Column: Form Details (8/12) */}
+                <div className="lg:col-span-12 space-y-10">
+
+                  {/* 1. Essence Section */}
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-3 pb-3 border-b border-chocolate/10">
+                      <div className="p-2 bg-cream rounded-xl">
+                        <Info size={18} className="text-chocolate" />
+                      </div>
+                      <h4 className="text-sm font-bold uppercase tracking-[0.2em] text-chocolate/80">Essence of Creation</h4>
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Category</label>
-                      <Select
-                        value={form.category}
-                        onValueChange={(val) => setForm({...form, category: val})}
-                      >
-                        <SelectTrigger className="w-full p-6 h-auto rounded-2xl bg-white border border-chocolate/10 outline-none shadow-sm transition-all focus:ring-4 focus:ring-strawberry/5 focus:border-strawberry/30 text-chocolate font-medium group">
-                          <div className="flex items-center gap-2">
-                            <Layers size={14} className="text-chocolate/40 group-hover:text-strawberry transition-colors" />
-                            <SelectValue placeholder="Select Collection" />
-                          </div>
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl border-chocolate/10 shadow-bakery-xl font-lora">
-                          {categoriesList && categoriesList.length > 0 ? (
-                            categoriesList.map((c) => (
-                              <SelectItem key={c} value={c} className="focus:bg-strawberry/5 focus:text-strawberry py-3">{c}</SelectItem>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="md:col-span-2 space-y-2">
+                        <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">
+                          Product Name <span className="text-strawberry">*</span>
+                        </label>
+                        <input
+                          required
+                          value={form.name}
+                          onChange={(e) => setForm({ ...form, name: e.target.value })}
+                          placeholder="e.g. Chocolate Truffle Cake"
+                          className={`w-full p-4 rounded-2xl bg-white border ${errors.name ? 'border-red-500 focus:ring-red-100' : 'border-chocolate/10 focus:border-strawberry/30'} outline-none shadow-sm transition-all focus:ring-4 focus:ring-strawberry/5 text-chocolate font-medium placeholder:text-chocolate/20`}
+                        />
+                        {errors.name && <p className="text-[10px] font-bold text-red-500 mt-1 uppercase tracking-wider">{errors.name}</p>}
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Category</label>
+                        <Select
+                          value={form.category}
+                          onValueChange={(val) => setForm({ ...form, category: val })}
+                        >
+                          <SelectTrigger className="w-full p-6 h-auto rounded-2xl bg-white border border-chocolate/10 outline-none shadow-sm transition-all focus:ring-4 focus:ring-strawberry/5 focus:border-strawberry/30 text-chocolate font-medium group">
+                            <div className="flex items-center gap-2">
+                              <Layers size={14} className="text-chocolate/40 group-hover:text-strawberry transition-colors" />
+                              <SelectValue placeholder="Select Collection" />
+                            </div>
+                          </SelectTrigger>
+                          <SelectContent className="rounded-2xl border-chocolate/10 shadow-bakery-xl font-lora">
+                            {categoriesList && categoriesList.length > 0 ? (
+                              categoriesList.map((c) => (
+                                <SelectItem key={c} value={c} className="focus:bg-strawberry/5 focus:text-strawberry py-3">{c}</SelectItem>
+                              ))
+                            ) : (
+                              <>
+                                <SelectItem value="Cakes" className="focus:bg-strawberry/5 focus:text-strawberry py-3">Cakes</SelectItem>
+                                <SelectItem value="Breads" className="focus:bg-strawberry/5 focus:text-strawberry py-3">Breads</SelectItem>
+                                <SelectItem value="Pastries" className="focus:bg-strawberry/5 focus:text-strawberry py-3">Pastries</SelectItem>
+                                <SelectItem value="Cookies" className="focus:bg-strawberry/5 focus:text-strawberry py-3">Cookies</SelectItem>
+                                <SelectItem value="Custom" className="focus:bg-strawberry/5 focus:text-strawberry py-3">Custom</SelectItem>
+                              </>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-6">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between px-1">
+                          <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest">Weight & Price Variants</label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = [...(form.variants || [])];
+                              next.push({ weight: weightsList[0] || "500g", price: 0 });
+                              setForm({ ...form, variants: next });
+                            }}
+                            className="px-3 py-1.5 bg-chocolate text-white rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-strawberry transition-all flex items-center gap-2"
+                          >
+                            <Plus size={12} /> Add Variant
+                          </button>
+                        </div>
+
+                        <div className="space-y-3">
+                          {(form.variants && form.variants.length > 0) ? (
+                            form.variants.map((v, i) => (
+                              <div key={i} className="flex items-center gap-4 bg-white p-3 rounded-2xl border border-chocolate/5 shadow-sm group animate-in slide-in-from-left duration-300">
+                                <div className="flex-1 space-y-1">
+                                  <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-wider px-1">Weight</label>
+                                  <Select
+                                    value={v.weight}
+                                    onValueChange={(val) => {
+                                      const next = [...(form.variants || [])];
+                                      next[i] = { ...next[i], weight: val };
+                                      setForm({ ...form, variants: next });
+                                    }}
+                                  >
+                                    <SelectTrigger className="w-full h-10 px-3 rounded-xl bg-cream/20 border-none text-chocolate font-bold text-xs">
+                                      <SelectValue placeholder="Weight" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-chocolate/5 shadow-bakery-xl font-lora">
+                                      {weightsList.map((w) => (
+                                        <SelectItem key={w} value={w} className="py-2 text-xs">{w}</SelectItem>
+                                      ))}
+                                      {!weightsList.includes(v.weight) && v.weight && (
+                                        <SelectItem value={v.weight} className="py-2 text-xs">{v.weight}</SelectItem>
+                                      )}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+
+                                <div className="flex-1 space-y-1">
+                                  <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-wider px-1">Price (CA$)</label>
+                                  <div className="relative">
+                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-chocolate/30 font-bold text-[10px]">CA$</div>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      value={v.price}
+                                      onChange={(e) => {
+                                        const next = [...(form.variants || [])];
+                                        next[i] = { ...next[i], price: e.target.value === '' ? 0 : Number(e.target.value) };
+                                        setForm({ ...form, variants: next });
+                                      }}
+                                      className="w-full pl-9 pr-3 h-10 rounded-xl bg-cream/20 border-none outline-none text-chocolate font-bold text-xs"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="flex-1 space-y-1">
+                                  <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-wider px-1">Stock (qty)</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={(v as any).stock ?? 0}
+                                    onChange={(e) => {
+                                      const next = [...(form.variants || [])];
+                                      (next[i] as any).stock = e.target.value === '' ? 0 : Number(e.target.value);
+                                      setForm({ ...form, variants: next });
+                                    }}
+                                    className="w-full px-3 h-10 rounded-xl bg-cream/20 border-none outline-none text-chocolate font-bold text-xs"
+                                  />
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const next = (form.variants || []).filter((_, idx) => idx !== i);
+                                    setForm({ ...form, variants: next });
+                                  }}
+                                  className="mt-5 p-2 text-chocolate/20 hover:text-strawberry transition-colors"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
                             ))
                           ) : (
-                            <>
-                              <SelectItem value="Cakes" className="focus:bg-strawberry/5 focus:text-strawberry py-3">Cakes</SelectItem>
-                              <SelectItem value="Breads" className="focus:bg-strawberry/5 focus:text-strawberry py-3">Breads</SelectItem>
-                              <SelectItem value="Pastries" className="focus:bg-strawberry/5 focus:text-strawberry py-3">Pastries</SelectItem>
-                              <SelectItem value="Cookies" className="focus:bg-strawberry/5 focus:text-strawberry py-3">Cookies</SelectItem>
-                              <SelectItem value="Custom" className="focus:bg-strawberry/5 focus:text-strawberry py-3">Custom</SelectItem>
-                            </>
+                            <div
+                              onClick={() => {
+                                const next = [...(form.variants || [])];
+                                next.push({ weight: weightsList[0] || "500g", price: 0, stock: 0 });
+                                setForm({ ...form, variants: next });
+                              }}
+                              className="p-8 border-2 border-dashed border-chocolate/5 rounded-[2rem] flex flex-col items-center justify-center cursor-pointer hover:border-strawberry/20 hover:bg-strawberry/[0.01] transition-all group"
+                            >
+                              <div className="w-10 h-10 rounded-full bg-cream/50 flex items-center justify-center text-chocolate/30 group-hover:scale-110 transition-transform">
+                                <Plus size={20} />
+                              </div>
+                              <span className="text-[10px] font-bold text-chocolate/30 mt-3 uppercase tracking-widest">No variants added</span>
+                            </div>
                           )}
-                         </SelectContent>
-                       </Select>
-                     </div>
-                   </div>
- 
-                   <div className="grid grid-cols-1 gap-6">
-                     <div className="space-y-4">
-                       <div className="flex items-center justify-between px-1">
-                         <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest">Weight & Price Variants</label>
-                         <button 
-                           type="button"
-                           onClick={() => {
-                             const next = [...(form.variants || [])];
-                             next.push({ weight: weightsList[0] || "500g", price: 0 });
-                             setForm({...form, variants: next});
-                           }}
-                           className="px-3 py-1.5 bg-chocolate text-white rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-strawberry transition-all flex items-center gap-2"
-                         >
-                           <Plus size={12} /> Add Variant
-                         </button>
-                       </div>
-                       
-                       <div className="space-y-3">
-                         {(form.variants && form.variants.length > 0) ? (
-                           form.variants.map((v, i) => (
-                             <div key={i} className="flex items-center gap-4 bg-white p-3 rounded-2xl border border-chocolate/5 shadow-sm group animate-in slide-in-from-left duration-300">
-                               <div className="flex-1 space-y-1">
-                                 <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-wider px-1">Weight</label>
-                                 <Select
-                                   value={v.weight}
-                                   onValueChange={(val) => {
-                                     const next = [...(form.variants || [])];
-                                     next[i] = { ...next[i], weight: val };
-                                     setForm({...form, variants: next});
-                                   }}
-                                 >
-                                   <SelectTrigger className="w-full h-10 px-3 rounded-xl bg-cream/20 border-none text-chocolate font-bold text-xs">
-                                      <SelectValue placeholder="Weight" />
-                                   </SelectTrigger>
-                                   <SelectContent className="rounded-xl border-chocolate/5 shadow-bakery-xl font-lora">
-                                     {weightsList.map((w) => (
-                                       <SelectItem key={w} value={w} className="py-2 text-xs">{w}</SelectItem>
-                                     ))}
-                                     {!weightsList.includes(v.weight) && v.weight && (
-                                        <SelectItem value={v.weight} className="py-2 text-xs">{v.weight}</SelectItem>
-                                     )}
-                                   </SelectContent>
-                                 </Select>
-                               </div>
- 
-                               <div className="flex-1 space-y-1">
-                                 <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-wider px-1">Price (CA$)</label>
-                                 <div className="relative">
-                                   <div className="absolute left-3 top-1/2 -translate-y-1/2 text-chocolate/30 font-bold text-[10px]">CA$</div>
-                                   <input 
-                                     type="number" 
-                                     step="0.01" 
-                                     value={v.price} 
-                                     onChange={(e) => {
-                                       const next = [...(form.variants || [])];
-                                       next[i] = { ...next[i], price: e.target.value === '' ? 0 : Number(e.target.value) };
-                                       setForm({...form, variants: next});
-                                     }} 
-                                     className="w-full pl-9 pr-3 h-10 rounded-xl bg-cream/20 border-none outline-none text-chocolate font-bold text-xs" 
-                                   />
-                                 </div>
-                               </div>
+                        </div>
+                      </div>
 
-                               <div className="flex-1 space-y-1">
-                                 <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-wider px-1">Stock (qty)</label>
-                                 <input 
-                                   type="number"
-                                   min="0"
-                                   value={(v as any).stock ?? 0}
-                                   onChange={(e) => {
-                                     const next = [...(form.variants || [])];
-                                     (next[i] as any).stock = e.target.value === '' ? 0 : Number(e.target.value);
-                                     setForm({...form, variants: next});
-                                   }}
-                                   className="w-full px-3 h-10 rounded-xl bg-cream/20 border-none outline-none text-chocolate font-bold text-xs"
-                                 />
-                               </div>
- 
-                               <button 
-                                 type="button" 
-                                 onClick={() => {
-                                   const next = (form.variants || []).filter((_, idx) => idx !== i);
-                                   setForm({...form, variants: next});
-                                 }}
-                                 className="mt-5 p-2 text-chocolate/20 hover:text-strawberry transition-colors"
-                               >
-                                 <Trash2 size={16} />
-                               </button>
-                             </div>
-                           ))
-                         ) : (
-                           <div 
-                             onClick={() => {
-                               const next = [...(form.variants || [])];
-                               next.push({ weight: weightsList[0] || "500g", price: 0, stock: 0 });
-                               setForm({...form, variants: next});
-                             }}
-                             className="p-8 border-2 border-dashed border-chocolate/5 rounded-[2rem] flex flex-col items-center justify-center cursor-pointer hover:border-strawberry/20 hover:bg-strawberry/[0.01] transition-all group"
-                           >
-                             <div className="w-10 h-10 rounded-full bg-cream/50 flex items-center justify-center text-chocolate/30 group-hover:scale-110 transition-transform">
-                               <Plus size={20} />
-                             </div>
-                             <span className="text-[10px] font-bold text-chocolate/30 mt-3 uppercase tracking-widest">No variants added</span>
-                           </div>
-                         )}
-                       </div>
-                     </div>
- 
-                     <div className="grid grid-cols-3 gap-6">
-                       <div className="space-y-2">
-                         <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Base Price (CA$)</label>
-                         <div className="relative">
-                           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/30 font-bold text-sm">CA$</div>
-                           <input 
-                             type="number" 
-                             step="0.01" 
-                             value={form.price} 
-                             onChange={(e) => setForm({...form, price: e.target.value === '' ? '' : Number(e.target.value)})} 
-                             className={`w-full pl-10 pr-4 py-4 rounded-2xl bg-white border ${errors.price ? 'border-red-500' : 'border-chocolate/10'} outline-none shadow-sm transition-all focus:border-strawberry/30 text-chocolate font-bold text-sm`} 
-                           />
-                         </div>
-                         {errors.price && <p className="text-[10px] font-bold text-red-500 mt-1 uppercase tracking-wider">{errors.price}</p>}
-                         <p className="text-[8px] text-chocolate/40 px-1 uppercase tracking-wider italic">Syncs with first variant if skipped</p>
-                       </div>
- 
-                       <div className="space-y-2">
-                         <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Available Stock</label>
-                         <div className="relative">
-                           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/30">
-                             <Package size={16} />
-                           </div>
-                           <input 
-                             type="number" 
-                             value={form.stock} 
-                             onChange={(e) => setForm({...form, stock: e.target.value === '' ? '' : Number(e.target.value)})} 
-                             className={`w-full pl-11 pr-4 py-4 rounded-2xl bg-white border ${errors.stock ? 'border-red-500' : 'border-chocolate/10'} outline-none shadow-sm transition-all focus:border-strawberry/30 text-chocolate font-medium text-sm`} 
-                           />
-                         </div>
-                         {errors.stock && <p className="text-[10px] font-bold text-red-500 mt-1 uppercase tracking-wider">{errors.stock}</p>}
-                       </div>
- 
-                       <div className="space-y-2">
-                         <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Primary Flavor</label>
-                         <Select
-                           value={form.flavor}
-                           onValueChange={(val) => setForm({...form, flavor: val})}
-                         >
-                           <SelectTrigger className="w-full p-4 h-auto rounded-2xl bg-white border border-chocolate/10 outline-none shadow-sm transition-all focus:ring-4 focus:ring-strawberry/5 focus:border-strawberry/30 text-chocolate font-medium text-xs group">
+                      <div className="grid grid-cols-3 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Base Price (CA$)</label>
+                          <div className="relative">
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/30 font-bold text-sm">CA$</div>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={form.price}
+                              onChange={(e) => setForm({ ...form, price: e.target.value === '' ? '' : Number(e.target.value) })}
+                              className={`w-full pl-10 pr-4 py-4 rounded-2xl bg-white border ${errors.price ? 'border-red-500' : 'border-chocolate/10'} outline-none shadow-sm transition-all focus:border-strawberry/30 text-chocolate font-bold text-sm`}
+                            />
+                          </div>
+                          {errors.price && <p className="text-[10px] font-bold text-red-500 mt-1 uppercase tracking-wider">{errors.price}</p>}
+                          <p className="text-[8px] text-chocolate/40 px-1 uppercase tracking-wider italic">Syncs with first variant if skipped</p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Available Stock</label>
+                          <div className="relative">
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/30">
+                              <Package size={16} />
+                            </div>
+                            <input
+                              type="number"
+                              value={form.stock}
+                              onChange={(e) => setForm({ ...form, stock: e.target.value === '' ? '' : Number(e.target.value) })}
+                              className={`w-full pl-11 pr-4 py-4 rounded-2xl bg-white border ${errors.stock ? 'border-red-500' : 'border-chocolate/10'} outline-none shadow-sm transition-all focus:border-strawberry/30 text-chocolate font-medium text-sm`}
+                            />
+                          </div>
+                          {errors.stock && <p className="text-[10px] font-bold text-red-500 mt-1 uppercase tracking-wider">{errors.stock}</p>}
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Primary Flavor</label>
+                          <Select
+                            value={form.flavor}
+                            onValueChange={(val) => setForm({ ...form, flavor: val })}
+                          >
+                            <SelectTrigger className="w-full p-4 h-auto rounded-2xl bg-white border border-chocolate/10 outline-none shadow-sm transition-all focus:ring-4 focus:ring-strawberry/5 focus:border-strawberry/30 text-chocolate font-medium text-xs group">
                               <SelectValue placeholder="Select Flavor" />
-                           </SelectTrigger>
-                           <SelectContent className="rounded-2xl border-chocolate/10 shadow-bakery-xl font-lora">
-                             <SelectItem value="none" disabled className="text-chocolate/20 text-[10px] uppercase font-bold tracking-widest py-2">Signature Flavors</SelectItem>
-                             {flavorsList.map((f) => (
-                               <SelectItem key={f} value={f} className="focus:bg-strawberry/5 focus:text-strawberry py-3">{f}</SelectItem>
-                             ))}
-                           </SelectContent>
-                         </Select>
-                       </div>
-                     </div>
-                   </div>
-                </div>
+                            </SelectTrigger>
+                            <SelectContent className="rounded-2xl border-chocolate/10 shadow-bakery-xl font-lora">
+                              <SelectItem value="none" disabled className="text-chocolate/20 text-[10px] uppercase font-bold tracking-widest py-2">Signature Flavors</SelectItem>
+                              {flavorsList.map((f) => (
+                                <SelectItem key={f} value={f} className="focus:bg-strawberry/5 focus:text-strawberry py-3">{f}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
-                {/* 2. Visual Identity Grid Section */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                   <div className="space-y-6">
+                  {/* 2. Visual Identity Grid Section */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div className="space-y-6">
                       <div className="flex items-center gap-3 pb-3 border-b border-chocolate/10">
                         <div className="p-2 bg-cream rounded-xl">
                           <ImageIcon size={18} className="text-chocolate" />
                         </div>
                         <h4 className="text-sm font-bold uppercase tracking-[0.2em] text-chocolate/80">Cover Image</h4>
                       </div>
-                      
+
                       <div className="relative group w-full aspect-[16/10] rounded-3xl border-2 border-dashed border-chocolate/10 bg-cream/30 overflow-hidden flex items-center justify-center transition-all hover:border-strawberry/20 hover:bg-cream/50 shadow-inner">
                         {form.imagePreview || form.image ? (
                           <div className="relative w-full h-full">
                             <img src={getImageSrc(form.image, form.imagePreview || undefined)} alt="Preview" className="w-full h-full object-cover" />
                             <div className="absolute inset-0 bg-chocolate/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                               <div className="bg-white/90 backdrop-blur-md px-6 py-2.5 rounded-full shadow-lg text-chocolate font-bold text-xs uppercase tracking-widest transform translate-y-4 group-hover:translate-y-0 transition-all duration-300">
-                                  Update Image
-                               </div>
+                              <div className="bg-white/90 backdrop-blur-md px-6 py-2.5 rounded-full shadow-lg text-chocolate font-bold text-xs uppercase tracking-widest transform translate-y-4 group-hover:translate-y-0 transition-all duration-300">
+                                Update Image
+                              </div>
                             </div>
                           </div>
                         ) : (
@@ -1037,29 +1066,29 @@ const Products = () => {
                             <span className="text-xs font-bold uppercase tracking-widest">Upload Image</span>
                           </div>
                         )}
-                        <input 
-                          type="file" 
-                          accept="image/*" 
+                        <input
+                          type="file"
+                          accept="image/*"
                           className="absolute inset-0 opacity-0 cursor-pointer"
                           onChange={(e) => {
                             const f = e.target.files?.[0] || null;
                             if (f) {
                               if (f.size > MAX_BYTES) { toast.error('Work of art must be 500KB or smaller'); return; }
                               const url = URL.createObjectURL(f);
-                              setForm({...form, imageFile: f, imagePreview: url, image: ''});
+                              setForm({ ...form, imageFile: f, imagePreview: url, image: '' });
                             }
-                          }} 
+                          }}
                         />
                       </div>
-                      <input 
-                        value={form.image} 
-                        onChange={(e) => setForm({...form, image: e.target.value})} 
+                      <input
+                        value={form.image}
+                        onChange={(e) => setForm({ ...form, image: e.target.value })}
                         className="w-full p-4 text-[10px] rounded-xl bg-white border border-chocolate/5 focus:border-strawberry/30 outline-none text-chocolate/60 italic font-medium shadow-inner"
                         placeholder="Or paste an image URL..."
                       />
-                   </div>
+                    </div>
 
-                   <div className="space-y-6">
+                    <div className="space-y-6">
                       <div className="flex items-center gap-3 pb-3 border-b border-chocolate/10">
                         <div className="p-2 bg-cream rounded-xl">
                           <Layers size={18} className="text-chocolate" />
@@ -1070,8 +1099,8 @@ const Products = () => {
                         {form.galleryPreviews.map((gp, idx) => (
                           <div key={idx} className="relative aspect-square rounded-2xl bg-white overflow-hidden group border border-chocolate/10 shadow-sm hover:shadow-md transition-all">
                             <img src={getImageSrc(gp.url, gp.base64)} alt={`Gallery ${idx}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                            <button 
-                              type="button" 
+                            <button
+                              type="button"
                               onClick={() => {
                                 const next = [...form.galleryPreviews];
                                 next.splice(idx, 1);
@@ -1088,10 +1117,10 @@ const Products = () => {
                             <Plus size={20} />
                           </div>
                           <span className="text-[10px] font-bold text-chocolate/40 mt-2 uppercase tracking-widest">Add Image</span>
-                          <input 
-                            type="file" 
-                            multiple 
-                            accept="image/*" 
+                          <input
+                            type="file"
+                            multiple
+                            accept="image/*"
                             className="hidden"
                             onChange={(e) => {
                               const files = Array.from(e.target.files || []);
@@ -1120,19 +1149,19 @@ const Products = () => {
                           />
                         </label>
                       </div>
-                   </div>
-                </div>
+                    </div>
+                  </div>
 
-                {/* 3. Gastronomy & Specifications Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                   <div className="space-y-6">
+                  {/* 3. Gastronomy & Specifications Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div className="space-y-6">
                       <div className="flex items-center gap-3 pb-3 border-b border-chocolate/10">
                         <div className="p-2 bg-cream rounded-xl">
                           <Filter size={18} className="text-chocolate" />
                         </div>
                         <h4 className="text-sm font-bold uppercase tracking-[0.2em] text-chocolate/80">Ingredients & Taste</h4>
                       </div>
-                      
+
                       <div className="space-y-4">
                         <div className="flex items-center justify-between px-1">
                           <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest">Secret Ingredients</label>
@@ -1166,23 +1195,23 @@ const Products = () => {
                             </span>
                           )) : <p className="text-xs text-chocolate/20 italic font-medium">No ingredients added yet...</p>}
                         </div>
-                        
+
                         <div className="space-y-2">
-                           <div className="flex items-center justify-between px-1">
-                             <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest">Taste Description</label>
-                           </div>
-                           <textarea 
-                             value={form.tasteDescription} 
-                             onChange={(e) => setForm({...form, tasteDescription: e.target.value.slice(0, 300)})} 
-                             rows={4}
-                             placeholder="Describe the sensory experience..."
-                             className="w-full p-4 rounded-2xl bg-white border border-chocolate/5 outline-none shadow-sm transition-all focus:border-strawberry/30 resize-none text-chocolate font-medium placeholder:text-chocolate/20 text-xs leading-relaxed"
-                           />
+                          <div className="flex items-center justify-between px-1">
+                            <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest">Taste Description</label>
+                          </div>
+                          <textarea
+                            value={form.tasteDescription}
+                            onChange={(e) => setForm({ ...form, tasteDescription: e.target.value.slice(0, 300) })}
+                            rows={4}
+                            placeholder="Describe the sensory experience..."
+                            className="w-full p-4 rounded-2xl bg-white border border-chocolate/5 outline-none shadow-sm transition-all focus:border-strawberry/30 resize-none text-chocolate font-medium placeholder:text-chocolate/20 text-xs leading-relaxed"
+                          />
                         </div>
                       </div>
-                   </div>
+                    </div>
 
-                   <div className="space-y-6">
+                    <div className="space-y-6">
                       <div className="flex items-center gap-3 pb-3 border-b border-chocolate/10">
                         <div className="p-2 bg-cream rounded-xl">
                           <Layers size={18} className="text-chocolate" />
@@ -1190,39 +1219,39 @@ const Products = () => {
                         <h4 className="text-sm font-bold uppercase tracking-[0.2em] text-chocolate/80">Specifications</h4>
                       </div>
                       <div className="space-y-8 overflow-y-auto max-h-[350px] pr-2 no-scrollbar">
-                         <SelectableBadgeGroup 
-                            label="Artistry Types" 
-                            options={typesList} 
-                            selected={form.type || []} 
-                            onChange={(next) => setForm({...form, type: next})} 
-                         />
-                         <GroupedSelectableBadgeGroup
-                            label="Tailored Occasions"
-                            options={occasionsList}
-                            selected={form.occasion || []}
-                            onChange={(next) => setForm({...form, occasion: next})}
-                         />
-                         <div className="grid grid-cols-1 gap-6">
-                            <SelectableBadgeGroup 
-                                label="Shapes" 
-                                options={shapesList} 
-                                selected={form.shape || []} 
-                                onChange={(next) => setForm({...form, shape: next})} 
-                            />
-                            <GroupedSelectableBadgeGroup
-                                label="Themes"
-                                options={themesList}
-                                selected={form.theme || []}
-                                onChange={(next) => setForm({...form, theme: next})}
-                            />
-                         </div>
+                        <SelectableBadgeGroup
+                          label="Artistry Types"
+                          options={typesList}
+                          selected={form.type || []}
+                          onChange={(next) => setForm({ ...form, type: next })}
+                        />
+                        <GroupedSelectableBadgeGroup
+                          label="Tailored Occasions"
+                          options={occasionsList}
+                          selected={form.occasion || []}
+                          onChange={(next) => setForm({ ...form, occasion: next })}
+                        />
+                        <div className="grid grid-cols-1 gap-6">
+                          <SelectableBadgeGroup
+                            label="Shapes"
+                            options={shapesList}
+                            selected={form.shape || []}
+                            onChange={(next) => setForm({ ...form, shape: next })}
+                          />
+                          <GroupedSelectableBadgeGroup
+                            label="Themes"
+                            options={themesList}
+                            selected={form.theme || []}
+                            onChange={(next) => setForm({ ...form, theme: next })}
+                          />
+                        </div>
                       </div>
-                   </div>
-                </div>
+                    </div>
+                  </div>
 
+                </div>
               </div>
             </div>
-          </div>
 
             {/* Ingredient Modal Overlay */}
             {showIngredientModal && (
@@ -1230,15 +1259,15 @@ const Products = () => {
                 <div className="absolute inset-0 bg-chocolate/60 backdrop-blur-sm" onClick={() => setShowIngredientModal(false)} />
                 <div className="relative bg-[#FAFBFD] rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl z-10 border border-white/20 animate-in zoom-in-95 duration-300 font-lora">
                   <div className="text-center space-y-2 mb-8">
-                      <h4 className="text-2xl font-bold text-chocolate font-dancing">Ingredient Detail</h4>
-                      <p className="text-xs text-chocolate/40 font-bold uppercase tracking-widest">Add to your masterpiece</p>
+                    <h4 className="text-2xl font-bold text-chocolate font-dancing">Ingredient Detail</h4>
+                    <p className="text-xs text-chocolate/40 font-bold uppercase tracking-widest">Add to your masterpiece</p>
                   </div>
                   <div className="space-y-6">
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold text-chocolate/60 uppercase tracking-[0.2em] px-1">Element</label>
-                      <Select 
-                          value={selectedIngredient} 
-                          onValueChange={(val) => setSelectedIngredient(val)} 
+                      <Select
+                        value={selectedIngredient}
+                        onValueChange={(val) => setSelectedIngredient(val)}
                       >
                         <SelectTrigger className="w-full p-4 h-auto rounded-2xl bg-white border border-chocolate/10 outline-none shadow-sm transition-all focus:ring-4 focus:ring-strawberry/5 focus:border-strawberry/30 text-chocolate font-medium group">
                           <SelectValue placeholder="Select an ingredient" />
@@ -1252,24 +1281,24 @@ const Products = () => {
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold text-chocolate/60 uppercase tracking-[0.2em] px-1">Portion (Grams)</label>
-                      <input 
-                          type="number" 
-                          value={ingredientQty} 
-                          onChange={(e) => setIngredientQty(Number(e.target.value) || 0)} 
-                          className="w-full p-4 rounded-2xl bg-white border border-chocolate/10 outline-none text-chocolate font-bold shadow-sm" 
+                      <input
+                        type="number"
+                        value={ingredientQty}
+                        onChange={(e) => setIngredientQty(Number(e.target.value) || 0)}
+                        className="w-full p-4 rounded-2xl bg-white border border-chocolate/10 outline-none text-chocolate font-bold shadow-sm"
                       />
                     </div>
                   </div>
                   <div className="flex gap-4 mt-10">
-                    <button 
-                      type="button" 
-                      onClick={() => setShowIngredientModal(false)} 
+                    <button
+                      type="button"
+                      onClick={() => setShowIngredientModal(false)}
                       className="flex-1 py-4 px-6 rounded-full text-xs font-bold text-chocolate border border-chocolate/10 hover:bg-white transition-all uppercase tracking-widest"
                     >
                       Discard
                     </button>
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => {
                         if (!selectedIngredient) { toast.error('Select an ingredient'); return; }
                         if (!ingredientQty || ingredientQty <= 0) { toast.error('Enter valid weight'); return; }
@@ -1278,7 +1307,7 @@ const Products = () => {
                         const entry = `${name} (${ingredientQty}g)`;
                         setForm(prev => ({ ...prev, ingredients: [...(prev.ingredients || []), entry] }));
                         setShowIngredientModal(false);
-                      }} 
+                      }}
                       className="flex-1 py-4 px-6 bg-chocolate text-white rounded-full text-xs font-bold shadow-lg hover:bg-strawberry hover:shadow-strawberry/20 transition-all uppercase tracking-widest"
                     >
                       Add Ingredient
@@ -1289,16 +1318,16 @@ const Products = () => {
             )}
 
             <DialogFooter className="p-8 bg-white border-t border-chocolate/10 flex flex-row items-center justify-between gap-6 shrink-0">
-              <button 
-                type="button" 
-                onClick={closeModal} 
+              <button
+                type="button"
+                onClick={closeModal}
                 className="px-8 py-4 rounded-full text-xs font-bold text-chocolate/60 uppercase tracking-[0.2em] hover:bg-chocolate/5 transition-all font-lora"
               >
                 Discard Changes
               </button>
-              <button 
-                type="submit" 
-                disabled={loading} 
+              <button
+                type="submit"
+                disabled={loading}
                 className={`px-12 py-4 rounded-full text-xs font-bold text-white uppercase tracking-[0.2em] flex items-center gap-3 shadow-bakery-lg hover:shadow-bakery-xl hover:scale-[1.02] transition-all duration-300 ${loading ? 'bg-chocolate/40 cursor-not-allowed' : 'bg-chocolate hover:bg-strawberry'}`}
               >
                 {loading ? (

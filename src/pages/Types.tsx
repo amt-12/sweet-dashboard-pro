@@ -1,7 +1,8 @@
-import { Plus, Search, Edit, Trash2, X, Tag, FileText, Info, RefreshCw } from "lucide-react";
+import { Plus, Search, Edit, Trash2, X, Tag, FileText, Info, RefreshCw, Boxes } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../services/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { toast } from "sonner";
 
@@ -9,23 +10,42 @@ type TypeItem = {
 	id: string | number;
 	name: string;
 	description?: string;
+	categoryId?: string | number;
 };
 
 const emptyForm: Partial<TypeItem> = {
 	name: "",
 	description: "",
+	categoryId: "",
 };
 
 const Types = () => {
 	const [items, setItems] = useState<TypeItem[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [filterSelectedCategoryId, setFilterSelectedCategoryId] = useState<string | number>("All");
 
 	const [showModal, setShowModal] = useState(false);
 	const [form, setForm] = useState<Partial<TypeItem>>(emptyForm);
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [searchQuery, setSearchQuery] = useState("");
+
+	const [categories, setCategories] = useState<{ id: string | number; name: string }[]>([]);
+	const [categoriesLoading, setCategoriesLoading] = useState(false);
+
+	const fetchCategories = () => {
+		setCategoriesLoading(true);
+		api.categories
+			.getAll()
+			.then((res: any) => {
+				const raw = Array.isArray(res) ? res : res && (res.data || res) ? res.data : [];
+				const list = (raw || []).map((c: any) => ({ id: c._id || c.id, name: c.name }));
+				setCategories(list);
+			})
+			.catch(() => setCategories([]))
+			.finally(() => setCategoriesLoading(false));
+	};
 
 	const fetchTypes = () => {
 		setLoading(true);
@@ -37,6 +57,7 @@ const Types = () => {
 					id: t._id || t.id,
 					name: t.name,
 					description: t.description || "",
+					categoryId: t.categoryId?._id || t.categoryId || undefined,
 				}));
 				setItems(normalized);
 			})
@@ -49,6 +70,7 @@ const Types = () => {
 
 	useEffect(() => {
 		fetchTypes();
+		fetchCategories();
 	}, []);
 
 	const openAdd = () => {
@@ -59,7 +81,11 @@ const Types = () => {
 	};
 
 	const openEdit = (t: TypeItem) => {
-		setForm({ name: t.name, description: t.description });
+		setForm({ 
+			name: t.name, 
+			description: t.description, 
+			categoryId: t.categoryId || "" 
+		});
 		setEditingId(String(t.id));
 		setErrors({});
 		setShowModal(true);
@@ -85,7 +111,11 @@ const Types = () => {
 		if (Object.keys(v).length) return;
 
 		setLoading(true);
-		const payload = { name: form.name, description: form.description || "" };
+		const payload: any = { 
+			name: form.name, 
+			description: form.description || "" 
+		};
+		if (form.categoryId) payload.categoryId = form.categoryId;
 
 		try {
 			if (editingId) {
@@ -118,10 +148,12 @@ const Types = () => {
 		}
 	};
 
-	const filteredItems = items.filter(item => 
-		item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-		item.description?.toLowerCase().includes(searchQuery.toLowerCase())
-	);
+	const filteredItems = items.filter(item => {
+		const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			item.description?.toLowerCase().includes(searchQuery.toLowerCase());
+		const matchesCategory = filterSelectedCategoryId === "All" || String(item.categoryId) === String(filterSelectedCategoryId);
+		return matchesSearch && matchesCategory;
+	});
 
 	return (
 		<div className="space-y-8 animate-in fade-in duration-700 font-lora">
@@ -159,6 +191,42 @@ const Types = () => {
 				</div>
 			</div>
 
+			{/* ── Filter Section (Category Buttons) ────────────────────── */}
+			<div className="bg-white/40 backdrop-blur-sm p-6 rounded-[2.5rem] border border-chocolate/5 space-y-4">
+				<div className="flex items-center gap-2 mb-2">
+					<div className="w-1 h-4 bg-strawberry rounded-full" />
+					<span className="text-[10px] font-bold uppercase tracking-[0.2em] text-chocolate/40">Select Category</span>
+				</div>
+				<div className="flex flex-wrap gap-3">
+					<button
+						onClick={() => setFilterSelectedCategoryId("All")}
+						className={`px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 border ${
+							filterSelectedCategoryId === "All"
+								? 'bg-chocolate text-white border-chocolate shadow-bakery shadow-chocolate/20 scale-105'
+								: 'bg-white text-chocolate/60 border-chocolate/10 hover:border-strawberry/30 hover:text-strawberry hover:bg-white'
+						}`}
+					>
+						All
+					</button>
+					{categories.map((cat) => {
+						const isActive = String(filterSelectedCategoryId) === String(cat.id);
+						return (
+							<button
+								key={cat.id}
+								onClick={() => setFilterSelectedCategoryId(cat.id)}
+								className={`px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 border ${
+									isActive
+										? 'bg-chocolate text-white border-chocolate shadow-bakery shadow-chocolate/20 scale-105'
+										: 'bg-white text-chocolate/60 border-chocolate/10 hover:border-strawberry/30 hover:text-strawberry hover:bg-white'
+								}`}
+							>
+								{cat.name}
+							</button>
+						);
+					})}
+				</div>
+			</div>
+
 			<div className="bg-white/60 backdrop-blur-md rounded-[2.5rem] border border-chocolate/5 shadow-bakery overflow-hidden">
 				<Table>
 					<TableHeader className="bg-cream/30">
@@ -166,6 +234,7 @@ const Types = () => {
 							<TableHead className="w-20 pl-8 h-16 font-bold text-chocolate italic uppercase tracking-widest text-[10px]">Icon</TableHead>
 							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px]">Type Name</TableHead>
 							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px] hidden md:table-cell">Description</TableHead>
+							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px]">Category</TableHead>
 							<TableHead className="pr-8 h-16 font-bold text-chocolate italic uppercase tracking-widest text-[10px] text-right">Actions</TableHead>
 						</TableRow>
 					</TableHeader>
@@ -186,6 +255,15 @@ const Types = () => {
 									<p className="text-sm text-chocolate/40 font-medium italic line-clamp-1 leading-relaxed">
 										{item.description || "No description provided."}
 									</p>
+								</TableCell>
+								<TableCell className="py-6">
+									{item.categoryId ? (
+										<span className="px-3 py-1 bg-chocolate/5 rounded-full border border-chocolate/5 text-[10px] font-bold uppercase tracking-widest text-chocolate/40 italic">
+											{categories.find(c => String(c.id) === String(item.categoryId))?.name || 'Unassigned'}
+										</span>
+									) : (
+										<span className="text-chocolate/20 text-[10px] italic">Not Tagged</span>
+									)}
 								</TableCell>
 								<TableCell className="py-6 pr-8 text-right">
 									<div className="flex items-center justify-end gap-2 shrink-0 transition-all">
@@ -252,6 +330,26 @@ const Types = () => {
 									/>
 								</div>
 								{errors.name && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.name}</p>}
+							</div>
+
+							<div className="space-y-2 group">
+								<label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Category</label>
+								<Select
+									value={form.categoryId?.toString()}
+									onValueChange={(val) => setForm({ ...form, categoryId: val })}
+								>
+									<SelectTrigger className="w-full p-6 h-auto bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-bold text-chocolate italic group">
+										<div className="flex items-center gap-2">
+											<Boxes size={18} className="text-chocolate/20 group-hover:text-strawberry transition-colors" />
+											<SelectValue placeholder={categoriesLoading ? 'Loading Categories...' : 'Select Category'} />
+										</div>
+									</SelectTrigger>
+									<SelectContent className="rounded-2xl border-chocolate/10 shadow-bakery-xl font-lora">
+										{categories.map((c) => (
+											<SelectItem key={c.id} value={c.id.toString()} className="focus:bg-strawberry/5 focus:text-strawberry py-3">{c.name}</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
 							</div>
 
 							<div className="space-y-2 group">
