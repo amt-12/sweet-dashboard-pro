@@ -21,19 +21,21 @@ interface Product {
   price: number;
   stock: number;
   image: string;
-  images?: ProductImage[]; // Multi-image support
-  flavor?: string; // single flavor value (dropdown)
+  images?: ProductImage[];
+  flavor?: string;
   ingredients: string[];
   type?: string[];
   weight?: string[];
+  pricesByWeight?: number[];
+  variants?: { weight: string; price: number; stock: number }[];
   occasion?: string[];
   shape?: string[];
   theme?: string[];
   tasteDescription: string;
+  [key: string]: any; // allow extra backend fields (orderNumber, imgBase64, etc.)
 }
 
 interface ProductForm extends Omit<Product, 'id'> {
-  // allow interim empty string values in form inputs for controlled components
   price: number | string;
   stock: number | string;
   imageFile?: File | null;
@@ -55,6 +57,7 @@ const emptyForm: ProductForm = {
   occasion: [],
   shape: [],
   theme: [],
+  variants: [],
   tasteDescription: "",
   imageFile: null,
   imagePreview: null,
@@ -336,6 +339,7 @@ const Products = () => {
       // ensure shape/theme are arrays for the multi-select controls
       shape: normalizedShape,
       theme: normalizedTheme,
+      variants: Array.isArray(p.variants) ? p.variants : (p.weight || []).map((w: string, i: number) => ({ weight: w, price: (p.pricesByWeight && p.pricesByWeight[i]) || p.price || 0 })),
     } as any;
   }, [normalizeImage]);
 
@@ -426,6 +430,9 @@ const Products = () => {
       occasion: p.occasion || [],
       shape: p.shape || [],
       theme: p.theme || [],
+      variants: Array.isArray(p.variants)
+        ? p.variants.map((v: any) => ({ weight: v.weight || '', price: Number(v.price) || 0, stock: Number(v.stock) || 0 }))
+        : (p.weight || []).map((w: string, i: number) => ({ weight: w, price: (p.pricesByWeight && p.pricesByWeight[i]) || p.price || 0, stock: 0 })),
     });
     setErrors({});
     setEditingId(p.id);
@@ -478,54 +485,47 @@ const Products = () => {
 
     dispatch(setLoading(true));
 
-    // prepare payload: convert any local File objects to data URLs so backend uploads to Cloudinary
+    // prepare payload: derive weight from variants and build final payload
     const preparePayload = async () => {
+      // Ensure variants have valid weights (fallback to first weightsList item or "500g")
+      const cleanedVariants = (form.variants || []).map(v => ({
+        weight: v.weight || 'Custom',
+        price: Number(v.price) || 0,
+        stock: Number(v.stock) || 0,
+      }));
+
       const payload: any = {
         name: form.name,
         category: form.category,
-        price: Number(form.price) || 0,
-        stock: Number(form.stock) || 0,
-        // include dropdown selections
+        price: Number(form.price) || (cleanedVariants.length > 0 ? cleanedVariants[0].price : 0),
+        // Total stock = sum of all variant stocks (if any have stock set)
+        stock: cleanedVariants.reduce((s, v) => s + v.stock, 0) || Number(form.stock) || 0,
         flavor: form.flavor || '',
         type: form.type || [],
-        weight: form.weight || [],
+        weight: cleanedVariants.map(v => v.weight),
+        pricesByWeight: cleanedVariants.map(v => v.price),
         occasion: form.occasion || [],
         shape: form.shape || [],
         theme: form.theme || [],
+        variants: cleanedVariants,
         ingredients: form.ingredients || [],
         tasteDescription: form.tasteDescription || '',
       };
 
-      // primary image: prefer explicit remote/data URL, otherwise convert local file to data URL for upload
+      // primary image
       if (form.image && typeof form.image === 'string' && (form.image.startsWith('http') || form.image.startsWith('data:'))) {
-        // if it's already a URL or a data URI, send it as-is (backend will handle data URIs)
         payload.img = form.image;
       } else if (form.imageFile) {
-        // convert local File to data URL so backend can upload to Cloudinary
-        try {
-          payload.img = await fileToDataUrl(form.imageFile);
-        } catch (e) {
-          payload.img = '';
-        }
+        try { payload.img = await fileToDataUrl(form.imageFile); } catch (e) { payload.img = ''; }
       }
 
-      // gallery images: map each preview - if it has a file or base64 preview, send as base64 so backend uploads to Cloudinary
+      // gallery images
       payload.images = await Promise.all((form.galleryPreviews || []).map(async (gp) => {
-        // if we already have a base64 string, prefer that
-        if (gp.base64 && typeof gp.base64 === 'string' && gp.base64.startsWith('data:')) {
-          return { base64: gp.base64 };
-        }
-        // if there is a File object, convert to data URL
+        if (gp.base64 && typeof gp.base64 === 'string' && gp.base64.startsWith('data:')) return { base64: gp.base64 };
         if (gp.file instanceof File) {
-          try {
-            const d = await fileToDataUrl(gp.file);
-            return { base64: d };
-          } catch (e) {
-            // fallback to sending the preview URL if conversion fails
-            return { url: gp.url || '' };
-          }
+          try { const d = await fileToDataUrl(gp.file); return { base64: d }; }
+          catch (e) { return { url: gp.url || '' }; }
         }
-        // otherwise send the URL (could already be Cloudinary link)
         return { url: gp.url || '' };
       }));
 
@@ -840,76 +840,169 @@ const Products = () => {
                               <SelectItem value="Custom" className="focus:bg-strawberry/5 focus:text-strawberry py-3">Custom</SelectItem>
                             </>
                           )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
+                         </SelectContent>
+                       </Select>
+                     </div>
+                   </div>
+ 
+                   <div className="grid grid-cols-1 gap-6">
+                     <div className="space-y-4">
+                       <div className="flex items-center justify-between px-1">
+                         <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest">Weight & Price Variants</label>
+                         <button 
+                           type="button"
+                           onClick={() => {
+                             const next = [...(form.variants || [])];
+                             next.push({ weight: weightsList[0] || "500g", price: 0 });
+                             setForm({...form, variants: next});
+                           }}
+                           className="px-3 py-1.5 bg-chocolate text-white rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-strawberry transition-all flex items-center gap-2"
+                         >
+                           <Plus size={12} /> Add Variant
+                         </button>
+                       </div>
+                       
+                       <div className="space-y-3">
+                         {(form.variants && form.variants.length > 0) ? (
+                           form.variants.map((v, i) => (
+                             <div key={i} className="flex items-center gap-4 bg-white p-3 rounded-2xl border border-chocolate/5 shadow-sm group animate-in slide-in-from-left duration-300">
+                               <div className="flex-1 space-y-1">
+                                 <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-wider px-1">Weight</label>
+                                 <Select
+                                   value={v.weight}
+                                   onValueChange={(val) => {
+                                     const next = [...(form.variants || [])];
+                                     next[i] = { ...next[i], weight: val };
+                                     setForm({...form, variants: next});
+                                   }}
+                                 >
+                                   <SelectTrigger className="w-full h-10 px-3 rounded-xl bg-cream/20 border-none text-chocolate font-bold text-xs">
+                                      <SelectValue placeholder="Weight" />
+                                   </SelectTrigger>
+                                   <SelectContent className="rounded-xl border-chocolate/5 shadow-bakery-xl font-lora">
+                                     {weightsList.map((w) => (
+                                       <SelectItem key={w} value={w} className="py-2 text-xs">{w}</SelectItem>
+                                     ))}
+                                     {!weightsList.includes(v.weight) && v.weight && (
+                                        <SelectItem value={v.weight} className="py-2 text-xs">{v.weight}</SelectItem>
+                                     )}
+                                   </SelectContent>
+                                 </Select>
+                               </div>
+ 
+                               <div className="flex-1 space-y-1">
+                                 <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-wider px-1">Price (CA$)</label>
+                                 <div className="relative">
+                                   <div className="absolute left-3 top-1/2 -translate-y-1/2 text-chocolate/30 font-bold text-[10px]">CA$</div>
+                                   <input 
+                                     type="number" 
+                                     step="0.01" 
+                                     value={v.price} 
+                                     onChange={(e) => {
+                                       const next = [...(form.variants || [])];
+                                       next[i] = { ...next[i], price: e.target.value === '' ? 0 : Number(e.target.value) };
+                                       setForm({...form, variants: next});
+                                     }} 
+                                     className="w-full pl-9 pr-3 h-10 rounded-xl bg-cream/20 border-none outline-none text-chocolate font-bold text-xs" 
+                                   />
+                                 </div>
+                               </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Price (CA$)</label>
-                      <div className="relative">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/30 font-bold text-sm">CA$</div>
-                        <input 
-                          type="number" 
-                          step="0.01" 
-                          value={form.price} 
-                          onChange={(e) => setForm({...form, price: e.target.value === '' ? '' : Number(e.target.value)})} 
-                          className={`w-full pl-10 pr-4 py-4 rounded-2xl bg-white border ${errors.price ? 'border-red-500' : 'border-chocolate/10'} outline-none shadow-sm transition-all focus:border-strawberry/30 text-chocolate font-bold text-sm`} 
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Available Stock</label>
-                      <div className="relative">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/30">
-                          <Package size={16} />
-                        </div>
-                        <input 
-                          type="number" 
-                          value={form.stock} 
-                          onChange={(e) => setForm({...form, stock: e.target.value === '' ? '' : Number(e.target.value)})} 
-                          className={`w-full pl-11 pr-4 py-4 rounded-2xl bg-white border ${errors.stock ? 'border-red-500' : 'border-chocolate/10'} outline-none shadow-sm transition-all focus:border-strawberry/30 text-chocolate font-medium text-sm`} 
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Primary Flavor</label>
-                      <Select
-                        value={form.flavor}
-                        onValueChange={(val) => setForm({...form, flavor: val})}
-                      >
-                        <SelectTrigger className="w-full p-4 h-auto rounded-2xl bg-white border border-chocolate/10 outline-none shadow-sm transition-all focus:ring-4 focus:ring-strawberry/5 focus:border-strawberry/30 text-chocolate font-medium text-xs group">
-                           <SelectValue placeholder="Select Flavor" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl border-chocolate/10 shadow-bakery-xl font-lora">
-                          <SelectItem value="none" disabled className="text-chocolate/20 text-[10px] uppercase font-bold tracking-widest py-2">Signature Flavors</SelectItem>
-                          {flavorsList.map((f) => (
-                            <SelectItem key={f} value={f} className="focus:bg-strawberry/5 focus:text-strawberry py-3">{f}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Weight</label>
-                      <Select
-                        value={(form.weight && form.weight[0]) || ''}
-                        onValueChange={(val) => setForm({...form, weight: val ? [val] : []})}
-                      >
-                        <SelectTrigger className="w-full p-4 h-auto rounded-2xl bg-white border border-chocolate/10 outline-none shadow-sm transition-all focus:ring-4 focus:ring-strawberry/5 focus:border-strawberry/30 text-chocolate font-medium text-xs group">
-                           <SelectValue placeholder="Choose Scale" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl border-chocolate/10 shadow-bakery-xl font-lora">
-                          {weightsList.map((w) => (
-                            <SelectItem key={w} value={w} className="focus:bg-strawberry/5 focus:text-strawberry py-3">{w}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
+                               <div className="flex-1 space-y-1">
+                                 <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-wider px-1">Stock (qty)</label>
+                                 <input 
+                                   type="number"
+                                   min="0"
+                                   value={(v as any).stock ?? 0}
+                                   onChange={(e) => {
+                                     const next = [...(form.variants || [])];
+                                     (next[i] as any).stock = e.target.value === '' ? 0 : Number(e.target.value);
+                                     setForm({...form, variants: next});
+                                   }}
+                                   className="w-full px-3 h-10 rounded-xl bg-cream/20 border-none outline-none text-chocolate font-bold text-xs"
+                                 />
+                               </div>
+ 
+                               <button 
+                                 type="button" 
+                                 onClick={() => {
+                                   const next = (form.variants || []).filter((_, idx) => idx !== i);
+                                   setForm({...form, variants: next});
+                                 }}
+                                 className="mt-5 p-2 text-chocolate/20 hover:text-strawberry transition-colors"
+                               >
+                                 <Trash2 size={16} />
+                               </button>
+                             </div>
+                           ))
+                         ) : (
+                           <div 
+                             onClick={() => {
+                               const next = [...(form.variants || [])];
+                               next.push({ weight: weightsList[0] || "500g", price: 0, stock: 0 });
+                               setForm({...form, variants: next});
+                             }}
+                             className="p-8 border-2 border-dashed border-chocolate/5 rounded-[2rem] flex flex-col items-center justify-center cursor-pointer hover:border-strawberry/20 hover:bg-strawberry/[0.01] transition-all group"
+                           >
+                             <div className="w-10 h-10 rounded-full bg-cream/50 flex items-center justify-center text-chocolate/30 group-hover:scale-110 transition-transform">
+                               <Plus size={20} />
+                             </div>
+                             <span className="text-[10px] font-bold text-chocolate/30 mt-3 uppercase tracking-widest">No variants added</span>
+                           </div>
+                         )}
+                       </div>
+                     </div>
+ 
+                     <div className="grid grid-cols-3 gap-6">
+                       <div className="space-y-2">
+                         <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Base Price (CA$)</label>
+                         <div className="relative">
+                           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/30 font-bold text-sm">CA$</div>
+                           <input 
+                             type="number" 
+                             step="0.01" 
+                             value={form.price} 
+                             onChange={(e) => setForm({...form, price: e.target.value === '' ? '' : Number(e.target.value)})} 
+                             className={`w-full pl-10 pr-4 py-4 rounded-2xl bg-white border ${errors.price ? 'border-red-500' : 'border-chocolate/10'} outline-none shadow-sm transition-all focus:border-strawberry/30 text-chocolate font-bold text-sm`} 
+                           />
+                         </div>
+                         <p className="text-[8px] text-chocolate/40 px-1 uppercase tracking-wider italic">Syncs with first variant if skipped</p>
+                       </div>
+ 
+                       <div className="space-y-2">
+                         <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Available Stock</label>
+                         <div className="relative">
+                           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/30">
+                             <Package size={16} />
+                           </div>
+                           <input 
+                             type="number" 
+                             value={form.stock} 
+                             onChange={(e) => setForm({...form, stock: e.target.value === '' ? '' : Number(e.target.value)})} 
+                             className={`w-full pl-11 pr-4 py-4 rounded-2xl bg-white border ${errors.stock ? 'border-red-500' : 'border-chocolate/10'} outline-none shadow-sm transition-all focus:border-strawberry/30 text-chocolate font-medium text-sm`} 
+                           />
+                         </div>
+                       </div>
+ 
+                       <div className="space-y-2">
+                         <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Primary Flavor</label>
+                         <Select
+                           value={form.flavor}
+                           onValueChange={(val) => setForm({...form, flavor: val})}
+                         >
+                           <SelectTrigger className="w-full p-4 h-auto rounded-2xl bg-white border border-chocolate/10 outline-none shadow-sm transition-all focus:ring-4 focus:ring-strawberry/5 focus:border-strawberry/30 text-chocolate font-medium text-xs group">
+                              <SelectValue placeholder="Select Flavor" />
+                           </SelectTrigger>
+                           <SelectContent className="rounded-2xl border-chocolate/10 shadow-bakery-xl font-lora">
+                             <SelectItem value="none" disabled className="text-chocolate/20 text-[10px] uppercase font-bold tracking-widest py-2">Signature Flavors</SelectItem>
+                             {flavorsList.map((f) => (
+                               <SelectItem key={f} value={f} className="focus:bg-strawberry/5 focus:text-strawberry py-3">{f}</SelectItem>
+                             ))}
+                           </SelectContent>
+                         </Select>
+                       </div>
+                     </div>
+                   </div>
                 </div>
 
                 {/* 2. Visual Identity Grid Section */}

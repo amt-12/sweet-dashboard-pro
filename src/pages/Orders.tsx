@@ -685,8 +685,8 @@ const Orders = () => {
                         type="button"
                         onClick={() => selectDeliveryPartner(partner)}
                         className={`p-3 rounded-xl border-2 transition-all text-left ${deliveryPartner === (partner.name || partner.email)
-                            ? 'bg-chocolate/10 border-chocolate'
-                            : 'bg-white border-chocolate/10 hover:border-orange-300'
+                          ? 'bg-chocolate/10 border-chocolate'
+                          : 'bg-white border-chocolate/10 hover:border-orange-300'
                           }`}
                       >
                         <p className="text-xs font-bold text-chocolate">{partner.name || partner.email}</p>
