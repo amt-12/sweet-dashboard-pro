@@ -88,7 +88,7 @@ export default function TeamAdmin(): JSX.Element {
 
   const handleFileChange = (f?: File | null) => {
     if (preview && preview.startsWith('blob:')) {
-      try { URL.revokeObjectURL(preview); } catch (e) {}
+      try { URL.revokeObjectURL(preview); } catch (e) { }
     }
     if (!f) {
       setFile(null);
@@ -176,35 +176,35 @@ export default function TeamAdmin(): JSX.Element {
           </p>
         </div>
         <div className="flex items-center gap-4">
-           <button 
-                onClick={() => navigate('/admin')} 
-                className="p-3 bg-white border border-chocolate/5 rounded-full text-chocolate hover:bg-strawberry/5 transition-all shadow-sm group hidden md:flex"
+          <button
+            onClick={() => navigate('/admin')}
+            className="p-3 bg-white border border-chocolate/5 rounded-full text-chocolate hover:bg-strawberry/5 transition-all shadow-sm group hidden md:flex"
+          >
+            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+          </button>
+          <div className="flex bg-white rounded-full p-1 border border-chocolate/5 shadow-sm">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-full transition-all ${viewMode === 'grid' ? 'bg-chocolate text-white shadow-md' : 'text-chocolate hover:bg-strawberry/5'}`}
+              title="Gallery View"
             >
-                <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+              <LayoutGrid size={18} />
             </button>
-           <div className="flex bg-white rounded-full p-1 border border-chocolate/5 shadow-sm">
-                <button 
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded-full transition-all ${viewMode === 'grid' ? 'bg-chocolate text-white shadow-md' : 'text-chocolate hover:bg-strawberry/5'}`}
-                  title="Gallery View"
-                >
-                  <LayoutGrid size={18} />
-                </button>
-                <button 
-                  onClick={() => setViewMode('table')}
-                  className={`p-2 rounded-full transition-all ${viewMode === 'table' ? 'bg-chocolate text-white shadow-md' : 'text-chocolate hover:bg-strawberry/5'}`}
-                  title="Registry View"
-                >
-                  <List size={18} />
-                </button>
-           </div>
-          <button 
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-2 rounded-full transition-all ${viewMode === 'table' ? 'bg-chocolate text-white shadow-md' : 'text-chocolate hover:bg-strawberry/5'}`}
+              title="Registry View"
+            >
+              <List size={18} />
+            </button>
+          </div>
+          <button
             onClick={fetchTeam}
             className="p-3 bg-white border border-chocolate/5 rounded-full text-chocolate hover:bg-strawberry/5 transition-all shadow-sm group"
           >
             <RefreshCw size={18} className={loading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'} />
           </button>
-          <button 
+          <button
             onClick={openCreate}
             className="px-8 py-3 bg-chocolate text-white rounded-full flex items-center gap-3 shadow-bakery hover:shadow-bakery-lg hover:bg-strawberry transition-all duration-300 font-bold text-xs uppercase tracking-widest active:scale-95"
           >
@@ -223,143 +223,143 @@ export default function TeamAdmin(): JSX.Element {
         <>
           {viewMode === 'table' ? (
             <div className="bg-white/60 backdrop-blur-md rounded-[2.5rem] shadow-bakery border border-chocolate/5 overflow-hidden mx-4">
-               <Table>
-                 <TableHeader>
-                   <TableRow className="border-chocolate/5 hover:bg-transparent">
-                     <TableHead className="w-20 pl-8 h-16 font-bold text-chocolate italic uppercase tracking-widest text-[10px]">Portrait</TableHead>
-                     <TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px]">Name & Story</TableHead>
-                     <TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px] hidden md:table-cell">Role</TableHead>
-                     <TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px] hidden lg:table-cell">Legacy</TableHead>
-                     <TableHead className="h-16 font-bold text-chocolate italic uppercase tracking-widest text-[10px] text-right pr-8">Actions</TableHead>
-                   </TableRow>
-                 </TableHeader>
-                 <TableBody>
-                   {items.map((m) => (
-                     <TableRow key={m._id} className="group border-chocolate/5 hover:bg-strawberry/[0.02] transition-colors duration-500">
-                       <TableCell className="py-6 pl-8">
-                         <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-white shadow-bakery transform -rotate-3 group-hover:rotate-0 transition-transform">
-                           <img src={resolveImageUrl(m.img)} alt={m.name} className="w-full h-full object-cover" />
-                         </div>
-                       </TableCell>
-                       <TableCell className="py-6 min-w-[200px]">
-                         <div>
-                            <span className="font-bold text-chocolate text-lg tracking-tight group-hover:text-strawberry transition-colors block italic">{m.name}</span>
-                            <p className="text-[10px] text-chocolate-light/60 font-medium italic line-clamp-1 mt-0.5">{m.quote || "Visionary artisan"}</p>
-                         </div>
-                       </TableCell>
-                       <TableCell className="py-6 hidden md:table-cell">
-                         <div className="flex items-center gap-2">
-                            <span className="px-3 py-1 bg-cream/50 rounded-full text-[10px] font-bold text-chocolate uppercase tracking-widest border border-chocolate/5">
-                                {m.role}
-                            </span>
-                            {m.badge && (
-                                <span className="px-2 py-0.5 bg-strawberry/10 text-strawberry text-[8px] font-bold rounded-md uppercase border border-strawberry/20">
-                                    {m.badge}
-                                </span>
-                            )}
-                         </div>
-                       </TableCell>
-                       <TableCell className="py-6 hidden lg:table-cell">
-                         <span className="text-xs font-bold text-chocolate-light italic">{m.since ? `Since ${m.since}` : 'Pure Talent'}</span>
-                       </TableCell>
-                       <TableCell className="py-6 pr-8 text-right">
-                         <div className="flex items-center justify-end gap-2">
-                           <button
-                             onClick={() => openEdit(m)}
-                             className="p-3 bg-white border border-chocolate/10 rounded-full text-chocolate hover:bg-chocolate hover:text-white transition-all shadow-sm active:scale-95"
-                           >
-                             <Edit size={16} />
-                           </button>
-                           <button
-                             onClick={() => removeItem(m._id)}
-                             className="p-3 bg-white border border-red-100 rounded-full text-red-400 hover:bg-red-500 hover:text-white transition-all shadow-sm active:scale-95"
-                           >
-                             <Trash2 size={16} />
-                           </button>
-                         </div>
-                       </TableCell>
-                     </TableRow>
-                   ))}
-                 </TableBody>
-               </Table>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 px-4">
-              {items.map((m) => (
-                <div key={m._id} className="group relative bg-white rounded-[3rem] p-8 border border-chocolate/5 shadow-bakery hover:shadow-bakery-lg transition-all duration-500 overflow-hidden flex flex-col h-full">
-                   <div className="absolute top-0 right-0 w-32 h-32 bg-strawberry/5 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:bg-strawberry/10" />
-                   
-                   <div className="relative flex flex-col items-center text-center flex-1">
-                      <div className="relative mb-8 pt-4">
-                        <div className="w-32 h-32 rounded-[2.5rem] overflow-hidden border-4 border-[#FAF6E6] shadow-lg group-hover:scale-105 transition-transform duration-700 transform -rotate-3 group-hover:rotate-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-chocolate/5 hover:bg-transparent">
+                    <TableHead className="w-20 pl-8 h-16 font-bold text-chocolate italic uppercase tracking-widest text-[10px]">Portrait</TableHead>
+                    <TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px]">Name & Story</TableHead>
+                    <TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px] hidden md:table-cell">Role</TableHead>
+                    <TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px] hidden lg:table-cell">Legacy</TableHead>
+                    <TableHead className="h-16 font-bold text-chocolate italic uppercase tracking-widest text-[10px] text-right pr-8">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map((m) => (
+                    <TableRow key={m._id} className="group border-chocolate/5 hover:bg-strawberry/[0.02] transition-colors duration-500">
+                      <TableCell className="py-6 pl-8">
+                        <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-white shadow-bakery transform -rotate-3 group-hover:rotate-0 transition-transform">
                           <img src={resolveImageUrl(m.img)} alt={m.name} className="w-full h-full object-cover" />
                         </div>
-                        {m.badge && (
-                          <div className="absolute -bottom-2 -right-2 px-3 py-1 bg-strawberry text-white text-[8px] font-bold uppercase tracking-widest rounded-full shadow-lg border-2 border-white transform rotate-6">
-                            <Sparkles size={8} className="inline mr-1" />
-                            {m.badge}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="mb-6 space-y-1">
-                        <h3 className="text-2xl font-bold font-playfair text-chocolate group-hover:text-strawberry transition-colors italic leading-tight">{m.name}</h3>
-                        <div className="flex items-center justify-center gap-2">
-                            <Star size={10} className="text-strawberry/40" />
-                            <p className="text-[10px] font-bold text-chocolate-light uppercase tracking-widest">{m.role}</p>
-                            <Star size={10} className="text-strawberry/40" />
+                      </TableCell>
+                      <TableCell className="py-6 min-w-[200px]">
+                        <div>
+                          <span className="font-bold text-chocolate text-lg tracking-tight group-hover:text-strawberry transition-colors block italic">{m.name}</span>
+                          <p className="text-[10px] text-chocolate-light/60 font-medium italic line-clamp-1 mt-0.5">{m.quote || "Visionary artisan"}</p>
                         </div>
-                      </div>
-
-                      {m.quote && (
-                        <div className="relative px-8 py-6 mb-6 bg-[#FAF6E6]/40 rounded-[2rem] border border-chocolate/5 shadow-inner w-full">
-                           <Quote className="absolute top-3 left-4 text-strawberry/10 w-6 h-6" />
-                           <p className="text-sm text-chocolate-light italic font-medium leading-relaxed font-lora">
-                             "{m.quote}"
-                           </p>
+                      </TableCell>
+                      <TableCell className="py-6 hidden md:table-cell">
+                        <div className="flex items-center gap-2">
+                          <span className="px-3 py-1 bg-cream/50 rounded-full text-[10px] font-bold text-chocolate uppercase tracking-widest border border-chocolate/5">
+                            {m.role}
+                          </span>
+                          {m.badge && (
+                            <span className="px-2 py-0.5 bg-strawberry/10 text-strawberry text-[8px] font-bold rounded-md uppercase border border-strawberry/20">
+                              {m.badge}
+                            </span>
+                          )}
                         </div>
-                      )}
-
-                      <p className="text-sm text-chocolate-light/60 line-clamp-4 leading-relaxed italic mb-8 flex-1">
-                        {m.desc || "An artisan whose passion brings every sweet vision to life."}
-                      </p>
-
-                      <div className="w-full flex items-center justify-between pt-8 border-t border-chocolate/5">
-                        <div className="flex flex-col items-start">
-                            <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-chocolate/20">Legacy</span>
-                            <span className="text-[10px] font-bold text-chocolate-light italic">{m.since ? `Since ${m.since}` : 'Pure Talent'}</span>
-                        </div>
-                        <div className="flex gap-3">
-                          <button 
+                      </TableCell>
+                      <TableCell className="py-6 hidden lg:table-cell">
+                        <span className="text-xs font-bold text-chocolate-light italic">{m.since ? `Since ${m.since}` : 'Pure Talent'}</span>
+                      </TableCell>
+                      <TableCell className="py-6 pr-8 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
                             onClick={() => openEdit(m)}
                             className="p-3 bg-white border border-chocolate/10 rounded-full text-chocolate hover:bg-chocolate hover:text-white transition-all shadow-sm active:scale-95"
                           >
                             <Edit size={16} />
                           </button>
-                          <button 
+                          <button
                             onClick={() => removeItem(m._id)}
-                            className="p-3 bg-white border border-red-50 rounded-full text-red-400 hover:bg-red-500 hover:text-white transition-all shadow-sm active:scale-95"
+                            className="p-3 bg-white border border-red-100 rounded-full text-red-400 hover:bg-red-500 hover:text-white transition-all shadow-sm active:scale-95"
                           >
                             <Trash2 size={16} />
                           </button>
                         </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 px-4">
+              {items.map((m) => (
+                <div key={m._id} className="group relative bg-white rounded-[3rem] p-8 border border-chocolate/5 shadow-bakery hover:shadow-bakery-lg transition-all duration-500 overflow-hidden flex flex-col h-full">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-strawberry/5 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:bg-strawberry/10" />
+
+                  <div className="relative flex flex-col items-center text-center flex-1">
+                    <div className="relative mb-8 pt-4">
+                      <div className="w-32 h-32 rounded-[2.5rem] overflow-hidden border-4 border-[#FAF6E6] shadow-lg group-hover:scale-105 transition-transform duration-700 transform -rotate-3 group-hover:rotate-0">
+                        <img src={resolveImageUrl(m.img)} alt={m.name} className="w-full h-full object-cover" />
                       </div>
-                   </div>
+                      {m.badge && (
+                        <div className="absolute -bottom-2 -right-2 px-3 py-1 bg-strawberry text-white text-[8px] font-bold uppercase tracking-widest rounded-full shadow-lg border-2 border-white transform rotate-6">
+                          <Sparkles size={8} className="inline mr-1" />
+                          {m.badge}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mb-6 space-y-1">
+                      <h3 className="text-2xl font-bold font-playfair text-chocolate group-hover:text-strawberry transition-colors italic leading-tight">{m.name}</h3>
+                      <div className="flex items-center justify-center gap-2">
+                        <Star size={10} className="text-strawberry/40" />
+                        <p className="text-[10px] font-bold text-chocolate-light uppercase tracking-widest">{m.role}</p>
+                        <Star size={10} className="text-strawberry/40" />
+                      </div>
+                    </div>
+
+                    {m.quote && (
+                      <div className="relative px-8 py-6 mb-6 bg-[#FAF6E6]/40 rounded-[2rem] border border-chocolate/5 shadow-inner w-full">
+                        <Quote className="absolute top-3 left-4 text-strawberry/10 w-6 h-6" />
+                        <p className="text-sm text-chocolate-light italic font-medium leading-relaxed font-lora">
+                          "{m.quote}"
+                        </p>
+                      </div>
+                    )}
+
+                    <p className="text-sm text-chocolate-light/60 line-clamp-4 leading-relaxed italic mb-8 flex-1">
+                      {m.desc || "An artisan whose passion brings every sweet vision to life."}
+                    </p>
+
+                    <div className="w-full flex items-center justify-between pt-8 border-t border-chocolate/5">
+                      <div className="flex flex-col items-start">
+                        <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-chocolate/20">Legacy</span>
+                        <span className="text-[10px] font-bold text-chocolate-light italic">{m.since ? `Since ${m.since}` : 'Pure Talent'}</span>
+                      </div>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => openEdit(m)}
+                          className="p-3 bg-white border border-chocolate/10 rounded-full text-chocolate hover:bg-chocolate hover:text-white transition-all shadow-sm active:scale-95"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          onClick={() => removeItem(m._id)}
+                          className="p-3 bg-white border border-red-50 rounded-full text-red-400 hover:bg-red-500 hover:text-white transition-all shadow-sm active:scale-95"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
           )}
 
           {items.length === 0 && !loading && (
-             <div className="py-32 text-center space-y-6">
-                <div className="w-24 h-24 bg-chocolate/5 rounded-full flex items-center justify-center mx-auto text-chocolate/10 transform rotate-12 shadow-inner">
-                  <User size={48} />
-                </div>
-                <div>
-                   <h3 className="text-2xl font-bold font-playfair text-chocolate">The Collective is Silent</h3>
-                   <p className="text-chocolate-light font-medium italic mt-2">Begin building your team by enrolling your first master artisan.</p>
-                </div>
-             </div>
+            <div className="py-32 text-center space-y-6">
+              <div className="w-24 h-24 bg-chocolate/5 rounded-full flex items-center justify-center mx-auto text-chocolate/10 transform rotate-12 shadow-inner">
+                <User size={48} />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold font-playfair text-chocolate">The Collective is Silent</h3>
+                <p className="text-chocolate-light font-medium italic mt-2">Begin building your team by enrolling your first master artisan.</p>
+              </div>
+            </div>
           )}
         </>
       )}
@@ -422,59 +422,59 @@ export default function TeamAdmin(): JSX.Element {
               <div className="space-y-2 group">
                 <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Philosophy Quote</label>
                 <div className="relative">
-                   <Quote size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
-                   <input value={form.quote} onChange={e => setForm({ ...form, quote: e.target.value })} className="w-full pl-12 pr-6 py-4 rounded-2xl bg-white border border-chocolate/5 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 outline-none text-sm italic font-medium text-chocolate placeholder:text-chocolate/10" placeholder="e.g. Baking balance from the soul." />
+                  <Quote size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
+                  <input value={form.quote} onChange={e => setForm({ ...form, quote: e.target.value })} className="w-full pl-12 pr-6 py-4 rounded-2xl bg-white border border-chocolate/5 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 outline-none text-sm italic font-medium text-chocolate placeholder:text-chocolate/10" placeholder="e.g. Baking balance from the soul." />
                 </div>
               </div>
 
               <div className="space-y-2 group">
                 <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Artisan Narrative</label>
                 <div className="relative">
-                    <FileText size={18} className="absolute left-4 top-6 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
-                    <textarea value={form.desc} onChange={e => setForm({ ...form, desc: e.target.value })} className="w-full pl-12 pr-6 py-5 rounded-[2rem] bg-white border border-chocolate/5 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 outline-none text-sm text-chocolate-light font-medium min-h-[140px] resize-none leading-relaxed italic placeholder:text-chocolate/10" placeholder="Weave the journey of this master hand..." />
+                  <FileText size={18} className="absolute left-4 top-6 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
+                  <textarea value={form.desc} onChange={e => setForm({ ...form, desc: e.target.value })} className="w-full pl-12 pr-6 py-5 rounded-[2rem] bg-white border border-chocolate/5 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 outline-none text-sm text-chocolate-light font-medium min-h-[140px] resize-none leading-relaxed italic placeholder:text-chocolate/10" placeholder="Weave the journey of this master hand..." />
                 </div>
               </div>
 
               <div className="pt-8 border-t border-chocolate/5">
                 <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1 mb-6 block">Artisan Portrayal</label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                   <div className="relative group/upload overflow-hidden rounded-[2.5rem] border-2 border-dashed border-chocolate/10 bg-white flex flex-col items-center justify-center p-10 transition-all hover:bg-strawberry/5 hover:border-strawberry/30 shadow-sm cursor-pointer">
-                        {preview ? (
-                            <div className="relative w-40 h-40 rounded-[2.5rem] overflow-hidden shadow-bakery border-4 border-white transform rotate-3">
-                                <img src={preview} className="w-full h-full object-cover" />
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/upload:opacity-100 transition-opacity flex items-center justify-center">
-                                    <button type="button" onClick={() => { setFile(null); setPreview(null); setForm({...form, img: ''}); }} className="p-3 bg-red-500 text-white rounded-full shadow-lg transform scale-90 group-hover/upload:scale-100 transition-all">
-                                        <X size={20} />
-                                    </button>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="flex flex-col items-center text-center gap-4">
-                                <div className="w-16 h-16 bg-cream/30 rounded-full flex items-center justify-center text-chocolate/10 transition-transform group-hover/upload:scale-110">
-                                    <Camera size={32} />
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-chocolate/40 uppercase tracking-widest">Capture Portrait</p>
-                                    <p className="text-[9px] text-chocolate/20 italic mt-1 font-medium">Click to select file</p>
-                                </div>
-                            </div>
-                        )}
-                        <input type="file" accept="image/*" onChange={e => handleFileChange(e.target.files?.[0])} className="absolute inset-0 opacity-0 cursor-pointer" />
-                   </div>
+                  <div className="relative group/upload overflow-hidden rounded-[2.5rem] border-2 border-dashed border-chocolate/10 bg-white flex flex-col items-center justify-center p-10 transition-all hover:bg-strawberry/5 hover:border-strawberry/30 shadow-sm cursor-pointer">
+                    {preview ? (
+                      <div className="relative w-40 h-40 rounded-[2.5rem] overflow-hidden shadow-bakery border-4 border-white transform rotate-3">
+                        <img src={preview} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/upload:opacity-100 transition-opacity flex items-center justify-center">
+                          <button type="button" onClick={() => { setFile(null); setPreview(null); setForm({ ...form, img: '' }); }} className="p-3 bg-red-500 text-white rounded-full shadow-lg transform scale-90 group-hover/upload:scale-100 transition-all">
+                            <X size={20} />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center text-center gap-4">
+                        <div className="w-16 h-16 bg-cream/30 rounded-full flex items-center justify-center text-chocolate/10 transition-transform group-hover/upload:scale-110">
+                          <Camera size={32} />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-chocolate/40 uppercase tracking-widest">Capture Portrait</p>
+                          <p className="text-[9px] text-chocolate/20 italic mt-1 font-medium">Click to select file</p>
+                        </div>
+                      </div>
+                    )}
+                    <input type="file" accept="image/*" onChange={e => handleFileChange(e.target.files?.[0])} className="absolute inset-0 opacity-0 cursor-pointer" />
+                  </div>
 
-                   <div className="space-y-6">
-                        <div className="space-y-2 group">
-                            <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Or Portrait URL</label>
-                            <input disabled={!!file} value={form.img} onChange={e => setForm({ ...form, img: e.target.value })} className="w-full px-6 py-4 rounded-xl bg-white border border-chocolate/5 text-xs outline-none focus:border-strawberry transition-all italic" placeholder="https://..." />
-                        </div>
-                        <div className="space-y-2 group">
-                            <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Distinction Badge</label>
-                            <div className="relative">
-                                <Award size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
-                                <input value={form.badge} onChange={e => setForm({ ...form, badge: e.target.value })} className="w-full pl-10 pr-6 py-4 rounded-xl bg-white border border-chocolate/5 text-xs outline-none focus:border-strawberry transition-all italic" placeholder="e.g. Master Patissier" />
-                            </div>
-                        </div>
-                   </div>
+                  <div className="space-y-6">
+                    <div className="space-y-2 group">
+                      <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Or Portrait URL</label>
+                      <input disabled={!!file} value={form.img} onChange={e => setForm({ ...form, img: e.target.value })} className="w-full px-6 py-4 rounded-xl bg-white border border-chocolate/5 text-xs outline-none focus:border-strawberry transition-all italic" placeholder="https://..." />
+                    </div>
+                    <div className="space-y-2 group">
+                      <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Distinction Badge</label>
+                      <div className="relative">
+                        <Award size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
+                        <input value={form.badge} onChange={e => setForm({ ...form, badge: e.target.value })} className="w-full pl-10 pr-6 py-4 rounded-xl bg-white border border-chocolate/5 text-xs outline-none focus:border-strawberry transition-all italic" placeholder="e.g. Master Patissier" />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

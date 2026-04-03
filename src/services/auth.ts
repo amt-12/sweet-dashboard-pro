@@ -112,6 +112,6 @@ export async function me() {
 
 export function fetchWithAuth(input: RequestInfo, init: RequestInit = {}) {
   const token = getToken();
-  const headers = { ...(init.headers || {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) } as Record<string,string>;
+  const headers = { ...(init.headers || {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) } as Record<string, string>;
   return fetch(input, { ...init, headers });
 }
