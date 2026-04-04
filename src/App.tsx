@@ -38,6 +38,7 @@ const TeamAdmin = lazy(() => import("./pages/admin/TeamAdmin"));
 const IngredientConfig = lazy(() => import("./pages/IngredientConfig"));
 const NutritionConfig = lazy(() => import("./pages/NutritionConfig"));
 const Roles = lazy(() => import("./pages/Roles"));
+const StockAudit = lazy(() => import("./pages/StockAudit"));
 
 const queryClient = new QueryClient();
 
@@ -114,6 +115,7 @@ const App = () => (
               <Route path="roles" element={<RequireRole role="superadmin"><Roles /></RequireRole>} />
               <Route path="customize-order" element={<RequirePermission path="/admin/customize-order"><CustomizeOrderAdmin /></RequirePermission>} />
               <Route path="settings" element={<RequirePermission path="/admin/settings"><Settings /></RequirePermission>} />
+              <Route path="stock-audit" element={<RequirePermission path="/admin/products"><StockAudit /></RequirePermission>} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

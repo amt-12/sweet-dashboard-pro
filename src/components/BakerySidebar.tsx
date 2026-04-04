@@ -20,6 +20,7 @@ import {
   Info,
   ChefHat,
   ShieldCheck,
+  History,
 } from "lucide-react";
 import bakeryLogo from "@/assets/logo.jpg";
 import { getRole, hasAccessToPath } from '@/services/auth';
@@ -58,6 +59,7 @@ const menuItems = [
      
       { title: "Nutrition", icon: List, path: "/admin/nutrition" },
       { title: "Ingredients", icon: List, path: "/admin/ingredients" },
+      { title: "Stock Audit", icon: History, path: "/admin/stock-audit" },
      
     ],
   },

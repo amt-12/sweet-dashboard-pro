@@ -1,4 +1,4 @@
-import { Plus, Search, Edit, Trash2, Filter, X, Package, DollarSign, Layers, Info, Image as ImageIcon, Eye, ChevronRight } from "lucide-react";
+import { Plus, Minus, Search, Edit, Trash2, Filter, X, Package, DollarSign, Layers, Info, Image as ImageIcon, Eye, ChevronRight } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { setProducts, setLoading, setError } from "../store/slices/productSlice";
@@ -294,6 +294,13 @@ const Products = () => {
   const [selectedIngredient, setSelectedIngredient] = useState<string>(''); // holds ingredient id
   const [ingredientQty, setIngredientQty] = useState<number>(100);
 
+  // Stock adjustment reason modal
+  const [showReasonModal, setShowReasonModal] = useState(false);
+  const [stockReason, setStockReason] = useState('');
+  const [originalProduct, setOriginalProduct] = useState<Product | null>(null);
+  const [adjustmentHistory, setAdjustmentHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
   // Prevent background scrolling when modal is open
   useEffect(() => {
     if (showModal) {
@@ -405,10 +412,26 @@ const Products = () => {
     setForm(emptyForm);
     setErrors({});
     setEditingId(null);
+    setAdjustmentHistory([]);
     setShowModal(true);
   };
 
+  const fetchAdjustmentHistory = async (productId: string) => {
+    try {
+      setLoadingHistory(true);
+      // Use the correct base path since axiosInstance already has /api
+      const res = await axiosInstance.get(`/stock-adjustments?productId=${productId}`);
+      setAdjustmentHistory(res.data.data || res.data || []);
+    } catch (err) {
+      console.error("Failed to fetch history:", err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
   const openEdit = (p: Product) => {
+    const id = p.id || p._id;
+    if (id) fetchAdjustmentHistory(id);
     const imgs = (p.images || []).map((it: any) => normalizeImage(it));
     setForm({
       name: p.name || '',
@@ -436,6 +459,7 @@ const Products = () => {
     });
     setErrors({});
     setEditingId(p.id);
+    setOriginalProduct(p);
     setShowModal(true);
   };
 
@@ -448,6 +472,9 @@ const Products = () => {
     setForm(emptyForm);
     setErrors({});
     setEditingId(null);
+    setOriginalProduct(null);
+    setStockReason('');
+    setShowReasonModal(false);
   };
 
   const validateForm = () => {
@@ -471,6 +498,26 @@ const Products = () => {
     const validation = validateForm();
     setErrors(validation);
     if (Object.keys(validation).length > 0) return;
+
+    // Check for stock decrease in VARIANTS if editing
+    if (editingId && originalProduct && !stockReason) {
+      let isVariantDecrease = false;
+      const nextVariants = form.variants || [];
+      const origVariants = (originalProduct as any).variants || [];
+      
+      for (const v of nextVariants) {
+        const orig = origVariants.find((o: any) => o.weight === v.weight);
+        if (orig && Number(v.stock) < Number(orig.stock)) {
+          isVariantDecrease = true;
+          break;
+        }
+      }
+
+      if (isVariantDecrease) {
+        setShowReasonModal(true);
+        return;
+      }
+    }
 
     if (isOversizeDataUri(form.image)) {
       toast.error('Cover image must be 500KB or smaller');
@@ -510,6 +557,7 @@ const Products = () => {
         variants: cleanedVariants,
         ingredients: form.ingredients || [],
         tasteDescription: form.tasteDescription || '',
+        lastStockAdjustmentReason: stockReason || undefined,
       };
 
       // primary image
@@ -941,17 +989,54 @@ const Products = () => {
 
                                 <div className="flex-1 space-y-1">
                                   <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-wider px-1">Stock (qty)</label>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={(v as any).stock ?? 0}
-                                    onChange={(e) => {
-                                      const next = [...(form.variants || [])];
-                                      (next[i] as any).stock = e.target.value === '' ? 0 : Number(e.target.value);
-                                      setForm({ ...form, variants: next });
-                                    }}
-                                    className="w-full px-3 h-10 rounded-xl bg-cream/20 border-none outline-none text-chocolate font-bold text-xs"
-                                  />
+                                  <div className="flex items-center gap-2 bg-cream/20 rounded-xl p-1 border border-chocolate/5 h-10 w-[140px]">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const next = [...(form.variants || [])];
+                                        const cur = Number((next[i] as any).stock) || 0;
+                                        const newVal = Math.max(0, cur - 1);
+                                        (next[i] as any).stock = newVal;
+                                        setForm({ ...form, variants: next });
+
+                                        // Trigger reason modal immediately if we are in Edit Mode and stock is decreasing below original
+                                        if (editingId && originalProduct) {
+                                          const origVariant = (originalProduct.variants || []).find(o => o.weight === v.weight);
+                                          const origStock = origVariant ? Number(origVariant.stock) : Number(originalProduct.stock);
+                                          if (newVal < origStock && !stockReason) {
+                                            setShowReasonModal(true);
+                                          }
+                                        }
+                                      }}
+                                      className="w-8 h-8 flex items-center justify-center rounded-lg bg-white text-chocolate hover:bg-strawberry hover:text-white transition-all shadow-sm"
+                                    >
+                                      <Minus size={14} />
+                                    </button>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={(v as any).stock ?? 0}
+                                      onChange={(e) => {
+                                        const next = [...(form.variants || [])];
+                                        const val = e.target.value === '' ? 0 : Number(e.target.value);
+                                        (next[i] as any).stock = val;
+                                        setForm({ ...form, variants: next });
+                                      }}
+                                      className="flex-1 text-center bg-transparent border-none outline-none text-chocolate font-bold text-xs w-10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const next = [...(form.variants || [])];
+                                        const cur = Number((next[i] as any).stock) || 0;
+                                        (next[i] as any).stock = cur + 1;
+                                        setForm({ ...form, variants: next });
+                                      }}
+                                      className="w-8 h-8 flex items-center justify-center rounded-lg bg-white text-chocolate hover:bg-strawberry hover:text-white transition-all shadow-sm"
+                                    >
+                                      <Plus size={14} />
+                                    </button>
+                                  </div>
                                 </div>
 
                                 <button
@@ -1003,16 +1088,33 @@ const Products = () => {
 
                         <div className="space-y-2">
                           <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Available Stock</label>
-                          <div className="relative">
-                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/30">
-                              <Package size={16} />
-                            </div>
+                          <div className="flex items-center gap-3 bg-white p-2 rounded-2xl border border-chocolate/10 shadow-sm h-[54px] w-full max-w-[180px]">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const cur = Number(form.stock) || 0;
+                                setForm({ ...form, stock: Math.max(0, cur - 1) });
+                              }}
+                              className="w-10 h-10 flex items-center justify-center rounded-xl bg-cream/30 text-chocolate hover:bg-strawberry hover:text-white transition-all shadow-bakery group"
+                            >
+                              <Minus size={18} className="group-hover:scale-110 transition-transform" />
+                            </button>
                             <input
                               type="number"
                               value={form.stock}
-                              onChange={(e) => setForm({ ...form, stock: e.target.value === '' ? '' : Number(e.target.value) })}
-                              className={`w-full pl-11 pr-4 py-4 rounded-2xl bg-white border ${errors.stock ? 'border-red-500' : 'border-chocolate/10'} outline-none shadow-sm transition-all focus:border-strawberry/30 text-chocolate font-medium text-sm`}
+                              onChange={(e) => setForm({ ...form, stock: e.target.value === '' ? 0 : Number(e.target.value) })}
+                              className="flex-1 text-center bg-transparent border-none outline-none text-chocolate font-bold text-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const cur = Number(form.stock) || 0;
+                                setForm({ ...form, stock: cur + 1 });
+                              }}
+                              className="w-10 h-10 flex items-center justify-center rounded-xl bg-cream/30 text-chocolate hover:bg-strawberry hover:text-white transition-all shadow-bakery group"
+                            >
+                              <Plus size={18} className="group-hover:scale-110 transition-transform" />
+                            </button>
                           </div>
                           {errors.stock && <p className="text-[10px] font-bold text-red-500 mt-1 uppercase tracking-wider">{errors.stock}</p>}
                         </div>
@@ -1037,6 +1139,84 @@ const Products = () => {
                       </div>
                     </div>
                   </div>
+
+                  {/* 1.1 Stock Adjustment History (Audit Trail) */}
+                  {editingId && (
+                    <div className="mt-8 space-y-6 bg-cream/10 p-8 rounded-[2.5rem] border border-chocolate/5 border-dashed">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-3 bg-chocolate text-white rounded-2xl shadow-lg rotate-3 group-hover:rotate-0 transition-transform">
+                            <Eye size={20} />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold uppercase tracking-[0.2em] text-chocolate/80">Inventory Audit History</h4>
+                            <p className="text-[10px] text-chocolate/40 font-medium mt-0.5">Historical record of manual stock adjustments</p>
+                          </div>
+                        </div>
+                        {adjustmentHistory.length > 0 && (
+                          <div className="px-3 py-1 bg-strawberry/10 text-strawberry rounded-full text-[9px] font-black uppercase tracking-widest">
+                            {adjustmentHistory.length} Record(s)
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-4 max-h-[400px] overflow-y-auto no-scrollbar pr-2">
+                        {loadingHistory ? (
+                          <div className="flex flex-col items-center justify-center p-20 space-y-4 opacity-50 grayscale animate-pulse">
+                            <div className="w-10 h-10 border-4 border-chocolate/10 border-t-chocolate rounded-full animate-spin" />
+                            <p className="text-[10px] font-black uppercase tracking-widest text-chocolate/40 tracking-[0.2em]">Retrieving Audit Logs...</p>
+                          </div>
+                        ) : adjustmentHistory.length === 0 ? (
+                          <div className="text-center py-16 px-8 border-2 border-white/50 rounded-[2rem] bg-white/30 backdrop-blur-sm">
+                            <div className="w-16 h-16 bg-cream/50 rounded-full flex items-center justify-center mx-auto mb-4 border border-white">
+                              <Package size={24} className="text-chocolate/10" />
+                            </div>
+                            <p className="text-xs text-chocolate/40 font-bold uppercase tracking-widest leading-relaxed">No history found</p>
+                            <p className="text-[10px] text-chocolate/20 font-medium italic mt-1">Manual adjustments will appear here after they occur.</p>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 gap-4">
+                            {adjustmentHistory.map((log, idx) => (
+                              <div key={idx} className="group relative bg-white/80 hover:bg-white p-6 rounded-3xl border border-white/50 hover:border-chocolate/10 transition-all shadow-sm hover:shadow-bakery-xl">
+                                <div className="flex items-start justify-between gap-6">
+                                  <div className="space-y-3 flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${log.difference < 0 ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-500'}`}>
+                                        {log.difference > 0 ? '+' : ''}{log.difference} Units
+                                      </span>
+                                      <span className="text-[11px] font-black text-chocolate-light uppercase tracking-widest">
+                                        {log.variantWeight || 'Base'} Adjustment
+                                      </span>
+                                    </div>
+                                    <p className="text-sm font-medium text-chocolate leading-relaxed">
+                                      "{log.reason}"
+                                    </p>
+                                    <div className="flex items-center gap-5 pt-2 border-t border-chocolate/5">
+                                      <span className="text-[10px] font-bold text-chocolate/30 uppercase tracking-[0.15em] flex items-center gap-1.5">
+                                        <Info size={12} className="text-strawberry/40" /> {log.adjustedBy || 'Admin'}
+                                      </span>
+                                      <span className="text-[10px] font-bold text-chocolate/30 uppercase tracking-[0.15em] flex items-center gap-1.5">
+                                        {new Date(log.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="text-right shrink-0 bg-cream/20 p-4 rounded-2xl border border-white">
+                                    <div className="text-[9px] font-black text-chocolate-light uppercase tracking-widest mb-1.5 opacity-40">Stock Bridge</div>
+                                    <div className="flex items-baseline justify-end gap-1.5 font-black text-chocolate tracking-tighter">
+                                      <span className="text-base text-chocolate/40 line-through decoration-strawberry/30">{log.oldStock}</span>
+                                      <ChevronRight size={12} className="text-strawberry/30" />
+                                      <span className="text-2xl text-strawberry font-dancing">{log.newStock}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                   {/* 2. Visual Identity Grid Section */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
@@ -1148,110 +1328,109 @@ const Products = () => {
                             }}
                           />
                         </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Gastronomy & Specifications Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-3 pb-3 border-b border-chocolate/10">
+                      <div className="p-2 bg-cream rounded-xl">
+                        <Filter size={18} className="text-chocolate" />
+                      </div>
+                      <h4 className="text-sm font-bold uppercase tracking-[0.2em] text-chocolate/80">Ingredients & Taste</h4>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Ingredient list and Taste description */}
+                      <div className="flex items-center justify-between px-1">
+                        <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest">Secret Ingredients</label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedIngredient(ingredientOptions[0]?.id || '');
+                            setIngredientQty(100);
+                            setShowIngredientModal(true);
+                          }}
+                          className="flex items-center gap-1.5 text-[10px] font-bold text-strawberry uppercase tracking-wider hover:text-chocolate transition-colors"
+                        >
+                          <Plus size={12} /> Add New
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-2 min-h-[80px] p-4 bg-white rounded-2xl border border-chocolate/5 shadow-inner content-start">
+                        {(form.ingredients || []).length > 0 ? (form.ingredients || []).map((ing, idx) => (
+                          <span key={idx} className="flex items-center gap-2 bg-chocolate text-white px-3 py-1.5 rounded-full shadow-sm animate-in zoom-in duration-300">
+                            <span className="text-[10px] font-bold tracking-wide">{ing}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const next = [...(form.ingredients || [])];
+                                next.splice(idx, 1);
+                                setForm({ ...form, ingredients: next });
+                              }}
+                              className="p-1 rounded-full bg-white/20 hover:bg-white/40 transition-colors"
+                            >
+                              <X size={8} />
+                            </button>
+                          </span>
+                        )) : <p className="text-xs text-chocolate/20 italic font-medium">No ingredients added yet...</p>}
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between px-1">
+                          <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest">Taste Description</label>
+                        </div>
+                        <textarea
+                          value={form.tasteDescription}
+                          onChange={(e) => setForm({ ...form, tasteDescription: e.target.value.slice(0, 300) })}
+                          rows={4}
+                          placeholder="Describe the sensory experience..."
+                          className="w-full p-4 rounded-2xl bg-white border border-chocolate/5 outline-none shadow-sm transition-all focus:border-strawberry/30 resize-none text-chocolate font-medium placeholder:text-chocolate/20 text-xs leading-relaxed"
+                        />
                       </div>
                     </div>
                   </div>
 
-                  {/* 3. Gastronomy & Specifications Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                    <div className="space-y-6">
-                      <div className="flex items-center gap-3 pb-3 border-b border-chocolate/10">
-                        <div className="p-2 bg-cream rounded-xl">
-                          <Filter size={18} className="text-chocolate" />
-                        </div>
-                        <h4 className="text-sm font-bold uppercase tracking-[0.2em] text-chocolate/80">Ingredients & Taste</h4>
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-3 pb-3 border-b border-chocolate/10">
+                      <div className="p-2 bg-cream rounded-xl">
+                        <Layers size={18} className="text-chocolate" />
                       </div>
-
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between px-1">
-                          <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest">Secret Ingredients</label>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedIngredient(ingredientOptions[0]?.id || '');
-                              setIngredientQty(100);
-                              setShowIngredientModal(true);
-                            }}
-                            className="flex items-center gap-1.5 text-[10px] font-bold text-strawberry uppercase tracking-wider hover:text-chocolate transition-colors"
-                          >
-                            <Plus size={12} /> Add New
-                          </button>
-                        </div>
-                        <div className="flex flex-wrap gap-2 min-h-[80px] p-4 bg-white rounded-2xl border border-chocolate/5 shadow-inner content-start">
-                          {(form.ingredients || []).length > 0 ? (form.ingredients || []).map((ing, idx) => (
-                            <span key={idx} className="flex items-center gap-2 bg-chocolate text-white px-3 py-1.5 rounded-full shadow-sm animate-in zoom-in duration-300">
-                              <span className="text-[10px] font-bold tracking-wide">{ing}</span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const next = [...(form.ingredients || [])];
-                                  next.splice(idx, 1);
-                                  setForm({ ...form, ingredients: next });
-                                }}
-                                className="p-1 rounded-full bg-white/20 hover:bg-white/40 transition-colors"
-                              >
-                                <X size={8} />
-                              </button>
-                            </span>
-                          )) : <p className="text-xs text-chocolate/20 italic font-medium">No ingredients added yet...</p>}
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between px-1">
-                            <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest">Taste Description</label>
-                          </div>
-                          <textarea
-                            value={form.tasteDescription}
-                            onChange={(e) => setForm({ ...form, tasteDescription: e.target.value.slice(0, 300) })}
-                            rows={4}
-                            placeholder="Describe the sensory experience..."
-                            className="w-full p-4 rounded-2xl bg-white border border-chocolate/5 outline-none shadow-sm transition-all focus:border-strawberry/30 resize-none text-chocolate font-medium placeholder:text-chocolate/20 text-xs leading-relaxed"
-                          />
-                        </div>
-                      </div>
+                      <h4 className="text-sm font-bold uppercase tracking-[0.2em] text-chocolate/80">Specifications</h4>
                     </div>
-
-                    <div className="space-y-6">
-                      <div className="flex items-center gap-3 pb-3 border-b border-chocolate/10">
-                        <div className="p-2 bg-cream rounded-xl">
-                          <Layers size={18} className="text-chocolate" />
-                        </div>
-                        <h4 className="text-sm font-bold uppercase tracking-[0.2em] text-chocolate/80">Specifications</h4>
-                      </div>
-                      <div className="space-y-8 overflow-y-auto max-h-[350px] pr-2 no-scrollbar">
+                    <div className="space-y-8 overflow-y-auto max-h-[350px] pr-2 no-scrollbar">
+                      <SelectableBadgeGroup
+                        label="Artistry Types"
+                        options={typesList}
+                        selected={form.type || []}
+                        onChange={(next) => setForm({ ...form, type: next })}
+                      />
+                      <GroupedSelectableBadgeGroup
+                        label="Tailored Occasions"
+                        options={occasionsList}
+                        selected={form.occasion || []}
+                        onChange={(next) => setForm({ ...form, occasion: next })}
+                      />
+                      <div className="grid grid-cols-1 gap-6">
                         <SelectableBadgeGroup
-                          label="Artistry Types"
-                          options={typesList}
-                          selected={form.type || []}
-                          onChange={(next) => setForm({ ...form, type: next })}
+                          label="Shapes"
+                          options={shapesList}
+                          selected={form.shape || []}
+                          onChange={(next) => setForm({ ...form, shape: next })}
                         />
                         <GroupedSelectableBadgeGroup
-                          label="Tailored Occasions"
-                          options={occasionsList}
-                          selected={form.occasion || []}
-                          onChange={(next) => setForm({ ...form, occasion: next })}
+                          label="Themes"
+                          options={themesList}
+                          selected={form.theme || []}
+                          onChange={(next) => setForm({ ...form, theme: next })}
                         />
-                        <div className="grid grid-cols-1 gap-6">
-                          <SelectableBadgeGroup
-                            label="Shapes"
-                            options={shapesList}
-                            selected={form.shape || []}
-                            onChange={(next) => setForm({ ...form, shape: next })}
-                          />
-                          <GroupedSelectableBadgeGroup
-                            label="Themes"
-                            options={themesList}
-                            selected={form.theme || []}
-                            onChange={(next) => setForm({ ...form, theme: next })}
-                          />
-                        </div>
                       </div>
                     </div>
-                  </div>
-
                 </div>
               </div>
             </div>
+          </div>
 
             {/* Ingredient Modal Overlay */}
             {showIngredientModal && (
@@ -1342,11 +1521,88 @@ const Products = () => {
             </DialogFooter>
           </form>
 
-        </DialogContent>
-      </Dialog>
+      {/* Stock Adjustment Reason Modal */}
+      {showReasonModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 animate-in fade-in duration-500 overflow-hidden">
+          <div className="absolute inset-0 bg-chocolate/90 backdrop-blur-md" />
+          <div className="relative bg-white rounded-[40px] p-10 w-full max-w-md shadow-2xl z-10 border border-white/20 animate-in zoom-in-95 duration-300 font-lora">
+            <div className="text-center space-y-3 mb-8">
+              <div className="w-20 h-20 bg-strawberry/10 text-strawberry rounded-3xl flex items-center justify-center mx-auto mb-6 rotate-3">
+                <Package size={40} />
+              </div>
+              <h4 className="text-4xl font-bold text-chocolate font-dancing tracking-wide">Audit Detail Required</h4>
+              <p className="text-[10px] text-chocolate/40 font-black uppercase tracking-[0.3em] leading-relaxed">
+                Manual Inventory Deduction
+              </p>
+              <div className="h-px w-10 bg-strawberry/20 mx-auto mt-4" />
+            </div>
+            
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <label className="text-[10px] font-bold text-chocolate/60 uppercase tracking-widest px-1">Quick Selection</label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStockReason("Manually Delivered");
+                      setShowReasonModal(false);
+                      toast.success("Reason set: Manually Delivered");
+                    }}
+                    className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-strawberry/10 text-strawberry border border-strawberry/20 hover:bg-strawberry hover:text-white transition-all text-[11px] font-black uppercase tracking-wider group scale-95 hover:scale-100"
+                  >
+                    <Package size={14} className="group-hover:rotate-12 transition-transform" />
+                    Manually Delivered
+                  </button>
+                </div>
+              </div>
 
-    </div>
-  );
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-chocolate/60 uppercase tracking-widest px-1">Or Type Manually</label>
+                <textarea
+                  value={stockReason}
+                  onChange={(e) => setStockReason(e.target.value)}
+                  placeholder="e.g. Quality check, expired batch..."
+                  className="w-full p-6 rounded-[24px] bg-cream/20 border border-chocolate/5 outline-none text-chocolate font-medium placeholder:text-chocolate/20 text-sm h-36 resize-none focus:border-strawberry/30 transition-all shadow-inner"
+                  autoFocus
+                />
+              </div>
+              
+              <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  disabled={!stockReason.trim()}
+                  onClick={() => {
+                    setShowReasonModal(false);
+                    toast.success("Reason captured. You can now finalize your edits.");
+                  }}
+                  className={`w-full py-5 rounded-full text-xs font-black shadow-lg transition-all uppercase tracking-[0.2em] ${
+                    stockReason.trim() 
+                      ? 'bg-chocolate text-white hover:bg-strawberry shadow-chocolate/20 scale-[1.02]' 
+                      : 'bg-chocolate/10 text-chocolate/30 cursor-not-allowed'
+                  }`}
+                >
+                  Confirm Reason
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowReasonModal(false);
+                    setStockReason("");
+                    toast.info("Stock adjustment cancelled.");
+                  }}
+                  className="w-full py-4 rounded-full text-[10px] font-bold text-chocolate/40 hover:bg-cream/50 transition-all uppercase tracking-widest"
+                >
+                  Clear & Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </DialogContent>
+  </Dialog>
+</div>
+);
 };
 
 export default Products;
