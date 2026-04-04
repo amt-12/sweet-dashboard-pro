@@ -56,6 +56,7 @@ const Orders = () => {
   const [filterStatus, setFilterStatus] = useState('placed');
   // Search query for the top search bar
   const [searchQuery, setSearchQuery] = useState('');
+  const [cancelReason, setCancelReason] = useState('');
 
   const STATUS_OPTIONS = [
     { key: 'placed', label: 'Placed' },
@@ -94,13 +95,16 @@ const Orders = () => {
       itemsRaw: Array.isArray(order.items) ? order.items : [],
       subtotal: order.subtotal ?? 0,
       deliveryFee: order.deliveryFee ?? 0,
-      items: order.items?.map((item: any) => `${item.name} (x${item.quantity})`).join(', ') || 'N/A',
+      items: order.items?.map((item: any) => item.name).join(', ') || 'N/A',
+      quantities: order.items?.map((item: any) => item.quantity).join(', ') || '1',
       total: order.totalAmount || 0,
       status: order.orderStatus || 'placed',
       date: new Date(order.createdAt).toLocaleDateString(),
       paymentStatus: order.paymentStatus || 'pending',
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
+      cancelReason: order.cancelReason || '',
+      statusUpdatedBy: order.statusUpdatedBy || '',
       orderType: 'checkout',
     })) as OrderType[];
   };
@@ -120,12 +124,15 @@ const Orders = () => {
       subtotal: order.subtotal ?? 0,
       deliveryFee: order.deliveryFee ?? 0,
       items: `${order.flavor} ${order.shape} cake - Weight: ${order.weight}`,
+      quantities: '1',
       total: 0, // Custom orders don't have total in this context
       status: order.orderStatus || 'placed',
       date: new Date(order.createdAt).toLocaleDateString(),
       paymentStatus: order.paymentStatus || 'pending',
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
+      cancelReason: order.cancelReason || '',
+      statusUpdatedBy: order.statusUpdatedBy || '',
       orderType: 'custom',
     })) as OrderType[];
   };
@@ -200,6 +207,19 @@ const Orders = () => {
     try {
       const updateData: any = {};
 
+      if (newStatus === 'cancelled') {
+        if (!cancelReason.trim()) {
+          toast({
+            title: "Reason Required",
+            description: "Please provide a reason for cancellation",
+            variant: "destructive",
+          });
+          setIsUpdating(false);
+          return;
+        }
+        updateData.cancelReason = cancelReason;
+      }
+
       if ((selectedOrder as any).orderType === 'custom') {
         await api.orders.updateStatus(selectedOrder.id, newStatus, updateData);
       } else {
@@ -214,6 +234,7 @@ const Orders = () => {
       // Reset form
       setShowStatusForm(false);
       setNewStatus('');
+      setCancelReason('');
       setDeliveryPartner('');
       setDeliveryPartnerPhone('');
       setDeliveryEstimatedTime('');
@@ -411,6 +432,7 @@ const Orders = () => {
                 <th className="p-6 pl-8">ID</th>
                 <th className="p-6">Client</th>
                 <th className="p-6">Contents</th>
+                <th className="p-6 text-center">Qty</th>
                 <th className="p-6">Value</th>
                 <th className="p-6">Status</th>
                 <th className="p-6">Timeline</th>
@@ -424,7 +446,12 @@ const Orders = () => {
                   <td className="p-6">
                     <div className="font-bold text-chocolate">{order.customerName}</div>
                   </td>
-                  <td className="p-6 text-chocolate-light font-medium max-w-[200px] truncate italic" title={order.items}>{order.items}</td>
+                  <td className="p-6 text-chocolate-light font-medium max-w-[200px] truncate italic" title={order.items as string}>{order.items as string}</td>
+                  <td className="p-6 text-center">
+                    <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-md bg-chocolate/5 text-chocolate font-bold text-[10px] tabular-nums border border-chocolate/10">
+                      {String((order as any).quantities || '1')}
+                    </span>
+                  </td>
                   <td className="p-6 text-strawberry font-bold text-base">CA${(order.total || 0).toLocaleString()}</td>
                   <td className="p-6">
                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border shadow-sm ${getStatusStyles(order.status)}`}>
@@ -487,6 +514,12 @@ const Orders = () => {
                     {selectedOrder.status}
                   </span>
                 </div>
+                {selectedOrderData?.cancelReason && (
+                  <div className="mt-2 p-3 bg-red-50 border border-red-100 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300">
+                    <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest mb-1">Cancellation Info</p>
+                    <p className="text-xs text-red-600 font-medium italic">"{selectedOrderData.cancelReason}"</p>
+                  </div>
+                )}
                 <div className="h-1 bg-chocolate/5 rounded-full overflow-hidden">
                   <div className="h-full bg-strawberry w-2/3" />
                 </div>
@@ -541,6 +574,12 @@ const Orders = () => {
                   <div className="flex justify-between text-xs font-medium gap-4"><span className="text-chocolate/40">orderStatus</span><span className="text-chocolate text-right">{selectedOrderData?.status || 'N/A'}</span></div>
                   <div className="flex justify-between text-xs font-medium gap-4"><span className="text-chocolate/40">createdAt</span><span className="text-chocolate text-right">{selectedOrderData?.createdAt ? new Date(selectedOrderData.createdAt).toLocaleString() : 'N/A'}</span></div>
                   <div className="flex justify-between text-xs font-medium gap-4"><span className="text-chocolate/40">updatedAt</span><span className="text-chocolate text-right">{selectedOrderData?.updatedAt ? new Date(selectedOrderData.updatedAt).toLocaleString() : 'N/A'}</span></div>
+                  {selectedOrderData?.cancelReason && (
+                    <div className="flex justify-between text-xs font-medium gap-4 pt-2 border-t border-chocolate/5"><span className="text-red-400 font-bold uppercase tracking-widest text-[10px]">cancelReason</span><span className="text-red-600 italic text-right">{selectedOrderData.cancelReason}</span></div>
+                  )}
+                  {selectedOrderData?.statusUpdatedBy && (
+                    <div className="flex justify-between text-xs font-medium gap-4 pt-2 border-t border-chocolate/5"><span className="text-chocolate/40 font-bold uppercase tracking-widest text-[10px]">statusUpdatedBy</span><span className="text-strawberry font-bold text-right">{selectedOrderData.statusUpdatedBy}</span></div>
+                  )}
                 </div>
               </div>
 
@@ -558,6 +597,12 @@ const Orders = () => {
                     <span className="text-chocolate/40">Last updated</span>
                     <span className="text-chocolate">{selectedOrderData?.updatedAt ? new Date(selectedOrderData.updatedAt).toLocaleString() : 'N/A'}</span>
                   </div>
+                  {selectedOrderData?.statusUpdatedBy && (
+                    <div className="flex justify-between text-xs font-medium pt-2 border-t border-chocolate/5">
+                      <span className="text-chocolate/40">Updated by</span>
+                      <span className="text-strawberry font-bold">{selectedOrderData.statusUpdatedBy}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -582,11 +627,27 @@ const Orders = () => {
                   </select>
                 </div>
 
+                {newStatus === 'cancelled' && (
+                  <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                    <label className="text-xs font-bold text-chocolate/40 uppercase tracking-widest flex items-center gap-2">
+                      <div className="w-1 h-4 bg-red-400 rounded-full" />
+                      Cancellation Reason <span className="text-red-400">*</span>
+                    </label>
+                    <textarea
+                      placeholder="Enter the reason for cancelling this order..."
+                      value={cancelReason}
+                      onChange={(e) => setCancelReason(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-chocolate/10 rounded-2xl focus:border-red-400 outline-none bg-white text-sm font-medium text-chocolate placeholder:text-chocolate/30 transition-all hover:border-chocolate/20 min-h-[100px] resize-none"
+                    />
+                  </div>
+                )}
+
                 <div className="flex gap-3">
                   <button
                     onClick={() => {
                       setShowStatusForm(false);
                       setNewStatus('');
+                      setCancelReason('');
                       setDeliveryPartner('');
                       setDeliveryPartnerPhone('');
                       setDeliveryEstimatedTime('');
@@ -597,10 +658,10 @@ const Orders = () => {
                   </button>
                   <button
                     onClick={() => void handleStatusUpdate()}
-                    disabled={isUpdating || !newStatus}
+                    disabled={isUpdating || !newStatus || (newStatus === 'cancelled' && !cancelReason.trim())}
                     className="flex-1 py-2 bg-chocolate text-white rounded-full font-bold text-xs uppercase tracking-widest hover:bg-strawberry transition-all disabled:opacity-50"
                   >
-                    {isUpdating ? 'Processing...' : 'Next'}
+                    {isUpdating ? 'Processing...' : (newStatus === 'cancelled' ? 'Confirm Cancellation' : 'Next')}
                   </button>
                 </div>
               </div>

@@ -22,6 +22,8 @@ export interface Order {
   date: string;
   paymentStatus?: 'Paid' | 'Pending' | 'Refunded' | 'paid' | 'pending' | 'failed';
   orderType?: 'custom' | 'checkout';
+  cancelReason?: string;
+  statusUpdatedBy?: string;
 }
 
 export interface Customer {
