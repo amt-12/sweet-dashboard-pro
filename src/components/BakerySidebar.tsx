@@ -22,7 +22,7 @@ import {
   ShieldCheck,
   History,
 } from "lucide-react";
-import bakeryLogo from "@/assets/Logo.jpeg";
+import bakeryLogo from "@/assets/Logo2.png";
 import { getRole, hasAccessToPath } from '@/services/auth';
 
 const menuItems = [
