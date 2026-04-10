@@ -10,13 +10,13 @@ type Flavor = {
 	id: string | number;
 	name: string;
 	description?: string;
-	categoryId?: string | number;
+	category?: string | number | { _id: string; name: string };
 };
 
 const emptyForm: Partial<Flavor> = {
 	name: "",
 	description: "",
-	categoryId: "",
+	category: "",
 };
 
 const Flavors = () => {
@@ -44,7 +44,7 @@ const Flavors = () => {
 					id: f._id || f.id,
 					name: f.name,
 					description: f.description || "",
-					categoryId: f.categoryId || (f.category && (f.category._id || f.category.id)) || undefined,
+					category: (f.category && (f.category._id || f.category.id)) || f.category || undefined,
 				}));
 				setFlavors(normalized);
 			})
@@ -93,9 +93,9 @@ const Flavors = () => {
 		try {
 			const res: any = await api.flavors.getById(f.id);
 			const data = res && (res._id || res.id) ? { id: res._id || res.id, ...res } : res && res.data ? res.data : res;
-			setForm({ name: data.name, description: data.description, categoryId: data.categoryId || (data.category && (data.category._id || data.category.id)) || "" });
+			setForm({ name: data.name, description: data.description, category: (data.category && (data.category._id || data.category.id)) || data.category || "" });
 		} catch {
-			setForm({ name: f.name, description: f.description, categoryId: "" });
+			setForm({ name: f.name, description: f.description, category: "" });
 		}
 	};
 
@@ -120,7 +120,7 @@ const Flavors = () => {
 
 		setLoading(true);
 		const payload: any = { name: form.name, description: form.description || "" };
-		if (form.categoryId) payload.categoryId = form.categoryId;
+		if (form.category) payload.category = form.category;
 
 		try {
 			if (editingId) {
@@ -156,7 +156,7 @@ const Flavors = () => {
 	const filteredFlavors = flavors.filter(f => {
 		const matchesSearch = f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			f.description?.toLowerCase().includes(searchQuery.toLowerCase());
-		const matchesCategory = selectedCategoryId === "All" || String(f.categoryId) === String(selectedCategoryId);
+		const matchesCategory = selectedCategoryId === "All" || String(f.category) === String(selectedCategoryId);
 		return matchesSearch && matchesCategory;
 	});
 
@@ -265,9 +265,9 @@ const Flavors = () => {
 									</p>
 								</TableCell>
 								<TableCell className="py-6">
-									{flavor.categoryId ? (
+									{flavor.category ? (
 										<span className="px-3 py-1 bg-chocolate/5 rounded-full border border-chocolate/5 text-[10px] font-bold uppercase tracking-widest text-chocolate/40 italic">
-											{categories.find(c => String(c.id) === String(flavor.categoryId))?.name || 'Unassigned'}
+											{categories.find(c => String(c.id) === String(flavor.category))?.name || 'Unassigned'}
 										</span>
 									) : (
 										<span className="text-chocolate/20 text-[10px] italic">Not Tagged</span>
@@ -343,8 +343,8 @@ const Flavors = () => {
 							<div className="space-y-2 group">
 								<label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Category</label>
 								<Select
-									value={form.categoryId?.toString()}
-									onValueChange={(val) => setForm({ ...form, categoryId: val })}
+									value={form.category?.toString()}
+									onValueChange={(val) => setForm({ ...form, category: val })}
 								>
 									<SelectTrigger className="w-full p-6 h-auto bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-bold text-chocolate italic group">
 										<div className="flex items-center gap-2">

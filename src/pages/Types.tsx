@@ -10,13 +10,13 @@ type TypeItem = {
 	id: string | number;
 	name: string;
 	description?: string;
-	categoryId?: string | number;
+	category?: string | number | { _id: string; name: string };
 };
 
 const emptyForm: Partial<TypeItem> = {
 	name: "",
 	description: "",
-	categoryId: "",
+	category: "",
 };
 
 const Types = () => {
@@ -57,7 +57,7 @@ const Types = () => {
 					id: t._id || t.id,
 					name: t.name,
 					description: t.description || "",
-					categoryId: t.categoryId?._id || t.categoryId || undefined,
+					category: t.category?._id || t.category || undefined,
 				}));
 				setItems(normalized);
 			})
@@ -84,7 +84,7 @@ const Types = () => {
 		setForm({ 
 			name: t.name, 
 			description: t.description, 
-			categoryId: t.categoryId || "" 
+			category: (t.category as any)?._id || t.category || "" 
 		});
 		setEditingId(String(t.id));
 		setErrors({});
@@ -115,7 +115,7 @@ const Types = () => {
 			name: form.name, 
 			description: form.description || "" 
 		};
-		if (form.categoryId) payload.categoryId = form.categoryId;
+		if (form.category) payload.category = form.category;
 
 		try {
 			if (editingId) {
@@ -151,7 +151,7 @@ const Types = () => {
 	const filteredItems = items.filter(item => {
 		const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			item.description?.toLowerCase().includes(searchQuery.toLowerCase());
-		const matchesCategory = filterSelectedCategoryId === "All" || String(item.categoryId) === String(filterSelectedCategoryId);
+		const matchesCategory = filterSelectedCategoryId === "All" || String(item.category) === String(filterSelectedCategoryId);
 		return matchesSearch && matchesCategory;
 	});
 
@@ -257,9 +257,9 @@ const Types = () => {
 									</p>
 								</TableCell>
 								<TableCell className="py-6">
-									{item.categoryId ? (
+									{item.category ? (
 										<span className="px-3 py-1 bg-chocolate/5 rounded-full border border-chocolate/5 text-[10px] font-bold uppercase tracking-widest text-chocolate/40 italic">
-											{categories.find(c => String(c.id) === String(item.categoryId))?.name || 'Unassigned'}
+											{categories.find(c => String(c.id) === String(item.category))?.name || 'Unassigned'}
 										</span>
 									) : (
 										<span className="text-chocolate/20 text-[10px] italic">Not Tagged</span>
@@ -335,8 +335,8 @@ const Types = () => {
 							<div className="space-y-2 group">
 								<label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Category</label>
 								<Select
-									value={form.categoryId?.toString()}
-									onValueChange={(val) => setForm({ ...form, categoryId: val })}
+									value={form.category?.toString()}
+									onValueChange={(val) => setForm({ ...form, category: val })}
 								>
 									<SelectTrigger className="w-full p-6 h-auto bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-bold text-chocolate italic group">
 										<div className="flex items-center gap-2">
