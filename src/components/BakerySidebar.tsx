@@ -22,7 +22,7 @@ import {
   ShieldCheck,
   History,
 } from "lucide-react";
-import bakeryLogo from "@/assets/Logo.png";
+import bakeryLogo from "@/assets/Logo.jpeg";
 import { getRole, hasAccessToPath } from '@/services/auth';
 
 const menuItems = [
@@ -186,8 +186,8 @@ const BakerySidebar = () => {
                 <button
                   onClick={toggleOpen}
                   className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 group ${isActive
-                      ? "bg-[#1A2744] text-[#F5ECD7] shadow-lg shadow-[#1A2744]/20"
-                      : "text-[#1A2744]/80 hover:bg-[#D4A373]/10 hover:text-[#D4A373] hover:pl-4"
+                    ? "bg-[#1A2744] text-[#F5ECD7] shadow-lg shadow-[#1A2744]/20"
+                    : "text-[#1A2744]/80 hover:bg-[#D4A373]/10 hover:text-[#D4A373] hover:pl-4"
                     } ${collapsed ? "justify-center px-0 hover:pl-0" : ""}`}
                 >
                   <item.icon className={`w-5 h-5 transition-transform duration-300 ${isActive ? "text-[#D4A373] scale-110" : "group-hover:text-[#D4A373] group-hover:scale-110"}`} />
@@ -209,8 +209,8 @@ const BakerySidebar = () => {
                           key={child.title}
                           to={child.path}
                           className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${childActive
-                              ? "bg-[#1A2744] text-[#F5ECD7] shadow-md"
-                              : "text-[#1A2744]/80 hover:bg-[#D4A373]/10 hover:text-[#D4A373]"
+                            ? "bg-[#1A2744] text-[#F5ECD7] shadow-md"
+                            : "text-[#1A2744]/80 hover:bg-[#D4A373]/10 hover:text-[#D4A373]"
                             }`}
                         >
                           <child.icon className={`w-4 h-4 ${childActive ? "text-[#D4A373]" : "text-[#1A2744]/60 group-hover:text-[#D4A373]"}`} />
@@ -229,8 +229,8 @@ const BakerySidebar = () => {
               key={item.title}
               to={item.path}
               className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 group ${isActive
-                  ? "bg-[#1A2744] text-[#F5ECD7] shadow-lg shadow-[#1A2744]/20"
-                  : "text-[#1A2744]/80 hover:bg-[#D4A373]/10 hover:text-[#D4A373] hover:pl-4"
+                ? "bg-[#1A2744] text-[#F5ECD7] shadow-lg shadow-[#1A2744]/20"
+                : "text-[#1A2744]/80 hover:bg-[#D4A373]/10 hover:text-[#D4A373] hover:pl-4"
                 } ${collapsed ? "justify-center px-0 hover:pl-0" : ""}`}
             >
               <item.icon className={`w-5 h-5 transition-transform duration-300 ${isActive ? "text-[#D4A373] scale-110" : "group-hover:text-[#D4A373] group-hover:scale-110"}`} />

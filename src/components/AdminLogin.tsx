@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { login as apiLogin } from "@/services/auth";
-import bakeryLogo from "@/assets/Logo.png";
+import bakeryLogo from "@/assets/Logo.jpeg";
 
 
 const AdminLogin: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
