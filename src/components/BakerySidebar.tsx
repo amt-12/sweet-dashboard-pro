@@ -22,7 +22,7 @@ import {
   ShieldCheck,
   History,
 } from "lucide-react";
-import bakeryLogo from "@/assets/logo.jpg";
+import bakeryLogo from "@/assets/Logo.png";
 import { getRole, hasAccessToPath } from '@/services/auth';
 
 const menuItems = [
@@ -56,17 +56,17 @@ const menuItems = [
       { title: "Occasions", icon: IceCream, path: "/admin/occasions" },
       { title: "Shapes", icon: Heart, path: "/admin/shapes" },
       { title: "Themes", icon: Star, path: "/admin/themes" },
-     
+
       { title: "Nutrition", icon: List, path: "/admin/nutrition" },
       { title: "Ingredients", icon: List, path: "/admin/ingredients" },
       { title: "Stock Audit", icon: History, path: "/admin/stock-audit" },
-     
+
     ],
   },
   { title: "Admins", icon: Users, path: "/admin/admins" },
   { title: "Roles", icon: ShieldCheck, path: "/admin/roles" },
   { title: "Customers", icon: Users, path: "/admin/customers" },
-   { title: "Payment Modes", icon: CreditCard, path: "/admin/payment-modes" },
+  { title: "Payment Modes", icon: CreditCard, path: "/admin/payment-modes" },
   { title: "Payments", icon: CreditCard, path: "/admin/payments" },
   { title: "Delivery", icon: Truck, path: "/admin/delivery" },
   { title: "Analytics", icon: BarChart3, path: "/admin/analytics" },
@@ -79,13 +79,13 @@ const BakerySidebar = () => {
   const [openAbout, setOpenAbout] = useState(false);
   const location = useLocation();
   const role = getRole();
-  
+
   const getVisibleMenu = () => {
     // Superadmin sees everything
     if (role === 'superadmin') {
       return menuItems;
     }
-    
+
     // Admin sees only pages included in assigned permissions.
     return menuItems.map(item => {
       // Always show Dashboard
@@ -114,7 +114,7 @@ const BakerySidebar = () => {
       return null;
     }).filter(Boolean);
   };
-  
+
   const visibleMenu = useMemo(() => getVisibleMenu(), [role, location.pathname]);
 
   // Auto-open submenu when current route is inside it, but don't force-close on unrelated routes.
@@ -140,9 +140,8 @@ const BakerySidebar = () => {
 
   return (
     <aside
-      className={`h-screen sticky top-0 bg-[#F5ECD7] border-r border-[#D4A373]/30 flex flex-col transition-all duration-300 ${
-        collapsed ? "w-20" : "w-64"
-      }`}
+      className={`h-screen sticky top-0 bg-[#F5ECD7] border-r border-[#D4A373]/30 flex flex-col transition-all duration-300 ${collapsed ? "w-20" : "w-64"
+        }`}
     >
       {/* Logo */}
       <div className="p-4 flex items-center gap-3 border-b border-[#D4A373]/30">
@@ -153,9 +152,9 @@ const BakerySidebar = () => {
               Hangary? Sweet.
             </h1>
             <div className="flex items-center gap-1 mt-1">
-                <span className="h-[1px] w-4 bg-[#D4A373]"></span>
-                <span className="text-[0.5rem] tracking-[0.1em] text-[#8D6E63] font-medium uppercase whitespace-nowrap">Est. 2024</span>
-                <span className="h-[1px] w-4 bg-[#D4A373]"></span>
+              <span className="h-[1px] w-4 bg-[#D4A373]"></span>
+              <span className="text-[0.5rem] tracking-[0.1em] text-[#8D6E63] font-medium uppercase whitespace-nowrap">Est. 2024</span>
+              <span className="h-[1px] w-4 bg-[#D4A373]"></span>
             </div>
           </div>
         )}
@@ -168,12 +167,12 @@ const BakerySidebar = () => {
 
           const isActive = isParentWithChildren
             ? // parent is active if its path or any child path matches
-              item.path === "/admin"
+            item.path === "/admin"
               ? location.pathname === "/admin"
               : (location.pathname === item.path || location.pathname.startsWith(item.path) || item.children.some(c => location.pathname.startsWith(c.path)))
             : item.path === "/admin"
-            ? location.pathname === "/admin"
-            : location.pathname.startsWith(item.path);
+              ? location.pathname === "/admin"
+              : location.pathname.startsWith(item.path);
 
           if (isParentWithChildren) {
             const isOpen = item.title === 'Products' ? openProducts : item.title === 'About' ? openAbout : false;
@@ -186,11 +185,10 @@ const BakerySidebar = () => {
               <div key={item.title}>
                 <button
                   onClick={toggleOpen}
-                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 group ${
-                    isActive
+                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 group ${isActive
                       ? "bg-[#1A2744] text-[#F5ECD7] shadow-lg shadow-[#1A2744]/20"
                       : "text-[#1A2744]/80 hover:bg-[#D4A373]/10 hover:text-[#D4A373] hover:pl-4"
-                  } ${collapsed ? "justify-center px-0 hover:pl-0" : ""}`}
+                    } ${collapsed ? "justify-center px-0 hover:pl-0" : ""}`}
                 >
                   <item.icon className={`w-5 h-5 transition-transform duration-300 ${isActive ? "text-[#D4A373] scale-110" : "group-hover:text-[#D4A373] group-hover:scale-110"}`} />
                   {!collapsed && (
@@ -210,11 +208,10 @@ const BakerySidebar = () => {
                         <Link
                           key={child.title}
                           to={child.path}
-                          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
-                            childActive
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${childActive
                               ? "bg-[#1A2744] text-[#F5ECD7] shadow-md"
                               : "text-[#1A2744]/80 hover:bg-[#D4A373]/10 hover:text-[#D4A373]"
-                          }`}
+                            }`}
                         >
                           <child.icon className={`w-4 h-4 ${childActive ? "text-[#D4A373]" : "text-[#1A2744]/60 group-hover:text-[#D4A373]"}`} />
                           <span className="truncate">{child.title}</span>
@@ -231,11 +228,10 @@ const BakerySidebar = () => {
             <Link
               key={item.title}
               to={item.path}
-              className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 group ${
-                isActive
+              className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 group ${isActive
                   ? "bg-[#1A2744] text-[#F5ECD7] shadow-lg shadow-[#1A2744]/20"
                   : "text-[#1A2744]/80 hover:bg-[#D4A373]/10 hover:text-[#D4A373] hover:pl-4"
-              } ${collapsed ? "justify-center px-0 hover:pl-0" : ""}`}
+                } ${collapsed ? "justify-center px-0 hover:pl-0" : ""}`}
             >
               <item.icon className={`w-5 h-5 transition-transform duration-300 ${isActive ? "text-[#D4A373] scale-110" : "group-hover:text-[#D4A373] group-hover:scale-110"}`} />
               {!collapsed && (
