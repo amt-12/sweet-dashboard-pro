@@ -1,7 +1,8 @@
-import { Plus, Search, Edit, Trash2, X, Sparkles, FileText, Info, RefreshCw } from "lucide-react";
+import { Plus, Search, Edit, Trash2, X, Sparkles, FileText, Info, RefreshCw, LayoutGrid } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { api } from "../services/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { toast } from "sonner";
 
@@ -10,16 +11,24 @@ type Theme = {
 	name: string;
 	description?: string;
 	subthemes?: string[];
+  category?: { _id: string; name: string } | string;
+};
+
+type Category = {
+  _id: string;
+  name: string;
 };
 
 const emptyForm: Partial<Theme> = {
 	name: "",
 	description: "",
 	subthemes: [],
+  category: "",
 };
 
 const Themes = () => {
 	const [themes, setThemes] = useState<Theme[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -50,6 +59,7 @@ const Themes = () => {
 					const id = obj["_id"] ?? obj["id"] ?? undefined;
 					const name = sanitizeName(String(obj["name"] ?? ""));
 					const description = String(obj["description"] ?? "");
+          const category = obj["category"] as any;
 
 					let subthemes: string[] = [];
 					const candidateKeys = ["subthemes", "subThemes", "sub_themes"];
@@ -61,7 +71,7 @@ const Themes = () => {
 						}
 					}
 
-					return { id, name, description, subthemes };
+					return { id, name, description, subthemes, category };
 				});
 				setThemes(normalized as Theme[]);
 			})
@@ -73,9 +83,20 @@ const Themes = () => {
 			.finally(() => setLoading(false));
 	}, []);
 
+  const fetchCategories = useCallback(() => {
+    api.categories.getAll()
+      .then((res: any) => {
+        setCategories(res || []);
+      })
+      .catch(() => {
+        toast.error("Failed to load categories");
+      });
+  }, []);
+
 	useEffect(() => {
 		fetchThemes();
-	}, [fetchThemes]);
+    fetchCategories();
+	}, [fetchThemes, fetchCategories]);
 
 	const openAdd = () => {
 		setForm(emptyForm);
@@ -85,7 +106,12 @@ const Themes = () => {
 	};
 
 	const openEdit = (t: Theme) => {
-		setForm({ name: t.name, description: t.description, subthemes: t.subthemes || [] });
+		setForm({ 
+      name: t.name, 
+      description: t.description, 
+      subthemes: t.subthemes || [],
+      category: (typeof t.category === 'object' && t.category !== null) ? t.category._id : (t.category as string || "")
+    });
 		setEditingId(String(t.id));
 		setErrors({});
 		setShowModal(true);
@@ -111,11 +137,11 @@ const Themes = () => {
 		if (Object.keys(v).length) return;
 
 		setLoading(true);
-		const payload = { name: sanitizeName(form.name), description: form.description || "" } as {
-			name: string;
-			description: string;
-			subthemes?: string[];
-		};
+		const payload: any = { 
+      name: sanitizeName(form.name), 
+      description: form.description || "",
+      category: form.category === "none" ? null : (form.category || null)
+    };
 		payload.subthemes = (form.subthemes || []).map((s) => sanitizeSub(s)).filter(Boolean);
 
 		try {
@@ -155,7 +181,8 @@ const Themes = () => {
 
 	const filteredThemes = themes.filter(t => 
 		t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-		t.description?.toLowerCase().includes(searchQuery.toLowerCase())
+		t.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (typeof t.category === 'object' && t.category !== null && t.category.name.toLowerCase().includes(searchQuery.toLowerCase()))
 	);
 
 	// helpers to manage subthemes in the form
@@ -221,6 +248,7 @@ const Themes = () => {
 						<TableRow className="border-chocolate/5 hover:bg-transparent">
 							<TableHead className="w-20 pl-8 h-16 font-bold text-chocolate italic uppercase tracking-widest text-[10px]">Icon</TableHead>
 							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px]">Theme Name</TableHead>
+							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px]">Category</TableHead>
 							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px] hidden lg:table-cell">Subthemes</TableHead>
 							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px] hidden md:table-cell">Description</TableHead>
 							<TableHead className="pr-8 h-16 font-bold text-chocolate italic uppercase tracking-widest text-[10px] text-right">Actions</TableHead>
@@ -239,6 +267,16 @@ const Themes = () => {
 										{theme.name}
 									</span>
 								</TableCell>
+                <TableCell className="py-6">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-strawberry/10 text-strawberry flex items-center justify-center">
+                      <LayoutGrid size={12} />
+                    </div>
+                    <span className="font-bold text-chocolate/60 text-sm">
+                      {typeof theme.category === 'object' && theme.category !== null ? theme.category.name : "Uncategorized"}
+                    </span>
+                  </div>
+                </TableCell>
 								<TableCell className="py-6 hidden lg:table-cell">
 									{theme.subthemes && theme.subthemes.length > 0 ? (
 										<div className="flex flex-wrap gap-1.5">
@@ -324,6 +362,29 @@ const Themes = () => {
 								</div>
 								{errors.name && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.name}</p>}
 							</div>
+
+              <div className="space-y-2 group">
+                <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Category</label>
+                <div className="relative">
+                  <LayoutGrid size={18} className="absolute left-4 top-1/2 -translate-y-1/2 z-10 text-chocolate/20 group-focus-within:text-strawberry transition-colors pointer-events-none" />
+                  <Select
+                    value={(form.category as string) || ""}
+                    onValueChange={(val) => setForm({ ...form, category: val })}
+                  >
+                    <SelectTrigger className="w-full pl-12 pr-6 py-4 h-auto bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-bold text-chocolate italic tracking-wide group">
+                      <SelectValue placeholder="Select Category (Optional)" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-2xl border-chocolate/10 shadow-bakery-xl font-lora">
+                      <SelectItem value="none" className="focus:bg-strawberry/5 focus:text-strawberry py-3 italic">None</SelectItem>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat._id} value={cat._id} className="focus:bg-strawberry/5 focus:text-strawberry py-3">
+                          {cat.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
 							{/* Subthemes block */}
 							<div className="space-y-2 group">

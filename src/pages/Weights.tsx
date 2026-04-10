@@ -1,4 +1,4 @@
-import { Plus, Search, Edit, Trash2, X, Scale, FileText, Hash, Info, RefreshCw } from "lucide-react";
+import { Plus, Search, Edit, Trash2, X, Scale, FileText, Hash, Info, RefreshCw, LayoutGrid } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../services/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
@@ -12,16 +12,24 @@ type Weight = {
 	value?: number;
 	unit?: string;
 	description?: string;
+  category?: { _id: string; name: string } | string;
+};
+
+type Category = {
+  _id: string;
+  name: string;
 };
 
 const emptyForm: Partial<Weight> = {
 	value: undefined,
 	unit: "g",
 	description: "",
+  category: "",
 };
 
 const Weights = () => {
 	const [weights, setWeights] = useState<Weight[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -53,6 +61,7 @@ const Weights = () => {
 						name,
 						description: w.description || "",
 						...parseName(name),
+            category: w.category,
 					});
 				});
 				setWeights(normalized);
@@ -64,8 +73,19 @@ const Weights = () => {
 			.finally(() => setLoading(false));
 	};
 
+  const fetchCategories = () => {
+    api.categories.getAll()
+      .then((res: any) => {
+        setCategories(res || []);
+      })
+      .catch(() => {
+        toast.error("Failed to load categories");
+      });
+  };
+
 	useEffect(() => {
 		fetchWeights();
+    fetchCategories();
 	}, []);
 
 	const openAdd = () => {
@@ -77,7 +97,12 @@ const Weights = () => {
 
 	const openEdit = (w: Weight) => {
 		const parsed = parseName(sanitizeName(w.name));
-		setForm({ value: parsed.value, unit: parsed.unit, description: w.description });
+		setForm({ 
+      value: parsed.value, 
+      unit: parsed.unit, 
+      description: w.description,
+      category: (typeof w.category === 'object' && w.category !== null) ? w.category._id : (w.category || "") 
+    });
 		setEditingId(String(w.id));
 		setErrors({});
 		setShowModal(true);
@@ -105,7 +130,11 @@ const Weights = () => {
 
 		setLoading(true);
 		const composedName = sanitizeName(`${String(form.value).trim()}${form.unit}`);
-		const payload = { name: composedName, description: form.description || "" };
+		const payload = { 
+      name: composedName, 
+      description: form.description || "",
+      category: form.category === "none" ? null : (form.category || null)
+    };
 
 		try {
 			if (editingId) {
@@ -140,7 +169,8 @@ const Weights = () => {
 
 	const filteredWeights = weights.filter(w => 
 		w.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-		w.description?.toLowerCase().includes(searchQuery.toLowerCase())
+		w.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (typeof w.category === 'object' && w.category !== null && w.category.name.toLowerCase().includes(searchQuery.toLowerCase()))
 	);
 
 	return (
@@ -185,6 +215,7 @@ const Weights = () => {
 						<TableRow className="border-chocolate/5 hover:bg-transparent">
 							<TableHead className="w-20 pl-8 h-16 font-bold text-chocolate italic uppercase tracking-widest text-[10px]">Icon</TableHead>
 							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px]">Weight Name</TableHead>
+							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px]">Category</TableHead>
 							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px] hidden md:table-cell">Description</TableHead>
 							<TableHead className="pr-8 h-16 font-bold text-chocolate italic uppercase tracking-widest text-[10px] text-right">Actions</TableHead>
 						</TableRow>
@@ -202,6 +233,16 @@ const Weights = () => {
 										{weight.name}
 									</span>
 								</TableCell>
+                <TableCell className="py-6">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-strawberry/10 text-strawberry flex items-center justify-center">
+                      <LayoutGrid size={12} />
+                    </div>
+                    <span className="font-bold text-chocolate/60 text-sm">
+                      {typeof weight.category === 'object' && weight.category !== null ? weight.category.name : "Uncategorized"}
+                    </span>
+                  </div>
+                </TableCell>
 								<TableCell className="py-6 hidden md:table-cell max-w-md">
 									<p className="text-sm text-chocolate/40 font-medium italic line-clamp-1 leading-relaxed">
 										{weight.description || "No description provided."}
@@ -296,6 +337,29 @@ const Weights = () => {
 									{errors.unit && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.unit}</p>}
 								</div>
 							</div>
+
+              <div className="space-y-2 group">
+                <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Category</label>
+                <div className="relative">
+                  <LayoutGrid size={18} className="absolute left-4 top-1/2 -translate-y-1/2 z-10 text-chocolate/20 group-focus-within:text-strawberry transition-colors pointer-events-none" />
+                  <Select
+                    value={(form.category as string) || ""}
+                    onValueChange={(val) => setForm({ ...form, category: val })}
+                  >
+                    <SelectTrigger className="w-full pl-12 pr-6 py-4 h-auto bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-bold text-chocolate italic tracking-wide group">
+                      <SelectValue placeholder="Select Category (Optional)" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-2xl border-chocolate/10 shadow-bakery-xl font-lora">
+                      <SelectItem value="none" className="focus:bg-strawberry/5 focus:text-strawberry py-3 italic">None</SelectItem>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat._id} value={cat._id} className="focus:bg-strawberry/5 focus:text-strawberry py-3">
+                          {cat.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
 							<div className="space-y-2 group">
 								<label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Description</label>
