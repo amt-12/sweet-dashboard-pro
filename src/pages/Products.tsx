@@ -1216,7 +1216,9 @@ const Products = () => {
                       </div>
                     </div>
                   )}
-                </div>
+
+                    
+
 
                   {/* 2. Visual Identity Grid Section */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
@@ -1328,9 +1330,9 @@ const Products = () => {
                             }}
                           />
                         </label>
+                      </div>
                     </div>
                   </div>
-                </div>
 
                 {/* 3. Gastronomy & Specifications Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
@@ -1427,10 +1429,13 @@ const Products = () => {
                         />
                       </div>
                     </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
+
+
 
             {/* Ingredient Modal Overlay */}
             {showIngredientModal && (
