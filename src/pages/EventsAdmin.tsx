@@ -21,6 +21,8 @@ const EventsAdmin = () => {
   const [showFormModal, setShowFormModal] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState("template1");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [originalDates, setOriginalDates] = useState({ startDate: "", endDate: "" });
+  const [showSavePrompt, setShowSavePrompt] = useState(false);
 
   const [products, setProducts] = useState<any[]>([]);
   const [showProductModal, setShowProductModal] = useState(false);
@@ -74,6 +76,7 @@ const EventsAdmin = () => {
 
   const handleOpenAdd = () => {
     setEditingId(null);
+    setOriginalDates({ startDate: "", endDate: "" });
     setFormData({
       title: "",
       subtitle: "",
@@ -111,6 +114,7 @@ const EventsAdmin = () => {
 
   const handleEdit = (event: any) => {
     setEditingId(event._id);
+    setOriginalDates({ startDate: event.startDate || "", endDate: event.endDate || "" });
     setFormData({
       title: event.title || "",
       subtitle: event.subtitle || "",
@@ -157,14 +161,26 @@ const EventsAdmin = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (editingId && (formData.startDate !== originalDates.startDate || formData.endDate !== originalDates.endDate)) {
+      setShowSavePrompt(true);
+      return;
+    }
+    await confirmSave(false);
+  };
+
+  const confirmSave = async (asNew: boolean) => {
     try {
-      if (editingId) {
+      if (asNew) {
+        await api.events.create(formData);
+        toast.success("Event created as new");
+      } else if (editingId) {
         await api.events.update(editingId, formData);
         toast.success("Event updated");
       } else {
         await api.events.create(formData);
         toast.success("Event created");
       }
+      setShowSavePrompt(false);
       setShowFormModal(false);
       fetchEvents();
     } catch (err: any) {
@@ -470,22 +486,6 @@ const EventsAdmin = () => {
                           </div>
                         </div>
                       </div>
-
-                      <h5 className="text-[10px] font-black uppercase tracking-[0.4em] text-strawberry mt-8">Style Tokens</h5>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="space-y-1.5">
-                          <Label className="text-[9px] uppercase tracking-[0.2em]">Accent</Label>
-                          <Input type="color" value={formData.accentColor} onChange={(e) => setFormData({ ...formData, accentColor: e.target.value })} className="h-10 p-1 rounded-xl" />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-[9px] uppercase tracking-[0.2em]">Dark Text</Label>
-                          <Input type="color" value={formData.darkColor} onChange={(e) => setFormData({ ...formData, darkColor: e.target.value })} className="h-10 p-1 rounded-xl" />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-[9px] uppercase tracking-[0.2em]">Background</Label>
-                          <Input type="color" value={formData.bgColor} onChange={(e) => setFormData({ ...formData, bgColor: e.target.value })} className="h-10 p-1 rounded-xl" />
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </TabsContent>
@@ -594,13 +594,39 @@ const EventsAdmin = () => {
                                 <img src={o.image} alt={o.name} className="w-full h-full object-cover" />
                               </div>
                             )}
-                            <div className="flex-1 space-y-1">
+                            <div className="flex-1 space-y-2">
                               <h6 className="text-xs font-black text-chocolate line-clamp-1">{o.name}</h6>
-                              <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-black text-strawberry">{o.price}</span>
-                                <span className="text-[9px] text-chocolate/30 line-through">{o.originalPrice}</span>
+                              
+                              <div className="flex items-center gap-4">
+                                <div className="space-y-1">
+                                  <Label className="text-[8px] uppercase tracking-widest opacity-40">Discount %</Label>
+                                  <Input 
+                                    type="number" 
+                                    value={parseInt(o.discount) || 0} 
+                                    onChange={(e) => {
+                                      const newVal = parseInt(e.target.value) || 0;
+                                      const origPrice = parseFloat(o.originalPrice.replace('$', '')) || 0;
+                                      const newPrice = (origPrice * (1 - newVal / 100)).toFixed(2);
+                                      const newOffers = [...formData.offers];
+                                      newOffers[i] = {
+                                        ...o,
+                                        discount: `${newVal}% OFF`,
+                                        price: `$${newPrice}`,
+                                        badge: `${newVal}% OFF`
+                                      };
+                                      setFormData({ ...formData, offers: newOffers });
+                                    }}
+                                    className="h-7 w-16 text-[10px] bg-white border-chocolate/10 font-bold"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-[8px] uppercase tracking-widest opacity-40">Sale Price</Label>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-black text-strawberry">{o.price}</span>
+                                    <span className="text-[9px] text-chocolate/30 line-through">{o.originalPrice}</span>
+                                  </div>
+                                </div>
                               </div>
-                              <span className="inline-block px-1.5 py-0.5 bg-strawberry/10 text-strawberry text-[8px] font-black rounded-md">{o.badge}</span>
                             </div>
                           </div>
                         </div>
@@ -669,6 +695,29 @@ const EventsAdmin = () => {
           </div>
 
           <Button onClick={() => setShowProductModal(false)} variant="ghost" className="mt-6 rounded-full font-bold uppercase tracking-widest text-[10px]">Close</Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* --- Save Options Prompt Modal --- */}
+      <Dialog open={showSavePrompt} onOpenChange={setShowSavePrompt}>
+        <DialogContent className="sm:max-w-md bg-white rounded-3xl p-6 border-none shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black text-chocolate uppercase">Date Changed</DialogTitle>
+            <DialogDescription className="text-chocolate/70">
+              You've changed the dates for this event. Do you want to update the existing event, or save this as an entirely new event?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 mt-4">
+            <Button onClick={() => confirmSave(false)} variant="outline" className="w-full rounded-2xl border-chocolate/20 text-chocolate hover:bg-chocolate/5">
+              Update Existing Event
+            </Button>
+            <Button onClick={() => confirmSave(true)} className="w-full rounded-2xl bg-strawberry hover:bg-strawberry/90 text-white font-bold">
+              Save as New Event
+            </Button>
+            <Button onClick={() => setShowSavePrompt(false)} variant="ghost" className="w-full text-chocolate/50 mt-2 hover:bg-transparent">
+              Cancel
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
