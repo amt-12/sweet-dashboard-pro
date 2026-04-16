@@ -599,7 +599,7 @@ const EventsAdmin = () => {
                               
                               <div className="flex items-center gap-4">
                                 <div className="space-y-1">
-                                  <Label className="text-[8px] uppercase tracking-widest opacity-40">Discount %</Label>
+                                  <Label className="text-[8px] uppercase tracking-widest ">Discount %</Label>
                                   <Input 
                                     type="number" 
                                     value={parseInt(o.discount) || 0} 
@@ -620,7 +620,7 @@ const EventsAdmin = () => {
                                   />
                                 </div>
                                 <div className="space-y-1">
-                                  <Label className="text-[8px] uppercase tracking-widest opacity-40">Sale Price</Label>
+                                  <Label className="text-[8px] uppercase tracking-widest">Sale Price</Label>
                                   <div className="flex items-center gap-2">
                                     <span className="text-[10px] font-black text-strawberry">{o.price}</span>
                                     <span className="text-[9px] text-chocolate/30 line-through">{o.originalPrice}</span>
