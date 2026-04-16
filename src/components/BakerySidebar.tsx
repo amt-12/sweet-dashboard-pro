@@ -21,6 +21,7 @@ import {
   ChefHat,
   ShieldCheck,
   History,
+  Sparkles,
 } from "lucide-react";
 import bakeryLogo from "@/assets/Logo2.png";
 import { getRole, hasAccessToPath } from '@/services/auth';
@@ -31,6 +32,7 @@ const menuItems = [
   { title: "Customize Order", icon: Edit3, path: "/admin/customize-order" },
   { title: "Gallery", icon: Star, path: "/admin/gallery" },
   { title: "Contacts", icon: Users, path: "/admin/contacts" },
+  { title: "Events", icon: Sparkles, path: "/admin/events" },
   // About parent with children (moved Gallery and Contacts here)
   {
     title: "About",

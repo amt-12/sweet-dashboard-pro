@@ -132,6 +132,14 @@ export const api = {
     markRead: (id: string) => axiosInstance.post(`/contacts/${id}/read`).then(res => normalize(res)),
     delete: (id: string) => axiosInstance.delete(`/contacts/${id}`).then(() => undefined),
   },
+  events: {
+    getAll: (): Promise<any[]> => axiosInstance.get('/events').then(res => normalize<any[]>(res)),
+    getActive: (): Promise<any> => axiosInstance.get('/events/active').then(res => normalize<any>(res)),
+    create: (event: object) => axiosInstance.post('/events', event).then(res => normalize(res)),
+    update: (id: string, event: object) => axiosInstance.put(`/events/${id}`, event).then(res => normalize(res)),
+    delete: (id: string) => axiosInstance.delete(`/events/${id}`).then(() => undefined),
+    toggleActive: (id: string) => axiosInstance.patch(`/events/${id}/toggle-active`).then(res => normalize(res)),
+  },
 };
 
 export default axiosInstance;

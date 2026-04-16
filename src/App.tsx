@@ -30,6 +30,7 @@ const Themes = lazy(() => import("./pages/Themes"));
 const GalleryAdmin = lazy(() => import("./pages/GalleryAdmin"));
 const Admins = lazy(() => import("./pages/Admins"));
 const Contacts = lazy(() => import("./pages/Contacts"));
+const EventsAdmin = lazy(() => import("./pages/EventsAdmin"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AdminLogin = lazy(() => import("./components/AdminLogin"));
 const OriginStoryEditor = lazy(() => import("./pages/admin/OriginStoryEditor"));
@@ -115,6 +116,7 @@ const App = () => (
               <Route path="roles" element={<RequireRole role="superadmin"><Roles /></RequireRole>} />
               <Route path="customize-order" element={<RequirePermission path="/admin/customize-order"><CustomizeOrderAdmin /></RequirePermission>} />
               <Route path="settings" element={<RequirePermission path="/admin/settings"><Settings /></RequirePermission>} />
+              <Route path="events" element={<RequirePermission path="/admin/events"><EventsAdmin /></RequirePermission>} />
               <Route path="stock-audit" element={<RequirePermission path="/admin/products"><StockAudit /></RequirePermission>} />
             </Route>
             <Route path="*" element={<NotFound />} />
