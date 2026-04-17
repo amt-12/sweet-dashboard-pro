@@ -16,23 +16,25 @@ interface ProductImage {
 
 interface Product {
   id?: string;
+  _id?: string;
   name: string;
   category: string;
   price: number;
   stock: number;
   image: string;
   images?: ProductImage[];
-  flavor?: string;
-  ingredients: string[];
-  type?: string[];
-  weight?: string[];
+  flavor?: any; // can be string (legacy) or object { _id, name }
+  ingredients?: any[];
+  type?: any[];
+  weight?: any[];
   pricesByWeight?: number[];
-  variants?: { weight: string; price: number; stock: number }[];
-  occasion?: string[];
-  shape?: string[];
-  theme?: string[];
-  tasteDescription: string;
-  [key: string]: any; // allow extra backend fields (orderNumber, imgBase64, etc.)
+  variants?: { weight: any; price: number; stock: number }[];
+  occasion?: any[];
+  shape?: any[];
+  theme?: any[];
+  tasteDescription?: string;
+  totalNutrition?: any;
+  [key: string]: any;
 }
 
 interface ProductForm extends Omit<Product, 'id'> {
@@ -125,16 +127,16 @@ const SelectableBadgeGroup = ({
   onChange,
   label
 }: {
-  options: string[],
+  options: { id: string, name: string }[],
   selected: string[],
   onChange: (next: string[]) => void,
   label: string
 }) => {
-  const toggle = (opt: string) => {
-    if (selected.includes(opt)) {
-      onChange(selected.filter(s => s !== opt));
+  const toggle = (optId: string) => {
+    if (selected.includes(optId)) {
+      onChange(selected.filter(s => s !== optId));
     } else {
-      onChange([...selected, opt]);
+      onChange([...selected, optId]);
     }
   };
 
@@ -143,18 +145,18 @@ const SelectableBadgeGroup = ({
       <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">{label}</label>
       <div className="flex flex-wrap gap-2">
         {options.map((opt) => {
-          const isSelected = selected.includes(opt);
+          const isSelected = selected.includes(opt.id);
           return (
             <button
-              key={opt}
+              key={opt.id}
               type="button"
-              onClick={() => toggle(opt)}
+              onClick={() => toggle(opt.id)}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 border ${isSelected
                   ? 'bg-chocolate text-white border-chocolate shadow-md scale-105'
                   : 'bg-white text-chocolate/60 border-chocolate/10 hover:border-strawberry/30 hover:text-strawberry'
                 }`}
             >
-              {opt}
+              {opt.name}
             </button>
           );
         })}
@@ -165,6 +167,7 @@ const SelectableBadgeGroup = ({
 };
 
 interface GroupOption {
+  id: string;
   name: string;
   sub?: string[];
   subthemes?: string[];
@@ -196,13 +199,13 @@ const GroupedSelectableBadgeGroup = ({
 }) => {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
-  const toggleSelect = (val: string) => {
-    if (!val) return;
-    if (selected.includes(val)) onChange(selected.filter(s => s !== val));
-    else onChange([...selected, val]);
+  const toggleSelect = (id: string) => {
+    if (!id) return;
+    if (selected.includes(id)) onChange(selected.filter(s => s !== id));
+    else onChange([...selected, id]);
   };
 
-  const toggleExpand = (name: string) => setExpanded(prev => ({ ...prev, [name]: !prev[name] }));
+  const toggleExpand = (id: string) => setExpanded(prev => ({ ...prev, [id] : !prev[id] }));
 
   return (
     <div className="space-y-2">
@@ -210,24 +213,25 @@ const GroupedSelectableBadgeGroup = ({
       <div className="space-y-2">
         {options.length === 0 && <p className="text-[10px] italic text-chocolate/40 px-1">No options available</p>}
         {options.map((opt) => {
-          const name = typeof opt === 'string' ? opt : (opt.name || String(opt));
+          const id = opt.id;
+          const name = opt.name;
           const subs: string[] = Array.isArray(opt.sub) ? opt.sub : (Array.isArray(opt.suboccasions) ? opt.suboccasions : (Array.isArray(opt.subthemes) ? opt.subthemes : (Array.isArray(opt.subitems) ? opt.subitems : (opt.sub || [])))) as string[];
-          const isParentSelected = selected.some(s => s && matches(s, name));
-          const isExpanded = Boolean(expanded[name]);
+          const isParentSelected = selected.includes(id);
+          const isExpanded = Boolean(expanded[id]);
 
           return (
-            <div key={name} className="bg-white rounded-2xl p-3 border border-chocolate/10 shadow-sm">
+            <div key={id} className="bg-white rounded-2xl p-3 border border-chocolate/10 shadow-sm">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => toggleSelect(name)}
+                    onClick={() => toggleSelect(id)}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 border ${isParentSelected ? 'bg-chocolate text-white border-chocolate shadow-md' : 'bg-white text-chocolate/60 border-chocolate/10 hover:border-strawberry/30 hover:text-strawberry'}`}
                   >
                     {name}
                   </button>
                   {subs && subs.length > 0 && (
-                    <button type="button" onClick={() => toggleExpand(name)} className="p-2 rounded-full text-chocolate/50 hover:text-chocolate transition-colors">
+                    <button type="button" onClick={() => toggleExpand(id)} className="p-2 rounded-full text-chocolate/50 hover:text-chocolate transition-colors">
                       <ChevronRight className={`w-4 h-4 transform transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                     </button>
                   )}
@@ -237,7 +241,7 @@ const GroupedSelectableBadgeGroup = ({
               {isExpanded && subs && subs.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {subs.map((s) => {
-                    const isSel = selected.some(sel => matches(sel, s));
+                    const isSel = selected.includes(s); // subs are still strings in the model
                     return (
                       <button
                         key={s}
@@ -266,11 +270,11 @@ const Products = () => {
 
   // dropdown lists from API
   const [categoriesList, setCategoriesList] = useState<string[]>([]);
-  const [flavorsList, setFlavorsList] = useState<string[]>([]);
-  const [weightsList, setWeightsList] = useState<string[]>([]);
-  const [typesList, setTypesList] = useState<string[]>([]);
+  const [flavorsList, setFlavorsList] = useState<{ id: string, name: string }[]>([]);
+  const [weightsList, setWeightsList] = useState<{ id: string, name: string }[]>([]);
+  const [typesList, setTypesList] = useState<{ id: string, name: string }[]>([]);
   const [occasionsList, setOccasionsList] = useState<GroupOption[]>([]);
-  const [shapesList, setShapesList] = useState<string[]>([]);
+  const [shapesList, setShapesList] = useState<{ id: string, name: string }[]>([]);
   const [themesList, setThemesList] = useState<GroupOption[]>([]);
 
   const [showModal, setShowModal] = useState(false);
@@ -326,11 +330,11 @@ const Products = () => {
     };
   }, []);
 
-  // helper to normalize a single product and preserve extra fields
   const normalizeSingle = useCallback((p: any) => {
     const imgs = (p.images || []).map((it: any) => normalizeImage(it));
-    const normalizedShape = p.shape ? (Array.isArray(p.shape) ? p.shape : [String(p.shape)]) : [];
-    const normalizedTheme = p.theme ? (Array.isArray(p.theme) ? p.theme : [String(p.theme)]) : [];
+    const getVal = (it: any) => it?.name || it?.title || String(it || '');
+    const getIds = (arr: any) => (Array.isArray(arr) ? arr : []).map(it => it?._id || it?.id || String(it || '')).filter(Boolean);
+
     return {
       // preserve all original properties
       ...p,
@@ -339,14 +343,24 @@ const Products = () => {
       images: imgs,
       // prefer base64 image coming from backend (imgBase64) then first gallery base64 then fallback to stored paths
       image: p.imgBase64 || imgs.find((i: any) => i.base64)?.base64 || p.img || imgs.find((i: any) => i.url)?.url || p.image || '/placeholder.svg',
-      // normalize flavor: prefer first element if array else use string
-      flavor: p.flavor ? (Array.isArray(p.flavor) ? String(p.flavor[0] || '') : String(p.flavor)) : '',
-      ingredients: Array.isArray(p.ingredients) ? p.ingredients : (typeof p.ingredients === 'string' ? p.ingredients.split(',').map((s: string) => s.trim()).filter(Boolean) : []),
+      // for the table display: extract name
+      flavor: p.flavor ? (Array.isArray(p.flavor) ? getVal(p.flavor[0]) : getVal(p.flavor)) : '',
+      ingredients: Array.isArray(p.ingredients) ? p.ingredients.map((i: any) => {
+        // new shape: { ingredient: {_id, name}, qty }
+        const ingObj = i?.ingredient || i;
+        const id = ingObj?._id || ingObj?.id || String(ingObj || '');
+        const name = (typeof ingObj === 'object' && (ingObj.name || ingObj.title)) || '';
+        const qty = Number(i?.qty) || 0;
+        return { id: String(id), name: String(name), qty };
+      }).filter((i: any) => i.id) : [],
       tasteDescription: p.tasteDescription || p.description || '',
-      // ensure shape/theme are arrays for the multi-select controls
-      shape: normalizedShape,
-      theme: normalizedTheme,
-      variants: Array.isArray(p.variants) ? p.variants : (p.weight || []).map((w: string, i: number) => ({ weight: w, price: (p.pricesByWeight && p.pricesByWeight[i]) || p.price || 0 })),
+      // ensure shape/theme are arrays of IDs for components
+      shape: getIds(p.shape),
+      theme: getIds(p.theme),
+      weight: getIds(p.weight),
+      occasion: getIds(p.occasion),
+      type: getIds(p.type),
+      variants: Array.isArray(p.variants) ? p.variants.map((v: any) => ({ weight: v.weight?._id || v.weight?.id || String(v.weight || ''), price: Number(v.price) || 0, stock: Number(v.stock) || 0 })) : (p.weight || []).map((w: any, i: number) => ({ weight: w?._id || w?.id || String(w || ''), price: (p.pricesByWeight && p.pricesByWeight[i]) || p.price || 0, stock: 0 })),
     } as any;
   }, [normalizeImage]);
 
@@ -380,23 +394,26 @@ const Products = () => {
       api.ingredientDetails.getAll().catch(() => []),
     ]).then(([cats, flvs, wts, typesRes, occ, shp, thm, ingredientsRes]) => {
       if (!mounted) return;
-      const toNames = (arr: any[]) => (arr || []).map((it: any) => (typeof it === 'string' ? it : it.name || it.title || it.label || it.type || ''))
-        .filter(Boolean);
-      setCategoriesList(toNames(cats));
-      setFlavorsList(toNames(flvs));
-      setWeightsList(toNames(wts));
-      setTypesList(toNames(typesRes));
-      // normalize groups: preserve subitems if provided by API objects
+      const toObjects = (arr: any[]) => (arr || []).map((it: any) => ({
+        id: it._id || it.id || String(it),
+        name: it.name || it.title || it.label || it.type || String(it)
+      })).filter(it => it.id && it.name);
+
+      setCategoriesList((cats || []).map((it: any) => typeof it === 'string' ? it : (it.name || it.title || '')));
+      setFlavorsList(toObjects(flvs));
+      setWeightsList(toObjects(wts));
+      setTypesList(toObjects(typesRes));
+
       const normalizeGroups = (arr: any[]): GroupOption[] => (arr || []).map((it: any) => {
         if (!it) return null as any;
-        if (typeof it === 'string') return { name: it, sub: [] };
+        const id = it._id || it.id || String(it);
         const name = it.name || it.title || it.label || it.type || '';
         const sub = Array.isArray(it.subthemes) ? it.subthemes : (Array.isArray(it.suboccasions) ? it.suboccasions : (Array.isArray(it.sub) ? it.sub : (it.subitems || [])));
-        return { name, sub: (sub || []).map((s: any) => String(s)).filter(Boolean) } as GroupOption;
+        return { id, name, sub: (sub || []).map((s: any) => String(s)).filter(Boolean) } as GroupOption;
       }).filter(Boolean) as GroupOption[];
 
       setOccasionsList(normalizeGroups(occ));
-      setShapesList(toNames(shp));
+      setShapesList(toObjects(shp));
       setThemesList(normalizeGroups(thm));
 
       const ings = (ingredientsRes || []).map((i: any) => ({
@@ -433,29 +450,37 @@ const Products = () => {
     const id = p.id || p._id;
     if (id) fetchAdjustmentHistory(id);
     const imgs = (p.images || []).map((it: any) => normalizeImage(it));
+    const getId = (val: any) => val?._id || val?.id || String(val || '');
+    const getIds = (arr: any) => (Array.isArray(arr) ? arr : []).map(it => getId(it)).filter(Boolean);
+
     setForm({
       name: p.name || '',
       category: p.category || 'Cakes',
       price: Number(p.price) || 0,
       stock: Number(p.stock) || 0,
-      // prefer base64 preview if backend provided it, otherwise use normalized images
       image: p.imgBase64 || imgs.find(i => i.base64)?.base64 || p.image || p.img || imgs.find(i => i.url)?.url || '/placeholder.svg',
       images: imgs,
-      flavor: p.flavor ? (Array.isArray(p.flavor) ? String(p.flavor[0] || '') : String(p.flavor)) : '',
-      ingredients: p.ingredients || [],
+      flavor: p.flavor ? (Array.isArray(p.flavor) ? getId(p.flavor[0]) : getId(p.flavor)) : '',
+      ingredients: Array.isArray(p.ingredients) ? p.ingredients.map((i: any) => {
+        // new shape: { ingredient: {_id, name}, qty }
+        const ingObj = i?.ingredient || i;
+        const id = ingObj?._id || ingObj?.id || String(ingObj || '');
+        const name = (typeof ingObj === 'object' && (ingObj.name || ingObj.title)) || '';
+        const qty = Number(i?.qty) || 0;
+        return { id: String(id), name: String(name), qty };
+      }).filter((i: any) => i.id) : [],
       tasteDescription: p.tasteDescription || p.description || '',
       imageFile: null,
       imagePreview: p.imgBase64 || imgs.find(i => i.base64)?.base64 || p.image || p.img || imgs.find(i => i.url)?.url || null,
       galleryPreviews: imgs.map(im => ({ url: im.url || '', base64: im.base64 })),
-      // set dropdown values
-      type: p.type || [],
-      weight: p.weight || [],
-      occasion: p.occasion || [],
-      shape: p.shape || [],
-      theme: p.theme || [],
+      type: getIds(p.type),
+      weight: getIds(p.weight),
+      occasion: getIds(p.occasion),
+      shape: getIds(p.shape),
+      theme: getIds(p.theme),
       variants: Array.isArray(p.variants)
-        ? p.variants.map((v: any) => ({ weight: v.weight || '', price: Number(v.price) || 0, stock: Number(v.stock) || 0 }))
-        : (p.weight || []).map((w: string, i: number) => ({ weight: w, price: (p.pricesByWeight && p.pricesByWeight[i]) || p.price || 0, stock: 0 })),
+        ? p.variants.map((v: any) => ({ weight: getId(v.weight), price: Number(v.price) || 0, stock: Number(v.stock) || 0 }))
+        : (p.weight || []).map((w: any, i: number) => ({ weight: getId(w), price: (p.pricesByWeight && p.pricesByWeight[i]) || p.price || 0, stock: 0 })),
     });
     setErrors({});
     setEditingId(p.id);
@@ -483,6 +508,14 @@ const Products = () => {
     if (Number.isNaN(Number(form.price)) || Number(form.price) < 0) next.price = 'Enter a valid non-negative price';
     if (!Number.isInteger(Number(form.stock)) || Number(form.stock) < 0) next.stock = 'Enter a valid non-negative stock';
     return next;
+  };
+
+  const buildDisplayFields = () => {
+    const flav = flavorsList.find(f => f.id === form.flavor);
+    return {
+      flavor: flav ? flav.name : (form.flavor || ''),
+      ingredients: (form.ingredients || []).map((i: any) => ({ ...i }))
+    };
   };
 
   // helper to convert File to data URL (used only to upload to backend which will send to Cloudinary)
@@ -547,15 +580,19 @@ const Products = () => {
         price: Number(form.price) || (cleanedVariants.length > 0 ? cleanedVariants[0].price : 0),
         // Total stock = sum of all variant stocks (if any have stock set)
         stock: cleanedVariants.reduce((s, v) => s + v.stock, 0) || Number(form.stock) || 0,
-        flavor: form.flavor || '',
+        flavor: form.flavor ? [form.flavor] : [],
         type: form.type || [],
-        weight: cleanedVariants.map(v => v.weight),
+        weight: cleanedVariants.map(v => v.weight).filter(Boolean),
         pricesByWeight: cleanedVariants.map(v => v.price),
         occasion: form.occasion || [],
         shape: form.shape || [],
         theme: form.theme || [],
         variants: cleanedVariants,
-        ingredients: form.ingredients || [],
+        // send [{ingredient: ObjectId, qty: Number}] — backend schema shape
+        ingredients: (form.ingredients || []).map((it: any) => ({
+          ingredient: typeof it === 'string' ? it : (it.id || it._id || String(it)),
+          qty: Number(it?.qty) || 0,
+        })).filter((it: any) => it.ingredient),
         tasteDescription: form.tasteDescription || '',
         lastStockAdjustmentReason: stockReason || undefined,
       };
@@ -588,7 +625,11 @@ const Products = () => {
           api.products
             .update(editingId, payload)
             .then((res) => {
-              const updated = normalizeSingle(res || (res as any)?.data || {});
+              const saved = normalizeSingle(res || (res as any)?.data || {});
+              // The save response has raw IDs (not populated). Preserve display names
+              // by overlaying the form's already-resolved display fields.
+              const displayFields = buildDisplayFields();
+              const updated = { ...saved, ...displayFields };
               const next = products.map((it: any) => (it.id === editingId ? { ...it, ...updated } : it));
               dispatch(setProducts(next));
               toast.success("Product updated successfully! 🎂");
@@ -603,7 +644,9 @@ const Products = () => {
           api.products
             .create(payload)
             .then((res) => {
-              const created = normalizeSingle(res || (res as any)?.data || {});
+              const saved = normalizeSingle(res || (res as any)?.data || {});
+              const displayFields = buildDisplayFields();
+              const created = { ...saved, ...displayFields };
               const next = [created, ...products];
               dispatch(setProducts(next));
               toast.success("New product added to bakery! 🥐");
@@ -932,7 +975,8 @@ const Products = () => {
                             type="button"
                             onClick={() => {
                               const next = [...(form.variants || [])];
-                              next.push({ weight: weightsList[0] || "500g", price: 0 });
+                              const defaultWeight = weightsList[0]?.id || "500g";
+                              next.push({ weight: defaultWeight, price: 0 });
                               setForm({ ...form, variants: next });
                             }}
                             className="px-3 py-1.5 bg-chocolate text-white rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-strawberry transition-all flex items-center gap-2"
@@ -960,9 +1004,10 @@ const Products = () => {
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl border-chocolate/5 shadow-bakery-xl font-lora">
                                       {weightsList.map((w) => (
-                                        <SelectItem key={w} value={w} className="py-2 text-xs">{w}</SelectItem>
+                                        <SelectItem key={w.id} value={w.id} className="py-2 text-xs">{w.name}</SelectItem>
                                       ))}
-                                      {!weightsList.includes(v.weight) && v.weight && (
+                                      {/* Handle case where current value is not in weightsList (e.g. legacy name or deleted ID) */}
+                                      {!weightsList.some(w => w.id === v.weight) && v.weight && (
                                         <SelectItem value={v.weight} className="py-2 text-xs">{v.weight}</SelectItem>
                                       )}
                                     </SelectContent>
@@ -1055,7 +1100,8 @@ const Products = () => {
                             <div
                               onClick={() => {
                                 const next = [...(form.variants || [])];
-                                next.push({ weight: weightsList[0] || "500g", price: 0, stock: 0 });
+                                const defaultWeight = weightsList[0]?.id || "500g";
+                                next.push({ weight: defaultWeight, price: 0, stock: 0 });
                                 setForm({ ...form, variants: next });
                               }}
                               className="p-8 border-2 border-dashed border-chocolate/5 rounded-[2rem] flex flex-col items-center justify-center cursor-pointer hover:border-strawberry/20 hover:bg-strawberry/[0.01] transition-all group"
@@ -1131,8 +1177,11 @@ const Products = () => {
                             <SelectContent className="rounded-2xl border-chocolate/10 shadow-bakery-xl font-lora">
                               <SelectItem value="none" disabled className="text-chocolate/20 text-[10px] uppercase font-bold tracking-widest py-2">Signature Flavors</SelectItem>
                               {flavorsList.map((f) => (
-                                <SelectItem key={f} value={f} className="focus:bg-strawberry/5 focus:text-strawberry py-3">{f}</SelectItem>
+                                <SelectItem key={f.id} value={f.id} className="focus:bg-strawberry/5 focus:text-strawberry py-3">{f.name}</SelectItem>
                               ))}
+                              {form.flavor && !flavorsList.some(f => f.id === form.flavor) && (
+                                <SelectItem value={form.flavor} className="py-3">{form.flavor}</SelectItem>
+                              )}
                             </SelectContent>
                           </Select>
                         </div>
@@ -1361,10 +1410,12 @@ const Products = () => {
                         </button>
                       </div>
                       <div className="flex flex-wrap gap-2 min-h-[80px] p-4 bg-white rounded-2xl border border-chocolate/5 shadow-inner content-start">
-                        {(form.ingredients || []).length > 0 ? (form.ingredients || []).map((ing, idx) => (
-                          <span key={idx} className="flex items-center gap-2 bg-chocolate text-white px-3 py-1.5 rounded-full shadow-sm animate-in zoom-in duration-300">
-                            <span className="text-[10px] font-bold tracking-wide">{ing}</span>
-                            <button
+                        {(form.ingredients || []).length > 0 ? (form.ingredients || []).map((ing: any, idx) => {
+                          const display = typeof ing === 'string' ? ing : `${ing.name}${ing.qty ? ` (${ing.qty}g)` : ''}`;
+                          return (
+                            <span key={idx} className="flex items-center gap-2 bg-chocolate text-white px-3 py-1.5 rounded-full shadow-sm animate-in zoom-in duration-300">
+                              <span className="text-[10px] font-bold tracking-wide">{display}</span>
+                              <button
                               type="button"
                               onClick={() => {
                                 const next = [...(form.ingredients || [])];
@@ -1376,7 +1427,8 @@ const Products = () => {
                               <X size={8} />
                             </button>
                           </span>
-                        )) : <p className="text-xs text-chocolate/20 italic font-medium">No ingredients added yet...</p>}
+                        );
+                        }) : <p className="text-xs text-chocolate/20 italic font-medium">No ingredients added yet...</p>}
                       </div>
 
                       <div className="space-y-2">
@@ -1487,8 +1539,8 @@ const Products = () => {
                         if (!selectedIngredient) { toast.error('Select an ingredient'); return; }
                         if (!ingredientQty || ingredientQty <= 0) { toast.error('Enter valid weight'); return; }
                         const picked = ingredientOptions.find(i => i.id === selectedIngredient);
-                        const name = picked?.name || selectedIngredient;
-                        const entry = `${name} (${ingredientQty}g)`;
+                        if (!picked) return;
+                        const entry = { id: picked.id, name: picked.name, qty: ingredientQty };
                         setForm(prev => ({ ...prev, ingredients: [...(prev.ingredients || []), entry] }));
                         setShowIngredientModal(false);
                       }}
