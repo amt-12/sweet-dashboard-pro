@@ -133,11 +133,13 @@ const Categories = () => {
 			setCategories((prev) => prev.filter((c) => String(c.id) !== String(id)));
 			toast.success("Category deleted.");
 		} catch (err: any) {
-			toast.error("Failed to delete category");
+			const errorMessage = err.response?.data?.error || err.message || "Failed to delete category";
+			toast.error(errorMessage);
 		} finally {
 			setLoading(false);
 		}
 	};
+
 
 	const filteredCategories = categories.filter(c => 
 		c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
