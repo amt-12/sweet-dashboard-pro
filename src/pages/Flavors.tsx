@@ -10,13 +10,13 @@ type Flavor = {
 	id: string | number;
 	name: string;
 	description?: string;
-	category?: string | number | { _id: string; name: string };
+	categories?: any[];
 };
 
 const emptyForm: Partial<Flavor> = {
 	name: "",
 	description: "",
-	category: "",
+	categories: [],
 };
 
 const Flavors = () => {
@@ -28,6 +28,7 @@ const Flavors = () => {
 	const [form, setForm] = useState<Partial<Flavor>>(emptyForm);
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedCategoryId, setSelectedCategoryId] = useState<string | number>("All");
 
@@ -44,7 +45,7 @@ const Flavors = () => {
 					id: f._id || f.id,
 					name: f.name,
 					description: f.description || "",
-					category: (f.category && (f.category._id || f.category.id)) || f.category || undefined,
+					categories: f.categories ? f.categories.map((cat:any)=>cat._id||cat) : (f.category ? [f.category._id || f.category] : []),
 				}));
 				setFlavors(normalized);
 			})
@@ -93,9 +94,17 @@ const Flavors = () => {
 		try {
 			const res: any = await api.flavors.getById(f.id);
 			const data = res && (res._id || res.id) ? { id: res._id || res.id, ...res } : res && res.data ? res.data : res;
-			setForm({ name: data.name, description: data.description, category: (data.category && (data.category._id || data.category.id)) || data.category || "" });
+			setForm({ 
+        name: data.name || f.name, 
+        description: data.description || f.description, 
+        categories: data.categories ? data.categories.map((c:any) => c._id || c) : (data.category ? [data.category._id || data.category] : []) 
+      });
 		} catch {
-			setForm({ name: f.name, description: f.description, category: "" });
+			setForm({ 
+        name: f.name, 
+        description: f.description, 
+        categories: f.categories ? f.categories.map((c:any) => c._id || c) : [] 
+      });
 		}
 	};
 
@@ -104,6 +113,7 @@ const Flavors = () => {
 		setForm(emptyForm);
 		setEditingId(null);
 		setErrors({});
+    setIsCategoryDropdownOpen(false);
 	};
 
 	const validate = () => {
@@ -120,7 +130,7 @@ const Flavors = () => {
 
 		setLoading(true);
 		const payload: any = { name: form.name, description: form.description || "" };
-		if (form.category) payload.category = form.category;
+		if (form.categories) payload.categories = form.categories;
 
 		try {
 			if (editingId) {
@@ -156,7 +166,7 @@ const Flavors = () => {
 	const filteredFlavors = flavors.filter(f => {
 		const matchesSearch = f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			f.description?.toLowerCase().includes(searchQuery.toLowerCase());
-		const matchesCategory = selectedCategoryId === "All" || String(f.category) === String(selectedCategoryId);
+		const matchesCategory = selectedCategoryId === "All" || (f.categories && f.categories.some((catId:any) => String(catId._id||catId) === String(selectedCategoryId)));
 		return matchesSearch && matchesCategory;
 	});
 
@@ -265,13 +275,17 @@ const Flavors = () => {
 									</p>
 								</TableCell>
 								<TableCell className="py-6">
-									{flavor.category ? (
-										<span className="px-3 py-1 bg-chocolate/5 rounded-full border border-chocolate/5 text-[10px] font-bold uppercase tracking-widest text-chocolate/40 italic">
-											{categories.find(c => String(c.id) === String(flavor.category))?.name || 'Unassigned'}
-										</span>
-									) : (
-										<span className="text-chocolate/20 text-[10px] italic">Not Tagged</span>
-									)}
+									{(flavor.categories && flavor.categories.length > 0) ? (
+      <div className="flex flex-wrap gap-1">
+        {flavor.categories.map((cat: any) => (
+          <span key={cat._id || cat} className="px-3 py-1 bg-chocolate/5 rounded-full border border-chocolate/5 text-[10px] font-bold uppercase tracking-widest text-chocolate/40 italic">
+            {categories.find(c => String(c.id || (c as any)._id) === String(cat._id || cat))?.name || 'Unassigned'}
+          </span>
+        ))}
+      </div>
+    ) : (
+      <span className="text-chocolate/20 text-[10px] italic">Not Tagged</span>
+    )}
 								</TableCell>
 								<TableCell className="py-6 pr-8 text-right">
 									<div className="flex items-center justify-end gap-2 shrink-0 transition-all">
@@ -342,22 +356,52 @@ const Flavors = () => {
 
 							<div className="space-y-2 group">
 								<label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Category</label>
-								<Select
-									value={form.category?.toString()}
-									onValueChange={(val) => setForm({ ...form, category: val })}
-								>
-									<SelectTrigger className="w-full p-6 h-auto bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-bold text-chocolate italic group">
-										<div className="flex items-center gap-2">
-											<Boxes size={18} className="text-chocolate/20 group-hover:text-strawberry transition-colors" />
-											<SelectValue placeholder={categoriesLoading ? 'Loading Categories...' : 'Select Category'} />
-										</div>
-									</SelectTrigger>
-									<SelectContent className="rounded-2xl border-chocolate/10 shadow-bakery-xl font-lora">
-										{categories.map((c) => (
-											<SelectItem key={c.id} value={c.id.toString()} className="focus:bg-strawberry/5 focus:text-strawberry py-3">{c.name}</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
+								
+                                <div className="relative">
+                                  <div 
+                                    className="w-full p-4 h-auto bg-white border border-chocolate/10 focus-within:border-strawberry focus-within:ring-8 focus-within:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-bold text-chocolate italic cursor-pointer flex justify-between items-center"
+                                    onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                                  >
+                                    <span className="truncate flex-1 text-left">
+                                      {form.categories && form.categories.length > 0 
+                                        ? form.categories.map((id:any) => categories.find(c => String(c.id || (c as any)._id) === String(id))?.name || id).join(', ')
+                                        : "Select Categories"}
+                                    </span>
+                                    <ChevronRight className={`w-4 h-4 transition-transform ${isCategoryDropdownOpen ? 'rotate-90' : ''}`} />
+                                  </div>
+                                  
+                                  {isCategoryDropdownOpen && (
+                                    <div className="absolute z-50 w-full mt-2 bg-white border border-chocolate/10 rounded-2xl shadow-bakery-xl max-h-60 overflow-y-auto p-2">
+                                      {categories.length === 0 ? (
+                                        <div className="p-3 text-sm text-chocolate/50 italic text-center">Loading or no categories...</div>
+                                      ) : null}
+                                      {categories.map((c) => {
+                                        const catId = String(c.id || (c as any)._id);
+                                        const isSelected = (form.categories || []).map(String).includes(catId);
+                                        return (
+                                          <label key={catId} className="flex items-center gap-3 p-3 hover:bg-strawberry/5 rounded-xl cursor-pointer transition-colors group">
+                                            <div className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${isSelected ? 'bg-strawberry border-strawberry text-white' : 'border-chocolate/20 bg-white group-hover:border-strawberry/50'}`}>
+                                              {isSelected && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+                                            </div>
+                                            <input 
+                                              type="checkbox" 
+                                              className="hidden"
+                                              checked={isSelected}
+                                              onChange={(e) => {
+                                                const current = Array.isArray(form.categories) ? [...form.categories].map(String) : [];
+                                                if (e.target.checked) setForm({ ...form, categories: [...current, catId] });
+                                                else setForm({ ...form, categories: current.filter(id => id !== catId) });
+                                              }}
+                                            />
+                                            <span className={`text-sm font-bold ${isSelected ? 'text-strawberry' : 'text-chocolate'}`}>{c.name}</span>
+                                          </label>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                  {isCategoryDropdownOpen && <div className="fixed inset-0 z-40" onClick={() => setIsCategoryDropdownOpen(false)} />}
+                                </div>
+  
 							</div>
 
 							<div className="space-y-2 group">

@@ -1,17 +1,15 @@
-import { Plus, Search, Edit, Trash2, X, Circle, FileText, Info, RefreshCw, LayoutGrid } from "lucide-react";
+import { Plus, Search, Edit, Trash2, X, Boxes, FileText, Info, RefreshCw, LayoutGrid, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../services/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { toast } from "sonner";
 
 type Shape = {
 	id: string | number;
 	name: string;
-	shapeType: string;
 	description?: string;
-  category?: { _id: string; name: string } | string;
+  categories?: any[];
 };
 
 type Category = {
@@ -22,7 +20,7 @@ type Category = {
 const emptyForm: Partial<Shape> = {
 	name: "",
 	description: "",
-  category: "",
+  categories: [],
 };
 
 const Shapes = () => {
@@ -35,7 +33,9 @@ const Shapes = () => {
 	const [form, setForm] = useState<Partial<Shape>>(emptyForm);
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | number>("All");
 
 	const sanitizeName = (n?: string) => (n || "").replace(/\(\s*\)/g, "").trim();
 
@@ -48,9 +48,8 @@ const Shapes = () => {
 				const normalized = (raw || []).map((s: any) => ({
 					id: s._id || s.id,
 					name: sanitizeName(s.name),
-					shapeType: s.shapeType || 'round',
 					description: s.description || "",
-          category: s.category,
+          categories: s.categories ? s.categories.map((cat:any)=>cat._id||cat) : (s.category ? [s.category._id || s.category] : []),
 				}));
 				setShapes(normalized);
 			})
@@ -64,7 +63,8 @@ const Shapes = () => {
   const fetchCategories = () => {
     api.categories.getAll()
       .then((res: any) => {
-        setCategories(res || []);
+        const raw = Array.isArray(res) ? res : res && (res.data || res) ? res.data : [];
+        setCategories(raw || []);
       })
       .catch(() => {
         toast.error("Failed to load categories");
@@ -86,8 +86,8 @@ const Shapes = () => {
 	const openEdit = (s: Shape) => {
 		setForm({ 
       name: s.name, 
-      description: s.description,
-      category: (typeof s.category === 'object' && s.category !== null) ? s.category._id : (s.category as string || "")
+      description: s.description, 
+      categories: s.categories || []
     });
 		setEditingId(String(s.id));
 		setErrors({});
@@ -99,6 +99,7 @@ const Shapes = () => {
 		setForm(emptyForm);
 		setEditingId(null);
 		setErrors({});
+    setIsCategoryDropdownOpen(false);
 	};
 
 	const validate = () => {
@@ -116,8 +117,8 @@ const Shapes = () => {
 		setLoading(true);
 		const payload = { 
       name: sanitizeName(form.name), 
-      description: form.description || "" ,
-      category: form.category === "none" ? null : (form.category || null)
+      description: form.description || "",
+      categories: form.categories || []
     };
 
 		try {
@@ -151,11 +152,12 @@ const Shapes = () => {
 		}
 	};
 
-	const filteredShapes = shapes.filter(s => 
-		s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-		s.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (typeof s.category === 'object' && s.category !== null && s.category.name.toLowerCase().includes(searchQuery.toLowerCase()))
-	);
+	const filteredShapes = shapes.filter(s => {
+		const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			s.description?.toLowerCase().includes(searchQuery.toLowerCase());
+		const matchesCategory = selectedCategoryId === "All" || (s.categories && s.categories.some((catId:any) => String(catId._id||catId) === String(selectedCategoryId)));
+		return matchesSearch && matchesCategory;
+	});
 
 	return (
 		<div className="space-y-8 animate-in fade-in duration-700 font-lora">
@@ -163,7 +165,7 @@ const Shapes = () => {
 				<div>
 					<h2 className="text-4xl font-bold font-dancing text-chocolate">Shapes</h2>
 					<p className="text-sm text-chocolate-light font-medium mt-1">
-						Manage the different forms and physical structures of your products.
+						Manage the visual forms and structural layouts for your products.
 					</p>
 				</div>
 				<div className="flex items-center gap-4">
@@ -193,6 +195,42 @@ const Shapes = () => {
 				</div>
 			</div>
 
+      {/* ── Filter Section (Category Buttons) ────────────────────── */}
+      <div className="bg-white/40 backdrop-blur-sm p-6 rounded-[2.5rem] border border-chocolate/5 space-y-4">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-1 h-4 bg-strawberry rounded-full" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-chocolate/40">Select Category</span>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => setSelectedCategoryId("All")}
+            className={`px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 border ${
+              selectedCategoryId === "All"
+                ? 'bg-chocolate text-white border-chocolate shadow-bakery shadow-chocolate/20 scale-105'
+                : 'bg-white text-chocolate/60 border-chocolate/10 hover:border-strawberry/30 hover:text-strawberry hover:bg-white'
+            }`}
+          >
+            All
+          </button>
+          {categories.map((cat) => {
+            const isActive = String(selectedCategoryId) === String(cat._id);
+            return (
+              <button
+                key={cat._id}
+                onClick={() => setSelectedCategoryId(cat._id)}
+                className={`px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 border ${
+                  isActive
+                    ? 'bg-chocolate text-white border-chocolate shadow-bakery shadow-chocolate/20 scale-105'
+                    : 'bg-white text-chocolate/60 border-chocolate/10 hover:border-strawberry/30 hover:text-strawberry hover:bg-white'
+                }`}
+              >
+                {cat.name}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
 			<div className="bg-white/60 backdrop-blur-md rounded-[2.5rem] border border-chocolate/5 shadow-bakery overflow-hidden">
 				<Table>
 					<TableHeader className="bg-cream/30">
@@ -213,18 +251,19 @@ const Shapes = () => {
 									</div>
 								</TableCell>
 								<TableCell className="py-6">
-									<span className="font-bold text-chocolate text-lg tracking-tight group-hover:text-strawberry transition-colors">
+									<span className="font-bold text-chocolate text-lg tracking-tight group-hover:text-strawberry transition-colors leading-none">
 										{shape.name}
 									</span>
 								</TableCell>
                 <TableCell className="py-6">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-strawberry/10 text-strawberry flex items-center justify-center">
-                      <LayoutGrid size={12} />
-                    </div>
-                    <span className="font-bold text-chocolate/60 text-sm">
-                      {typeof shape.category === 'object' && shape.category !== null ? shape.category.name : "Uncategorized"}
-                    </span>
+                  <div className="flex flex-wrap gap-1">
+                    {(shape.categories && shape.categories.length > 0) ? shape.categories.map((cId: any) => (
+                      <span key={cId} className="px-3 py-1 bg-chocolate/5 rounded-full border border-chocolate/5 text-[10px] font-bold uppercase tracking-widest text-chocolate/40 italic">
+                        {categories.find(cat => String(cat._id) === String(cId))?.name || 'Unassigned'}
+                      </span>
+                    )) : (
+                      <span className="text-chocolate/20 text-[10px] italic">Not Tagged</span>
+                    )}
                   </div>
                 </TableCell>
 								<TableCell className="py-6 hidden md:table-cell max-w-md">
@@ -252,11 +291,11 @@ const Shapes = () => {
 						))}
 					</TableBody>
 				</Table>
-				
+
 				{filteredShapes.length === 0 && !loading && (
 					<div className="py-24 text-center space-y-4 bg-white/40">
 						<div className="w-16 h-16 bg-chocolate/5 rounded-full flex items-center justify-center mx-auto text-chocolate/10">
-							<Circle size={32} />
+							<Boxes size={32} />
 						</div>
 						<p className="text-chocolate-light font-medium italic">No shapes found in the archives.</p>
 					</div>
@@ -269,14 +308,14 @@ const Shapes = () => {
 						<div className="absolute top-0 right-0 w-48 h-48 bg-strawberry/5 rounded-full -mr-24 -mt-24 blur-3xl" />
 						<div className="relative flex items-center gap-6">
 							<div className="w-14 h-14 rounded-2xl bg-chocolate text-white flex items-center justify-center shadow-bakery transform rotate-3 hover:rotate-0 transition-transform">
-								<Circle size={24} />
+								<Boxes size={24} />
 							</div>
 							<div>
 								<DialogTitle className="text-3xl font-bold text-chocolate font-dancing">
 									{editingId ? "Edit Shape" : "Add New Shape"}
 								</DialogTitle>
 								<DialogDescription className="text-chocolate-light font-medium mt-1">
-									{editingId ? "Update the name and details for this shape." : "Add a new shape classification for your cakes."}
+									{editingId ? "Update the name and details for this shape form." : "Add a new creative shape for your products."}
 								</DialogDescription>
 							</div>
 						</div>
@@ -287,12 +326,12 @@ const Shapes = () => {
 							<div className="space-y-2 group">
 								<label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Shape Name</label>
 								<div className="relative">
-									<Circle size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
+									<LayoutGrid size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
 									<input 
 										required
 										value={form.name || ""} 
 										onChange={(e) => setForm({ ...form, name: e.target.value })} 
-										placeholder="e.g. Round Shape"
+										placeholder="e.g. Heart Shaped"
 										className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium placeholder:text-chocolate/10"
 									/>
 								</div>
@@ -300,27 +339,53 @@ const Shapes = () => {
 							</div>
 
               <div className="space-y-2 group">
-                <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Category</label>
+								<label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Category</label>
+								
                 <div className="relative">
-                  <LayoutGrid size={18} className="absolute left-4 top-1/2 -translate-y-1/2 z-10 text-chocolate/20 group-focus-within:text-strawberry transition-colors pointer-events-none" />
-                  <Select
-                    value={(form.category as string) || ""}
-                    onValueChange={(val) => setForm({ ...form, category: val })}
+                  <div 
+                    className="w-full p-4 h-auto bg-white border border-chocolate/10 focus-within:border-strawberry focus-within:ring-8 focus-within:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-bold text-chocolate italic cursor-pointer flex justify-between items-center"
+                    onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
                   >
-                    <SelectTrigger className="w-full pl-12 pr-6 py-4 h-auto bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-bold text-chocolate italic tracking-wide group">
-                      <SelectValue placeholder="Select Category (Optional)" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-2xl border-chocolate/10 shadow-bakery-xl font-lora">
-                      <SelectItem value="none" className="focus:bg-strawberry/5 focus:text-strawberry py-3 italic">None</SelectItem>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat._id} value={cat._id} className="focus:bg-strawberry/5 focus:text-strawberry py-3">
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <span className="truncate flex-1 text-left">
+                      {form.categories && form.categories.length > 0 
+                        ? form.categories.map((id:any) => categories.find(c => String(c._id) === String(id))?.name || id).join(', ')
+                        : "Select Categories"}
+                    </span>
+                    <ChevronRight className={`w-4 h-4 transition-transform ${isCategoryDropdownOpen ? 'rotate-90' : ''}`} />
+                  </div>
+                  
+                  {isCategoryDropdownOpen && (
+                    <div className="absolute z-50 w-full mt-2 bg-white border border-chocolate/10 rounded-2xl shadow-bakery-xl max-h-60 overflow-y-auto p-2">
+                      {categories.length === 0 ? (
+                        <div className="p-3 text-sm text-chocolate/50 italic text-center">Loading or no categories...</div>
+                      ) : null}
+                      {categories.map((c) => {
+                        const catId = String(c._id);
+                        const isSelected = (form.categories || []).map(String).includes(catId);
+                        return (
+                          <label key={catId} className="flex items-center gap-3 p-3 hover:bg-strawberry/5 rounded-xl cursor-pointer transition-colors group">
+                            <div className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${isSelected ? 'bg-strawberry border-strawberry text-white' : 'border-chocolate/20 bg-white group-hover:border-strawberry/50'}`}>
+                              {isSelected && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+                            </div>
+                            <input 
+                              type="checkbox" 
+                              className="hidden"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                const current = Array.isArray(form.categories) ? [...form.categories].map(String) : [];
+                                if (e.target.checked) setForm({ ...form, categories: [...current, catId] });
+                                else setForm({ ...form, categories: current.filter(id => id !== catId) });
+                              }}
+                            />
+                            <span className={`text-sm font-bold ${isSelected ? 'text-strawberry' : 'text-chocolate'}`}>{c.name}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {isCategoryDropdownOpen && <div className="fixed inset-0 z-40" onClick={() => setIsCategoryDropdownOpen(false)} />}
                 </div>
-              </div>
+							</div>
 
 							<div className="space-y-2 group">
 								<label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Description</label>
@@ -329,7 +394,7 @@ const Shapes = () => {
 									<textarea 
 										value={form.description || ""} 
 										onChange={(e) => setForm({ ...form, description: e.target.value })} 
-										placeholder="Enter details for this shape..."
+										placeholder="Enter details for this shape profile..."
 										className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium min-h-[120px] resize-none leading-relaxed italic"
 									/>
 								</div>

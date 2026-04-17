@@ -1,77 +1,97 @@
-import { Plus, Search, Edit, Trash2, X, Tag, FileText, Info, RefreshCw, Boxes } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Plus, Search, Edit, Trash2, X, Sparkles, FileText, Info, RefreshCw, LayoutGrid, ChevronRight } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
 import { api } from "../services/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { toast } from "sonner";
 
-type TypeItem = {
+type Type = {
 	id: string | number;
 	name: string;
 	description?: string;
-	category?: string | number | { _id: string; name: string };
+  categories?: any[];
 };
 
-const emptyForm: Partial<TypeItem> = {
+type Category = {
+  _id: string;
+  name: string;
+};
+
+const emptyForm: Partial<Type> = {
 	name: "",
 	description: "",
-	category: "",
+  categories: [],
 };
 
 const Types = () => {
-	const [items, setItems] = useState<TypeItem[]>([]);
+	const [types, setTypes] = useState<Type[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const [filterSelectedCategoryId, setFilterSelectedCategoryId] = useState<string | number>("All");
 
 	const [showModal, setShowModal] = useState(false);
-	const [form, setForm] = useState<Partial<TypeItem>>(emptyForm);
+	const [form, setForm] = useState<Partial<Type>>(emptyForm);
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | number>("All");
 
-	const [categories, setCategories] = useState<{ id: string | number; name: string }[]>([]);
-	const [categoriesLoading, setCategoriesLoading] = useState(false);
+	const sanitizeName = (n?: string) => (n || "").replace(/\(\s*\)/g, "").trim();
 
-	const fetchCategories = () => {
-		setCategoriesLoading(true);
-		api.categories
-			.getAll()
-			.then((res: any) => {
-				const raw = Array.isArray(res) ? res : res && (res.data || res) ? res.data : [];
-				const list = (raw || []).map((c: any) => ({ id: c._id || c.id, name: c.name }));
-				setCategories(list);
-			})
-			.catch(() => setCategories([]))
-			.finally(() => setCategoriesLoading(false));
-	};
-
-	const fetchTypes = () => {
+	const fetchTypes = useCallback(() => {
 		setLoading(true);
 		api.types
 			.getAll()
-			.then((res: any) => {
-				const raw = Array.isArray(res) ? res : res && (res.data || res) ? res.data : [];
-				const normalized = (raw || []).map((t: any) => ({
-					id: t._id || t.id,
-					name: t.name,
-					description: t.description || "",
-					category: t.category?._id || t.category || undefined,
-				}));
-				setItems(normalized);
+			.then((res: unknown) => {
+				let rawArr: unknown[] = [];
+				if (Array.isArray(res)) {
+					rawArr = res as unknown[];
+				} else if (res && typeof res === "object") {
+					const maybeData = (res as Record<string, unknown>)["data"];
+					if (Array.isArray(maybeData)) rawArr = maybeData;
+				}
+
+				const normalized = (rawArr || []).map((t: unknown) => {
+					const obj = t as Record<string, unknown>;
+					const id = obj["_id"] ?? obj["id"] ?? undefined;
+					const name = sanitizeName(String(obj["name"] ?? ""));
+					const description = String(obj["description"] ?? "");
+          
+          let categoriesIds = [];
+          if (Array.isArray(obj["categories"])) {
+            categoriesIds = obj["categories"].map((cat: any) => cat._id || cat);
+          } else if (obj["category"]) {
+            categoriesIds = [(obj["category"] as any)._id || obj["category"]];
+          }
+
+					return { id, name, description, categories: categoriesIds };
+				});
+				setTypes(normalized as Type[]);
 			})
-			.catch((err: any) => {
+			.catch((err: unknown) => {
+				const msg = err instanceof Error ? err.message : String(err);
 				toast.error("Failed to load types");
-				setError(err?.message || "Failed to load types");
+				setError(msg || "Failed to load types");
 			})
 			.finally(() => setLoading(false));
-	};
+	}, []);
+
+  const fetchCategories = useCallback(() => {
+    api.categories.getAll()
+      .then((res: any) => {
+        const raw = Array.isArray(res) ? res : res && (res.data || res) ? res.data : [];
+        setCategories(raw || []);
+      })
+      .catch(() => {
+        toast.error("Failed to load categories");
+      });
+  }, []);
 
 	useEffect(() => {
 		fetchTypes();
-		fetchCategories();
-	}, []);
+    fetchCategories();
+	}, [fetchTypes, fetchCategories]);
 
 	const openAdd = () => {
 		setForm(emptyForm);
@@ -80,12 +100,12 @@ const Types = () => {
 		setShowModal(true);
 	};
 
-	const openEdit = (t: TypeItem) => {
+	const openEdit = (t: Type) => {
 		setForm({ 
-			name: t.name, 
-			description: t.description, 
-			category: (t.category as any)?._id || t.category || "" 
-		});
+      name: t.name, 
+      description: t.description, 
+      categories: t.categories || []
+    });
 		setEditingId(String(t.id));
 		setErrors({});
 		setShowModal(true);
@@ -96,6 +116,7 @@ const Types = () => {
 		setForm(emptyForm);
 		setEditingId(null);
 		setErrors({});
+    setIsCategoryDropdownOpen(false);
 	};
 
 	const validate = () => {
@@ -111,11 +132,11 @@ const Types = () => {
 		if (Object.keys(v).length) return;
 
 		setLoading(true);
-		const payload: any = { 
-			name: form.name, 
-			description: form.description || "" 
-		};
-		if (form.category) payload.category = form.category;
+		const payload = { 
+      name: sanitizeName(form.name), 
+      description: form.description || "" ,
+      categories: form.categories || []
+    };
 
 		try {
 			if (editingId) {
@@ -127,7 +148,7 @@ const Types = () => {
 			}
 			fetchTypes();
 			closeModal();
-		} catch (err: any) {
+		} catch (err: unknown) {
 			toast.error("Failed to save type");
 		} finally {
 			setLoading(false);
@@ -139,19 +160,19 @@ const Types = () => {
 		setLoading(true);
 		try {
 			await api.types.delete(id);
-			setItems((prev) => prev.filter((c) => String(c.id) !== String(id)));
+			setTypes((prev) => prev.filter((c) => String(c.id) !== String(id)));
 			toast.success("Type deleted.");
-		} catch (err: any) {
+		} catch (err: unknown) {
 			toast.error("Failed to delete type");
 		} finally {
 			setLoading(false);
 		}
 	};
 
-	const filteredItems = items.filter(item => {
-		const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			item.description?.toLowerCase().includes(searchQuery.toLowerCase());
-		const matchesCategory = filterSelectedCategoryId === "All" || String(item.category) === String(filterSelectedCategoryId);
+	const filteredTypes = types.filter(t => {
+		const matchesSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			t.description?.toLowerCase().includes(searchQuery.toLowerCase());
+		const matchesCategory = selectedCategoryId === "All" || (t.categories && t.categories.some((catId:any) => String(catId._id||catId) === String(selectedCategoryId)));
 		return matchesSearch && matchesCategory;
 	});
 
@@ -161,7 +182,7 @@ const Types = () => {
 				<div>
 					<h2 className="text-4xl font-bold font-dancing text-chocolate">Types</h2>
 					<p className="text-sm text-chocolate-light font-medium mt-1">
-						Manage the different classifications of your products.
+						Manage the different classifications and styles for your bakery items.
 					</p>
 				</div>
 				<div className="flex items-center gap-4">
@@ -191,41 +212,41 @@ const Types = () => {
 				</div>
 			</div>
 
-			{/* ── Filter Section (Category Buttons) ────────────────────── */}
-			<div className="bg-white/40 backdrop-blur-sm p-6 rounded-[2.5rem] border border-chocolate/5 space-y-4">
-				<div className="flex items-center gap-2 mb-2">
-					<div className="w-1 h-4 bg-strawberry rounded-full" />
-					<span className="text-[10px] font-bold uppercase tracking-[0.2em] text-chocolate/40">Select Category</span>
-				</div>
-				<div className="flex flex-wrap gap-3">
-					<button
-						onClick={() => setFilterSelectedCategoryId("All")}
-						className={`px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 border ${
-							filterSelectedCategoryId === "All"
-								? 'bg-chocolate text-white border-chocolate shadow-bakery shadow-chocolate/20 scale-105'
-								: 'bg-white text-chocolate/60 border-chocolate/10 hover:border-strawberry/30 hover:text-strawberry hover:bg-white'
-						}`}
-					>
-						All
-					</button>
-					{categories.map((cat) => {
-						const isActive = String(filterSelectedCategoryId) === String(cat.id);
-						return (
-							<button
-								key={cat.id}
-								onClick={() => setFilterSelectedCategoryId(cat.id)}
-								className={`px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 border ${
-									isActive
-										? 'bg-chocolate text-white border-chocolate shadow-bakery shadow-chocolate/20 scale-105'
-										: 'bg-white text-chocolate/60 border-chocolate/10 hover:border-strawberry/30 hover:text-strawberry hover:bg-white'
-								}`}
-							>
-								{cat.name}
-							</button>
-						);
-					})}
-				</div>
-			</div>
+      {/* ── Filter Section (Category Buttons) ────────────────────── */}
+      <div className="bg-white/40 backdrop-blur-sm p-6 rounded-[2.5rem] border border-chocolate/5 space-y-4">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-1 h-4 bg-strawberry rounded-full" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-chocolate/40">Select Category</span>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => setSelectedCategoryId("All")}
+            className={`px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 border ${
+              selectedCategoryId === "All"
+                ? 'bg-chocolate text-white border-chocolate shadow-bakery shadow-chocolate/20 scale-105'
+                : 'bg-white text-chocolate/60 border-chocolate/10 hover:border-strawberry/30 hover:text-strawberry hover:bg-white'
+            }`}
+          >
+            All
+          </button>
+          {categories.map((cat) => {
+            const isActive = String(selectedCategoryId) === String(cat._id);
+            return (
+              <button
+                key={cat._id}
+                onClick={() => setSelectedCategoryId(cat._id)}
+                className={`px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 border ${
+                  isActive
+                    ? 'bg-chocolate text-white border-chocolate shadow-bakery shadow-chocolate/20 scale-105'
+                    : 'bg-white text-chocolate/60 border-chocolate/10 hover:border-strawberry/30 hover:text-strawberry hover:bg-white'
+                }`}
+              >
+                {cat.name}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
 			<div className="bg-white/60 backdrop-blur-md rounded-[2.5rem] border border-chocolate/5 shadow-bakery overflow-hidden">
 				<Table>
@@ -233,48 +254,50 @@ const Types = () => {
 						<TableRow className="border-chocolate/5 hover:bg-transparent">
 							<TableHead className="w-20 pl-8 h-16 font-bold text-chocolate italic uppercase tracking-widest text-[10px]">Icon</TableHead>
 							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px]">Type Name</TableHead>
-							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px] hidden md:table-cell">Description</TableHead>
 							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px]">Category</TableHead>
+							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px] hidden md:table-cell">Description</TableHead>
 							<TableHead className="pr-8 h-16 font-bold text-chocolate italic uppercase tracking-widest text-[10px] text-right">Actions</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody className="no-scrollbar">
-						{filteredItems.map((item) => (
-							<TableRow key={item.id} className="group border-chocolate/5 hover:bg-cream/20 transition-colors">
+						{filteredTypes.map((type) => (
+							<TableRow key={type.id} className="group border-chocolate/5 hover:bg-cream/20 transition-colors">
 								<TableCell className="pl-8 py-6">
-									<div className="w-12 h-12 rounded-xl bg-chocolate text-white flex items-center justify-center font-dancing font-bold text-xl shadow-sm transform group-hover:rotate-12 transition-transform duration-300">
-										{String(item.name).charAt(0)}
+									<div className="w-12 h-12 rounded-xl bg-chocolate text-white flex items-center justify-center font-dancing font-bold text-xl shadow-sm transform group-hover:rotate-3 transition-transform duration-300">
+										{String(type.name).charAt(0)}
 									</div>
 								</TableCell>
 								<TableCell className="py-6">
-									<span className="font-bold text-chocolate text-lg tracking-tight group-hover:text-strawberry transition-colors">
-										{item.name}
+									<span className="font-bold text-chocolate text-lg tracking-tight group-hover:text-strawberry transition-colors leading-none">
+										{type.name}
 									</span>
 								</TableCell>
+                <TableCell className="py-6">
+                  <div className="flex flex-wrap gap-1">
+                    {(type.categories && type.categories.length > 0) ? type.categories.map((cId: any) => (
+                      <span key={cId} className="px-3 py-1 bg-chocolate/5 rounded-full border border-chocolate/5 text-[10px] font-bold uppercase tracking-widest text-chocolate/40 italic">
+                        {categories.find(cat => String(cat._id) === String(cId))?.name || 'Unassigned'}
+                      </span>
+                    )) : (
+                      <span className="text-chocolate/20 text-[10px] italic">Not Tagged</span>
+                    )}
+                  </div>
+                </TableCell>
 								<TableCell className="py-6 hidden md:table-cell max-w-md">
 									<p className="text-sm text-chocolate/40 font-medium italic line-clamp-1 leading-relaxed">
-										{item.description || "No description provided."}
+										{type.description || "No description provided."}
 									</p>
-								</TableCell>
-								<TableCell className="py-6">
-									{item.category ? (
-										<span className="px-3 py-1 bg-chocolate/5 rounded-full border border-chocolate/5 text-[10px] font-bold uppercase tracking-widest text-chocolate/40 italic">
-											{categories.find(c => String(c.id) === String(item.category))?.name || 'Unassigned'}
-										</span>
-									) : (
-										<span className="text-chocolate/20 text-[10px] italic">Not Tagged</span>
-									)}
 								</TableCell>
 								<TableCell className="py-6 pr-8 text-right">
 									<div className="flex items-center justify-end gap-2 shrink-0 transition-all">
 										<button
-											onClick={() => openEdit(item)}
+											onClick={() => openEdit(type)}
 											className="p-2.5 bg-white border border-chocolate/10 rounded-full text-chocolate hover:bg-chocolate hover:text-white transition-all shadow-sm"
 										>
 											<Edit size={14} />
 										</button>
 										<button
-											onClick={() => handleDelete(item.id)}
+											onClick={() => handleDelete(type.id)}
 											className="p-2.5 bg-white border border-red-100 rounded-full text-red-400 hover:bg-red-500 hover:text-white transition-all shadow-sm"
 										>
 											<Trash2 size={14} />
@@ -286,10 +309,10 @@ const Types = () => {
 					</TableBody>
 				</Table>
 				
-				{filteredItems.length === 0 && !loading && (
+				{filteredTypes.length === 0 && !loading && (
 					<div className="py-24 text-center space-y-4 bg-white/40">
 						<div className="w-16 h-16 bg-chocolate/5 rounded-full flex items-center justify-center mx-auto text-chocolate/10">
-							<Tag size={32} />
+							<Sparkles size={32} />
 						</div>
 						<p className="text-chocolate-light font-medium italic">No types found in the archives.</p>
 					</div>
@@ -301,15 +324,15 @@ const Types = () => {
 					<DialogHeader className="p-8 bg-white border-b border-chocolate/5 relative overflow-hidden">
 						<div className="absolute top-0 right-0 w-48 h-48 bg-strawberry/5 rounded-full -mr-24 -mt-24 blur-3xl" />
 						<div className="relative flex items-center gap-6">
-							<div className="w-14 h-14 rounded-2xl bg-chocolate text-white flex items-center justify-center shadow-bakery transform rotate-12 hover:rotate-0 transition-transform">
-								<Tag size={24} />
+							<div className="w-14 h-14 rounded-2xl bg-chocolate text-white flex items-center justify-center shadow-bakery transform rotate-3 hover:rotate-0 transition-transform">
+								<Sparkles size={24} />
 							</div>
 							<div>
 								<DialogTitle className="text-3xl font-bold text-chocolate font-dancing">
 									{editingId ? "Edit Type" : "Add New Type"}
 								</DialogTitle>
 								<DialogDescription className="text-chocolate-light font-medium mt-1">
-									{editingId ? "Update the details for this type." : "Add a new product type classification."}
+									{editingId ? "Update the name and details for this type." : "Add a new creative type for your products."}
 								</DialogDescription>
 							</div>
 						</div>
@@ -320,36 +343,65 @@ const Types = () => {
 							<div className="space-y-2 group">
 								<label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Type Name</label>
 								<div className="relative">
-									<Tag size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
+									<Sparkles size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-chocolate/20 group-focus-within:text-strawberry transition-colors" />
 									<input 
 										required
 										value={form.name || ""} 
 										onChange={(e) => setForm({ ...form, name: e.target.value })} 
-										placeholder="e.g. Cookies"
+										placeholder="e.g. Tea Cake"
 										className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium placeholder:text-chocolate/10"
 									/>
 								</div>
 								{errors.name && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.name}</p>}
 							</div>
 
-							<div className="space-y-2 group">
+              <div className="space-y-2 group">
 								<label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Category</label>
-								<Select
-									value={form.category?.toString()}
-									onValueChange={(val) => setForm({ ...form, category: val })}
-								>
-									<SelectTrigger className="w-full p-6 h-auto bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-bold text-chocolate italic group">
-										<div className="flex items-center gap-2">
-											<Boxes size={18} className="text-chocolate/20 group-hover:text-strawberry transition-colors" />
-											<SelectValue placeholder={categoriesLoading ? 'Loading Categories...' : 'Select Category'} />
-										</div>
-									</SelectTrigger>
-									<SelectContent className="rounded-2xl border-chocolate/10 shadow-bakery-xl font-lora">
-										{categories.map((c) => (
-											<SelectItem key={c.id} value={c.id.toString()} className="focus:bg-strawberry/5 focus:text-strawberry py-3">{c.name}</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
+								
+                <div className="relative">
+                  <div 
+                    className="w-full p-4 h-auto bg-white border border-chocolate/10 focus-within:border-strawberry focus-within:ring-8 focus-within:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-bold text-chocolate italic cursor-pointer flex justify-between items-center"
+                    onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                  >
+                    <span className="truncate flex-1 text-left">
+                      {form.categories && form.categories.length > 0 
+                        ? form.categories.map((id:any) => categories.find(c => String(c._id) === String(id))?.name || id).join(', ')
+                        : "Select Categories"}
+                    </span>
+                    <ChevronRight className={`w-4 h-4 transition-transform ${isCategoryDropdownOpen ? 'rotate-90' : ''}`} />
+                  </div>
+                  
+                  {isCategoryDropdownOpen && (
+                    <div className="absolute z-50 w-full mt-2 bg-white border border-chocolate/10 rounded-2xl shadow-bakery-xl max-h-60 overflow-y-auto p-2">
+                      {categories.length === 0 ? (
+                        <div className="p-3 text-sm text-chocolate/50 italic text-center">Loading or no categories...</div>
+                      ) : null}
+                      {categories.map((c) => {
+                        const catId = String(c._id);
+                        const isSelected = (form.categories || []).map(String).includes(catId);
+                        return (
+                          <label key={catId} className="flex items-center gap-3 p-3 hover:bg-strawberry/5 rounded-xl cursor-pointer transition-colors group">
+                            <div className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${isSelected ? 'bg-strawberry border-strawberry text-white' : 'border-chocolate/20 bg-white group-hover:border-strawberry/50'}`}>
+                              {isSelected && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+                            </div>
+                            <input 
+                              type="checkbox" 
+                              className="hidden"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                const current = Array.isArray(form.categories) ? [...form.categories].map(String) : [];
+                                if (e.target.checked) setForm({ ...form, categories: [...current, catId] });
+                                else setForm({ ...form, categories: current.filter(id => id !== catId) });
+                              }}
+                            />
+                            <span className={`text-sm font-bold ${isSelected ? 'text-strawberry' : 'text-chocolate'}`}>{c.name}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {isCategoryDropdownOpen && <div className="fixed inset-0 z-40" onClick={() => setIsCategoryDropdownOpen(false)} />}
+                </div>
 							</div>
 
 							<div className="space-y-2 group">
@@ -359,7 +411,7 @@ const Types = () => {
 									<textarea 
 										value={form.description || ""} 
 										onChange={(e) => setForm({ ...form, description: e.target.value })} 
-										placeholder="Enter the description..."
+										placeholder="Enter details for this type..."
 										className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium min-h-[120px] resize-none leading-relaxed italic"
 									/>
 								</div>

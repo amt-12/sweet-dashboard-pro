@@ -1,8 +1,7 @@
-import { Plus, Search, Edit, Trash2, X, Sparkles, FileText, Info, RefreshCw, LayoutGrid } from "lucide-react";
-import { useEffect, useState, useCallback } from "react";
+import { Plus, Search, Edit, Trash2, X, Sparkles, FileText, Info, RefreshCw, Layers, ChevronRight, Tag } from "lucide-react";
+import { useEffect, useState } from "react";
 import { api } from "../services/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { toast } from "sonner";
 
@@ -10,8 +9,8 @@ type Theme = {
 	id: string | number;
 	name: string;
 	description?: string;
-	subthemes?: string[];
-  category?: { _id: string; name: string } | string;
+  subThemes?: string[];
+  categories?: any[];
 };
 
 type Category = {
@@ -22,8 +21,8 @@ type Category = {
 const emptyForm: Partial<Theme> = {
 	name: "",
 	description: "",
-	subthemes: [],
-  category: "",
+  subThemes: [],
+  categories: [],
 };
 
 const Themes = () => {
@@ -34,69 +33,52 @@ const Themes = () => {
 
 	const [showModal, setShowModal] = useState(false);
 	const [form, setForm] = useState<Partial<Theme>>(emptyForm);
+  const [newSubTheme, setNewSubTheme] = useState("");
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | number>("All");
 
 	const sanitizeName = (n?: string) => (n || "").replace(/\(\s*\)/g, "").trim();
-	const sanitizeSub = (s?: string) => (s || "").trim();
 
-	const fetchThemes = useCallback(() => {
+	const fetchThemes = () => {
 		setLoading(true);
 		api.themes
 			.getAll()
-			.then((res: unknown) => {
-				let rawArr: unknown[] = [];
-				if (Array.isArray(res)) {
-					rawArr = res as unknown[];
-				} else if (res && typeof res === "object") {
-					const maybeData = (res as Record<string, unknown>)["data"];
-					if (Array.isArray(maybeData)) rawArr = maybeData;
-				}
-
-				const normalized = (rawArr || []).map((t: unknown) => {
-					const obj = t as Record<string, unknown>;
-					const id = obj["_id"] ?? obj["id"] ?? undefined;
-					const name = sanitizeName(String(obj["name"] ?? ""));
-					const description = String(obj["description"] ?? "");
-          const category = obj["category"] as any;
-
-					let subthemes: string[] = [];
-					const candidateKeys = ["subthemes", "subThemes", "sub_themes"];
-					for (const k of candidateKeys) {
-						const val = obj[k];
-						if (Array.isArray(val)) {
-							subthemes = (val as unknown[]).map((s) => String(s ?? "").trim()).filter(Boolean);
-							break;
-						}
-					}
-
-					return { id, name, description, subthemes, category };
-				});
-				setThemes(normalized as Theme[]);
+			.then((res: any) => {
+				const raw = Array.isArray(res) ? res : res && (res.data || res) ? res.data : [];
+				const normalized = (raw || []).map((t: any) => ({
+					id: t._id || t.id,
+					name: sanitizeName(t.name),
+					description: t.description || "",
+          subThemes: Array.isArray(t.subThemes) ? t.subThemes : [],
+          categories: t.categories ? t.categories.map((cat:any)=>cat._id||cat) : (t.category ? [t.category._id || t.category] : []),
+				}));
+				setThemes(normalized);
 			})
-			.catch((err: unknown) => {
-				const msg = err instanceof Error ? err.message : String(err);
+			.catch((err: any) => {
 				toast.error("Failed to load themes");
-				setError(msg || "Failed to load themes");
+				setError(err?.message || "Failed to load themes");
 			})
 			.finally(() => setLoading(false));
-	}, []);
+	};
 
-  const fetchCategories = useCallback(() => {
+  const fetchCategories = () => {
     api.categories.getAll()
       .then((res: any) => {
-        setCategories(res || []);
+        const raw = Array.isArray(res) ? res : res && (res.data || res) ? res.data : [];
+        setCategories(raw || []);
       })
       .catch(() => {
         toast.error("Failed to load categories");
       });
-  }, []);
+  };
 
 	useEffect(() => {
 		fetchThemes();
     fetchCategories();
-	}, [fetchThemes, fetchCategories]);
+	}, []);
 
 	const openAdd = () => {
 		setForm(emptyForm);
@@ -109,8 +91,8 @@ const Themes = () => {
 		setForm({ 
       name: t.name, 
       description: t.description, 
-      subthemes: t.subthemes || [],
-      category: (typeof t.category === 'object' && t.category !== null) ? t.category._id : (t.category as string || "")
+      subThemes: t.subThemes || [],
+      categories: t.categories || []
     });
 		setEditingId(String(t.id));
 		setErrors({});
@@ -122,7 +104,22 @@ const Themes = () => {
 		setForm(emptyForm);
 		setEditingId(null);
 		setErrors({});
+    setNewSubTheme("");
+    setIsCategoryDropdownOpen(false);
 	};
+
+	const addSubTheme = () => {
+    if (!newSubTheme.trim()) return;
+    const current = form.subThemes || [];
+    if (!current.includes(newSubTheme.trim())) {
+      setForm({ ...form, subThemes: [...current, newSubTheme.trim()] });
+    }
+    setNewSubTheme("");
+  };
+
+  const removeSubTheme = (st: string) => {
+    setForm({ ...form, subThemes: (form.subThemes || []).filter(item => item !== st) });
+  };
 
 	const validate = () => {
 		const next: Record<string, string> = {};
@@ -137,12 +134,12 @@ const Themes = () => {
 		if (Object.keys(v).length) return;
 
 		setLoading(true);
-		const payload: any = { 
+		const payload = { 
       name: sanitizeName(form.name), 
       description: form.description || "",
-      category: form.category === "none" ? null : (form.category || null)
+      subThemes: form.subThemes || [],
+      categories: form.categories || []
     };
-		payload.subthemes = (form.subthemes || []).map((s) => sanitizeSub(s)).filter(Boolean);
 
 		try {
 			if (editingId) {
@@ -154,10 +151,8 @@ const Themes = () => {
 			}
 			fetchThemes();
 			closeModal();
-		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : String(err);
+		} catch (err: any) {
 			toast.error("Failed to save theme");
-			console.error(msg);
 		} finally {
 			setLoading(false);
 		}
@@ -170,41 +165,20 @@ const Themes = () => {
 			await api.themes.delete(id);
 			setThemes((prev) => prev.filter((c) => String(c.id) !== String(id)));
 			toast.success("Theme deleted.");
-		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : String(err);
+		} catch (err: any) {
 			toast.error("Failed to delete theme");
-			console.error(msg);
 		} finally {
 			setLoading(false);
 		}
 	};
 
-	const filteredThemes = themes.filter(t => 
-		t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-		t.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (typeof t.category === 'object' && t.category !== null && t.category.name.toLowerCase().includes(searchQuery.toLowerCase()))
-	);
-
-	// helpers to manage subthemes in the form
-	const addSubtheme = () => {
-		setForm((prev) => ({ ...(prev || {}), subthemes: [...(prev?.subthemes || []), ""] }));
-	};
-	const updateSubtheme = (index: number, value: string) => {
-		setForm((prev) => {
-			const next = { ...(prev || {}) } as Partial<Theme> & { subthemes?: string[] };
-			next.subthemes = [...(next.subthemes || [])];
-			next.subthemes[index] = value;
-			return next;
-		});
-	};
-	const removeSubtheme = (index: number) => {
-		setForm((prev) => {
-			const next = { ...(prev || {}) } as Partial<Theme> & { subthemes?: string[] };
-			next.subthemes = [...(next.subthemes || [])];
-			next.subthemes.splice(index, 1);
-			return next;
-		});
-	};
+	const filteredThemes = themes.filter(t => {
+		const matchesSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			t.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (t.subThemes && t.subThemes.some(st => st.toLowerCase().includes(searchQuery.toLowerCase())));
+		const matchesCategory = selectedCategoryId === "All" || (t.categories && t.categories.some((catId:any) => String(catId._id||catId) === String(selectedCategoryId)));
+		return matchesSearch && matchesCategory;
+	});
 
 	return (
 		<div className="space-y-8 animate-in fade-in duration-700 font-lora">
@@ -212,7 +186,7 @@ const Themes = () => {
 				<div>
 					<h2 className="text-4xl font-bold font-dancing text-chocolate">Themes</h2>
 					<p className="text-sm text-chocolate-light font-medium mt-1">
-						Manage artistic and creative themes for your specialty bakery.
+						Manage the artistic styles and visual concepts for your products.
 					</p>
 				</div>
 				<div className="flex items-center gap-4">
@@ -242,6 +216,42 @@ const Themes = () => {
 				</div>
 			</div>
 
+      {/* ── Filter Section (Category Buttons) ────────────────────── */}
+      <div className="bg-white/40 backdrop-blur-sm p-6 rounded-[2.5rem] border border-chocolate/5 space-y-4">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-1 h-4 bg-strawberry rounded-full" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-chocolate/40">Select Category</span>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => setSelectedCategoryId("All")}
+            className={`px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 border ${
+              selectedCategoryId === "All"
+                ? 'bg-chocolate text-white border-chocolate shadow-bakery shadow-chocolate/20 scale-105'
+                : 'bg-white text-chocolate/60 border-chocolate/10 hover:border-strawberry/30 hover:text-strawberry hover:bg-white'
+            }`}
+          >
+            All
+          </button>
+          {categories.map((cat) => {
+            const isActive = String(selectedCategoryId) === String(cat._id);
+            return (
+              <button
+                key={cat._id}
+                onClick={() => setSelectedCategoryId(cat._id)}
+                className={`px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 border ${
+                  isActive
+                    ? 'bg-chocolate text-white border-chocolate shadow-bakery shadow-chocolate/20 scale-105'
+                    : 'bg-white text-chocolate/60 border-chocolate/10 hover:border-strawberry/30 hover:text-strawberry hover:bg-white'
+                }`}
+              >
+                {cat.name}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
 			<div className="bg-white/60 backdrop-blur-md rounded-[2.5rem] border border-chocolate/5 shadow-bakery overflow-hidden">
 				<Table>
 					<TableHeader className="bg-cream/30">
@@ -249,7 +259,6 @@ const Themes = () => {
 							<TableHead className="w-20 pl-8 h-16 font-bold text-chocolate italic uppercase tracking-widest text-[10px]">Icon</TableHead>
 							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px]">Theme Name</TableHead>
 							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px]">Category</TableHead>
-							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px] hidden lg:table-cell">Subthemes</TableHead>
 							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px] hidden md:table-cell">Description</TableHead>
 							<TableHead className="pr-8 h-16 font-bold text-chocolate italic uppercase tracking-widest text-[10px] text-right">Actions</TableHead>
 						</TableRow>
@@ -266,31 +275,27 @@ const Themes = () => {
 									<span className="font-bold text-chocolate text-lg tracking-tight group-hover:text-strawberry transition-colors leading-none">
 										{theme.name}
 									</span>
+                  {theme.subThemes && theme.subThemes.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {theme.subThemes.map(st => (
+                        <span key={st} className="px-2 py-0.5 bg-strawberry/5 text-[9px] font-bold text-strawberry rounded-md uppercase tracking-tighter">
+                          {st}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 								</TableCell>
                 <TableCell className="py-6">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-strawberry/10 text-strawberry flex items-center justify-center">
-                      <LayoutGrid size={12} />
-                    </div>
-                    <span className="font-bold text-chocolate/60 text-sm">
-                      {typeof theme.category === 'object' && theme.category !== null ? theme.category.name : "Uncategorized"}
-                    </span>
+                  <div className="flex flex-wrap gap-1">
+                    {(theme.categories && theme.categories.length > 0) ? theme.categories.map((cId: any) => (
+                      <span key={cId} className="px-3 py-1 bg-chocolate/5 rounded-full border border-chocolate/5 text-[10px] font-bold uppercase tracking-widest text-chocolate/40 italic">
+                        {categories.find(cat => String(cat._id) === String(cId))?.name || 'Unassigned'}
+                      </span>
+                    )) : (
+                      <span className="text-chocolate/20 text-[10px] italic">Not Tagged</span>
+                    )}
                   </div>
                 </TableCell>
-								<TableCell className="py-6 hidden lg:table-cell">
-									{theme.subthemes && theme.subthemes.length > 0 ? (
-										<div className="flex flex-wrap gap-1.5">
-											{theme.subthemes.slice(0, 3).map((s, i) => (
-												<span key={i} className="text-[9px] bg-strawberry/10 text-strawberry px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">{s}</span>
-											))}
-											{theme.subthemes.length > 3 && (
-												<span className="text-[9px] text-chocolate/20 font-bold italic">+{theme.subthemes.length - 3} more</span>
-											)}
-										</div>
-									) : (
-										<span className="text-xs text-chocolate/20 italic">None</span>
-									)}
-								</TableCell>
 								<TableCell className="py-6 hidden md:table-cell max-w-md">
 									<p className="text-sm text-chocolate/40 font-medium italic line-clamp-1 leading-relaxed">
 										{theme.description || "No description provided."}
@@ -316,7 +321,7 @@ const Themes = () => {
 						))}
 					</TableBody>
 				</Table>
-				
+
 				{filteredThemes.length === 0 && !loading && (
 					<div className="py-24 text-center space-y-4 bg-white/40">
 						<div className="w-16 h-16 bg-chocolate/5 rounded-full flex items-center justify-center mx-auto text-chocolate/10">
@@ -333,14 +338,14 @@ const Themes = () => {
 						<div className="absolute top-0 right-0 w-48 h-48 bg-strawberry/5 rounded-full -mr-24 -mt-24 blur-3xl" />
 						<div className="relative flex items-center gap-6">
 							<div className="w-14 h-14 rounded-2xl bg-chocolate text-white flex items-center justify-center shadow-bakery transform rotate-3 hover:rotate-0 transition-transform">
-								<Sparkles size={24} />
+								<Layers size={24} />
 							</div>
 							<div>
 								<DialogTitle className="text-3xl font-bold text-chocolate font-dancing">
 									{editingId ? "Edit Theme" : "Add New Theme"}
 								</DialogTitle>
 								<DialogDescription className="text-chocolate-light font-medium mt-1">
-									{editingId ? "Update the name and details for this theme." : "Add a new creative theme for your products."}
+									{editingId ? "Update the name and properties for this theme style." : "Add a new creative theme concept to your products."}
 								</DialogDescription>
 							</div>
 						</div>
@@ -364,51 +369,81 @@ const Themes = () => {
 							</div>
 
               <div className="space-y-2 group">
-                <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Category</label>
+								<label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Category</label>
+								
                 <div className="relative">
-                  <LayoutGrid size={18} className="absolute left-4 top-1/2 -translate-y-1/2 z-10 text-chocolate/20 group-focus-within:text-strawberry transition-colors pointer-events-none" />
-                  <Select
-                    value={(form.category as string) || ""}
-                    onValueChange={(val) => setForm({ ...form, category: val })}
+                  <div 
+                    className="w-full p-4 h-auto bg-white border border-chocolate/10 focus-within:border-strawberry focus-within:ring-8 focus-within:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-bold text-chocolate italic cursor-pointer flex justify-between items-center"
+                    onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
                   >
-                    <SelectTrigger className="w-full pl-12 pr-6 py-4 h-auto bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-bold text-chocolate italic tracking-wide group">
-                      <SelectValue placeholder="Select Category (Optional)" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-2xl border-chocolate/10 shadow-bakery-xl font-lora">
-                      <SelectItem value="none" className="focus:bg-strawberry/5 focus:text-strawberry py-3 italic">None</SelectItem>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat._id} value={cat._id} className="focus:bg-strawberry/5 focus:text-strawberry py-3">
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <span className="truncate flex-1 text-left">
+                      {form.categories && form.categories.length > 0 
+                        ? form.categories.map((id:any) => categories.find(c => String(c._id) === String(id))?.name || id).join(', ')
+                        : "Select Categories"}
+                    </span>
+                    <ChevronRight className={`w-4 h-4 transition-transform ${isCategoryDropdownOpen ? 'rotate-90' : ''}`} />
+                  </div>
+                  
+                  {isCategoryDropdownOpen && (
+                    <div className="absolute z-50 w-full mt-2 bg-white border border-chocolate/10 rounded-2xl shadow-bakery-xl max-h-60 overflow-y-auto p-2">
+                      {categories.length === 0 ? (
+                        <div className="p-3 text-sm text-chocolate/50 italic text-center">Loading or no categories...</div>
+                      ) : null}
+                      {categories.map((c) => {
+                        const catId = String(c._id);
+                        const isSelected = (form.categories || []).map(String).includes(catId);
+                        return (
+                          <label key={catId} className="flex items-center gap-3 p-3 hover:bg-strawberry/5 rounded-xl cursor-pointer transition-colors group">
+                            <div className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${isSelected ? 'bg-strawberry border-strawberry text-white' : 'border-chocolate/20 bg-white group-hover:border-strawberry/50'}`}>
+                              {isSelected && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+                            </div>
+                            <input 
+                              type="checkbox" 
+                              className="hidden"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                const current = Array.isArray(form.categories) ? [...form.categories].map(String) : [];
+                                if (e.target.checked) setForm({ ...form, categories: [...current, catId] });
+                                else setForm({ ...form, categories: current.filter(id => id !== catId) });
+                              }}
+                            />
+                            <span className={`text-sm font-bold ${isSelected ? 'text-strawberry' : 'text-chocolate'}`}>{c.name}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {isCategoryDropdownOpen && <div className="fixed inset-0 z-40" onClick={() => setIsCategoryDropdownOpen(false)} />}
+                </div>
+							</div>
+
+              <div className="space-y-4">
+                <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Sub-Themes</label>
+                <div className="flex gap-2">
+                  <input
+                    value={newSubTheme}
+                    onChange={(e) => setNewSubTheme(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSubTheme())}
+                    placeholder="Add a sub-theme..."
+                    className="flex-1 px-6 py-3 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium placeholder:text-chocolate/10"
+                  />
+                  <button type="button" onClick={addSubTheme} className="p-3 bg-chocolate text-white rounded-xl hover:bg-strawberry transition-colors group">
+                    <Plus size={20} className="group-hover:rotate-90 transition-transform" />
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2 min-h-[40px] p-4 bg-chocolate/[0.02] rounded-2xl border border-dashed border-chocolate/10">
+                  {form.subThemes && form.subThemes.length > 0 ? form.subThemes.map(st => (
+                    <span key={st} className="flex items-center gap-2 px-4 py-2 bg-white border border-chocolate/10 rounded-full text-[11px] font-bold text-chocolate group hover:border-strawberry transition-all">
+                      {st}
+                      <button type="button" onClick={() => removeSubTheme(st)} className="text-chocolate/20 hover:text-red-500 transition-colors">
+                        <X size={14} />
+                      </button>
+                    </span>
+                  )) : (
+                    <span className="text-xs text-chocolate/20 italic mx-auto self-center">No sub-themes added yet.</span>
+                  )}
                 </div>
               </div>
-
-							{/* Subthemes block */}
-							<div className="space-y-2 group">
-								<label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Subthemes</label>
-								<div className="space-y-2">
-									{(form.subthemes || []).map((s, idx) => (
-										<div key={idx} className="flex items-center gap-2">
-											<input
-												value={s}
-												onChange={(e) => updateSubtheme(idx, e.target.value)}
-												placeholder={`Subtheme ${idx + 1}`}
-												className="flex-1 pl-4 pr-3 py-3 bg-white border border-chocolate/10 rounded-2xl text-sm outline-none transition-all font-medium"
-											/>
-											<button type="button" onClick={() => removeSubtheme(idx)} className="p-2 bg-red-50 text-red-400 rounded-full border border-red-100 hover:bg-red-500 hover:text-white transition-all">
-												<X size={14} />
-											</button>
-										</div>
-									))}
-									<button type="button" onClick={addSubtheme} className="mt-2 inline-flex items-center gap-2 px-4 py-2 bg-white border border-chocolate/10 rounded-full shadow-sm hover:bg-chocolate/5 transition-all">
-										<Plus size={14} />
-										<span className="text-xs font-bold uppercase tracking-wider">Add Subtheme</span>
-									</button>
-								</div>
-							</div>
 
 							<div className="space-y-2 group">
 								<label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Description</label>
@@ -417,8 +452,8 @@ const Themes = () => {
 									<textarea 
 										value={form.description || ""} 
 										onChange={(e) => setForm({ ...form, description: e.target.value })} 
-										placeholder="Enter details for this theme..."
-										className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium min-h-[120px] resize-none leading-relaxed italic"
+										placeholder="Describe the aesthetic and style..."
+										className="w-full pl-12 pr-6 py-4 bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-medium placeholder:text-chocolate/10 min-h-[120px] resize-none leading-relaxed italic"
 									/>
 								</div>
 							</div>

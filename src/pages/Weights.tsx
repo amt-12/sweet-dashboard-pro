@@ -1,4 +1,4 @@
-import { Plus, Search, Edit, Trash2, X, Scale, FileText, Hash, Info, RefreshCw, LayoutGrid } from "lucide-react";
+import { Plus, Search, Edit, Trash2, X, Scale, FileText, Hash, Info, RefreshCw, LayoutGrid, ChevronRight, Tag } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../services/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
@@ -12,7 +12,7 @@ type Weight = {
 	value?: number;
 	unit?: string;
 	description?: string;
-  category?: { _id: string; name: string } | string;
+  categories?: any[];
 };
 
 type Category = {
@@ -24,7 +24,7 @@ const emptyForm: Partial<Weight> = {
 	value: undefined,
 	unit: "g",
 	description: "",
-  category: "",
+  categories: [],
 };
 
 const Weights = () => {
@@ -37,7 +37,9 @@ const Weights = () => {
 	const [form, setForm] = useState<Partial<Weight>>(emptyForm);
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | number>("All");
 
 	const parseName = (name?: string) => {
 		if (!name) return { value: undefined as number | undefined, unit: 'g' };
@@ -61,7 +63,7 @@ const Weights = () => {
 						name,
 						description: w.description || "",
 						...parseName(name),
-            category: w.category,
+            categories: w.categories ? w.categories.map((cat:any)=>cat._id||cat) : (w.category ? [w.category._id || w.category] : []),
 					});
 				});
 				setWeights(normalized);
@@ -76,7 +78,8 @@ const Weights = () => {
   const fetchCategories = () => {
     api.categories.getAll()
       .then((res: any) => {
-        setCategories(res || []);
+        const raw = Array.isArray(res) ? res : res && (res.data || res) ? res.data : [];
+        setCategories(raw || []);
       })
       .catch(() => {
         toast.error("Failed to load categories");
@@ -101,7 +104,7 @@ const Weights = () => {
       value: parsed.value, 
       unit: parsed.unit, 
       description: w.description,
-      category: (typeof w.category === 'object' && w.category !== null) ? w.category._id : (w.category || "") 
+      categories: w.categories ? w.categories.map((c:any) => c._id || c) : []
     });
 		setEditingId(String(w.id));
 		setErrors({});
@@ -113,6 +116,7 @@ const Weights = () => {
 		setForm(emptyForm);
 		setEditingId(null);
 		setErrors({});
+    setIsCategoryDropdownOpen(false);
 	};
 
 	const validate = () => {
@@ -133,7 +137,7 @@ const Weights = () => {
 		const payload = { 
       name: composedName, 
       description: form.description || "",
-      category: form.category === "none" ? null : (form.category || null)
+      categories: form.categories || []
     };
 
 		try {
@@ -167,11 +171,12 @@ const Weights = () => {
 		}
 	};
 
-	const filteredWeights = weights.filter(w => 
-		w.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-		w.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (typeof w.category === 'object' && w.category !== null && w.category.name.toLowerCase().includes(searchQuery.toLowerCase()))
-	);
+	const filteredWeights = weights.filter(w => {
+		const matchesSearch = w.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			w.description?.toLowerCase().includes(searchQuery.toLowerCase());
+		const matchesCategory = selectedCategoryId === "All" || (w.categories && w.categories.some((catId:any) => String(catId._id||catId) === String(selectedCategoryId)));
+		return matchesSearch && matchesCategory;
+	});
 
 	return (
 		<div className="space-y-8 animate-in fade-in duration-700 font-lora">
@@ -209,6 +214,42 @@ const Weights = () => {
 				</div>
 			</div>
 
+      {/* ── Filter Section (Category Buttons) ────────────────────── */}
+      <div className="bg-white/40 backdrop-blur-sm p-6 rounded-[2.5rem] border border-chocolate/5 space-y-4">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-1 h-4 bg-strawberry rounded-full" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-chocolate/40">Select Category</span>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => setSelectedCategoryId("All")}
+            className={`px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 border ${
+              selectedCategoryId === "All"
+                ? 'bg-chocolate text-white border-chocolate shadow-bakery shadow-chocolate/20 scale-105'
+                : 'bg-white text-chocolate/60 border-chocolate/10 hover:border-strawberry/30 hover:text-strawberry hover:bg-white'
+            }`}
+          >
+            All
+          </button>
+          {categories.map((cat) => {
+            const isActive = String(selectedCategoryId) === String(cat._id);
+            return (
+              <button
+                key={cat._id}
+                onClick={() => setSelectedCategoryId(cat._id)}
+                className={`px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 border ${
+                  isActive
+                    ? 'bg-chocolate text-white border-chocolate shadow-bakery shadow-chocolate/20 scale-105'
+                    : 'bg-white text-chocolate/60 border-chocolate/10 hover:border-strawberry/30 hover:text-strawberry hover:bg-white'
+                }`}
+              >
+                {cat.name}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
 			<div className="bg-white/60 backdrop-blur-md rounded-[2.5rem] border border-chocolate/5 shadow-bakery overflow-hidden">
 				<Table>
 					<TableHeader className="bg-cream/30">
@@ -224,23 +265,24 @@ const Weights = () => {
 						{filteredWeights.map((weight) => (
 							<TableRow key={weight.id} className="group border-chocolate/5 hover:bg-cream/20 transition-colors">
 								<TableCell className="pl-8 py-6">
-									<div className="w-12 h-12 rounded-xl bg-chocolate text-white flex items-center justify-center font-dancing font-bold text-xl shadow-sm transform group-hover:-rotate-3 transition-transform duration-300">
+									<div className="w-12 h-12 rounded-xl bg-chocolate text-white flex items-center justify-center font-dancing font-bold text-xl shadow-sm transform group-hover:rotate-3 transition-transform duration-300">
 										{String(weight.name).charAt(0)}
 									</div>
 								</TableCell>
 								<TableCell className="py-6">
-									<span className="font-bold text-chocolate text-lg tracking-tight group-hover:text-strawberry transition-colors">
+									<span className="font-bold text-chocolate text-lg tracking-tight group-hover:text-strawberry transition-colors leading-none">
 										{weight.name}
 									</span>
 								</TableCell>
                 <TableCell className="py-6">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-strawberry/10 text-strawberry flex items-center justify-center">
-                      <LayoutGrid size={12} />
-                    </div>
-                    <span className="font-bold text-chocolate/60 text-sm">
-                      {typeof weight.category === 'object' && weight.category !== null ? weight.category.name : "Uncategorized"}
-                    </span>
+                  <div className="flex flex-wrap gap-1">
+                    {(weight.categories && weight.categories.length > 0) ? weight.categories.map((cId: any) => (
+                      <span key={cId} className="px-3 py-1 bg-chocolate/5 rounded-full border border-chocolate/5 text-[10px] font-bold uppercase tracking-widest text-chocolate/40 italic">
+                        {categories.find(cat => String(cat._id) === String(cId))?.name || 'Unassigned'}
+                      </span>
+                    )) : (
+                      <span className="text-chocolate/20 text-[10px] italic">Not Tagged</span>
+                    )}
                   </div>
                 </TableCell>
 								<TableCell className="py-6 hidden md:table-cell max-w-md">
@@ -284,7 +326,7 @@ const Weights = () => {
 					<DialogHeader className="p-8 bg-white border-b border-chocolate/5 relative overflow-hidden">
 						<div className="absolute top-0 right-0 w-48 h-48 bg-strawberry/5 rounded-full -mr-24 -mt-24 blur-3xl" />
 						<div className="relative flex items-center gap-6">
-							<div className="w-14 h-14 rounded-2xl bg-chocolate text-white flex items-center justify-center shadow-bakery transform -rotate-3 hover:rotate-0 transition-transform">
+							<div className="w-14 h-14 rounded-2xl bg-chocolate text-white flex items-center justify-center shadow-bakery transform rotate-3 hover:rotate-0 transition-transform">
 								<Scale size={24} />
 							</div>
 							<div>
@@ -320,46 +362,73 @@ const Weights = () => {
 
 								<div className="space-y-2 group">
 									<label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Unit</label>
-                  <Select
-                    value={form.unit || 'g'}
-                    onValueChange={(val) => setForm({ ...form, unit: val })}
-                  >
-                    <SelectTrigger className="w-full p-4 h-auto bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-bold text-chocolate italic tracking-wide group">
-                      <SelectValue placeholder="Unit" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-2xl border-chocolate/10 shadow-bakery-xl font-lora">
-                      <SelectItem value="g" className="focus:bg-strawberry/5 focus:text-strawberry py-3">Grams (g)</SelectItem>
-                      <SelectItem value="kg" className="focus:bg-strawberry/5 focus:text-strawberry py-3">Kilograms (kg)</SelectItem>
-                      <SelectItem value="mg" className="focus:bg-strawberry/5 focus:text-strawberry py-3">Milligrams (mg)</SelectItem>
-                      <SelectItem value="lb" className="focus:bg-strawberry/5 focus:text-strawberry py-3">Pounds (lb)</SelectItem>
-                    </SelectContent>
-                  </Select>
-									{errors.unit && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.unit}</p>}
+									<Select 
+										value={form.unit || "g"} 
+										onValueChange={(v) => setForm({ ...form, unit: v })}
+									>
+										<SelectTrigger className="w-full h-[52px] bg-white border-chocolate/10 rounded-2xl text-sm font-medium focus:ring-8 focus:ring-strawberry/5 outline-none transition-all">
+											<SelectValue placeholder="Select Unit" />
+										</SelectTrigger>
+										<SelectContent className="bg-white border-chocolate/10 rounded-xl">
+											<SelectItem value="g">g (Grams)</SelectItem>
+											<SelectItem value="kg">kg (Kilograms)</SelectItem>
+											<SelectItem value="lb">lb (Pounds)</SelectItem>
+											<SelectItem value="oz">oz (Ounces)</SelectItem>
+											<SelectItem value="Piece">Piece</SelectItem>
+											<SelectItem value="Pound">Pound</SelectItem>
+										</SelectContent>
+									</Select>
 								</div>
 							</div>
 
               <div className="space-y-2 group">
-                <label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Category</label>
+								<label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Category</label>
+								
                 <div className="relative">
-                  <LayoutGrid size={18} className="absolute left-4 top-1/2 -translate-y-1/2 z-10 text-chocolate/20 group-focus-within:text-strawberry transition-colors pointer-events-none" />
-                  <Select
-                    value={(form.category as string) || ""}
-                    onValueChange={(val) => setForm({ ...form, category: val })}
+                  <div 
+                    className="w-full p-4 h-auto bg-white border border-chocolate/10 focus-within:border-strawberry focus-within:ring-8 focus-within:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-bold text-chocolate italic cursor-pointer flex justify-between items-center"
+                    onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
                   >
-                    <SelectTrigger className="w-full pl-12 pr-6 py-4 h-auto bg-white border border-chocolate/10 focus:border-strawberry focus:ring-8 focus:ring-strawberry/5 rounded-2xl text-sm outline-none transition-all font-bold text-chocolate italic tracking-wide group">
-                      <SelectValue placeholder="Select Category (Optional)" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-2xl border-chocolate/10 shadow-bakery-xl font-lora">
-                      <SelectItem value="none" className="focus:bg-strawberry/5 focus:text-strawberry py-3 italic">None</SelectItem>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat._id} value={cat._id} className="focus:bg-strawberry/5 focus:text-strawberry py-3">
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <span className="truncate flex-1 text-left">
+                      {form.categories && form.categories.length > 0 
+                        ? form.categories.map((id:any) => categories.find(c => String(c._id) === String(id))?.name || id).join(', ')
+                        : "Select Categories"}
+                    </span>
+                    <ChevronRight className={`w-4 h-4 transition-transform ${isCategoryDropdownOpen ? 'rotate-90' : ''}`} />
+                  </div>
+                  
+                  {isCategoryDropdownOpen && (
+                    <div className="absolute z-50 w-full mt-2 bg-white border border-chocolate/10 rounded-2xl shadow-bakery-xl max-h-60 overflow-y-auto p-2">
+                      {categories.length === 0 ? (
+                        <div className="p-3 text-sm text-chocolate/50 italic text-center">Loading or no categories...</div>
+                      ) : null}
+                      {categories.map((c) => {
+                        const catId = String(c._id);
+                        const isSelected = (form.categories || []).map(String).includes(catId);
+                        return (
+                          <label key={catId} className="flex items-center gap-3 p-3 hover:bg-strawberry/5 rounded-xl cursor-pointer transition-colors group">
+                            <div className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${isSelected ? 'bg-strawberry border-strawberry text-white' : 'border-chocolate/20 bg-white group-hover:border-strawberry/50'}`}>
+                              {isSelected && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+                            </div>
+                            <input 
+                              type="checkbox" 
+                              className="hidden"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                const current = Array.isArray(form.categories) ? [...form.categories].map(String) : [];
+                                if (e.target.checked) setForm({ ...form, categories: [...current, catId] });
+                                else setForm({ ...form, categories: current.filter(id => id !== catId) });
+                              }}
+                            />
+                            <span className={`text-sm font-bold ${isSelected ? 'text-strawberry' : 'text-chocolate'}`}>{c.name}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {isCategoryDropdownOpen && <div className="fixed inset-0 z-40" onClick={() => setIsCategoryDropdownOpen(false)} />}
                 </div>
-              </div>
+							</div>
 
 							<div className="space-y-2 group">
 								<label className="text-[10px] font-bold text-chocolate/40 uppercase tracking-[0.2em] ml-1">Description</label>
