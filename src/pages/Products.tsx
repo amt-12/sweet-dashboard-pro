@@ -37,7 +37,7 @@ interface Product {
   [key: string]: any;
 }
 
-interface ProductForm extends Omit<Product, 'id'> {
+interface ProductForm extends Product {
   price: number | string;
   stock: number | string;
   imageFile?: File | null;
@@ -173,6 +173,7 @@ interface GroupOption {
   subthemes?: string[];
   suboccasions?: string[];
   subitems?: string[];
+  categories?: string[];
 }
 
 // helper matches (case-insensitive, tolerant to simple plural)
@@ -270,11 +271,12 @@ const Products = () => {
 
   // dropdown lists from API
   const [categoriesList, setCategoriesList] = useState<string[]>([]);
-  const [flavorsList, setFlavorsList] = useState<{ id: string, name: string }[]>([]);
-  const [weightsList, setWeightsList] = useState<{ id: string, name: string }[]>([]);
-  const [typesList, setTypesList] = useState<{ id: string, name: string }[]>([]);
+  const [categoriesData, setCategoriesData] = useState<{ id: string, name: string }[]>([]);
+  const [flavorsList, setFlavorsList] = useState<{ id: string, name: string, categories?: string[] }[]>([]);
+  const [weightsList, setWeightsList] = useState<{ id: string, name: string, categories?: string[] }[]>([]);
+  const [typesList, setTypesList] = useState<{ id: string, name: string, categories?: string[] }[]>([]);
   const [occasionsList, setOccasionsList] = useState<GroupOption[]>([]);
-  const [shapesList, setShapesList] = useState<{ id: string, name: string }[]>([]);
+  const [shapesList, setShapesList] = useState<{ id: string, name: string, categories?: string[] }[]>([]);
   const [themesList, setThemesList] = useState<GroupOption[]>([]);
 
   const [showModal, setShowModal] = useState(false);
@@ -396,11 +398,17 @@ const Products = () => {
       if (!mounted) return;
       const toObjects = (arr: any[]) => (arr || []).map((it: any) => ({
         id: it._id || it.id || String(it),
-        name: it.name || it.title || it.label || it.type || String(it)
+        name: it.name || it.title || it.label || it.type || String(it),
+        categories: it.categories ? it.categories.map((c: any) => c._id || c) : (it.category ? [it.category._id || it.category] : [])
       })).filter(it => it.id && it.name);
 
+      setCategoriesData(toObjects(cats));
       setCategoriesList((cats || []).map((it: any) => typeof it === 'string' ? it : (it.name || it.title || '')));
-      setFlavorsList(toObjects(flvs));
+      setFlavorsList((flvs || []).map((it: any) => ({
+        id: it._id || it.id || String(it),
+        name: it.name || it.title || it.label || it.type || String(it),
+        categories: it.categories ? it.categories.map((c: any) => c._id || c) : []
+      })).filter(it => it.id && it.name));
       setWeightsList(toObjects(wts));
       setTypesList(toObjects(typesRes));
 
@@ -409,7 +417,8 @@ const Products = () => {
         const id = it._id || it.id || String(it);
         const name = it.name || it.title || it.label || it.type || '';
         const sub = Array.isArray(it.subthemes) ? it.subthemes : (Array.isArray(it.suboccasions) ? it.suboccasions : (Array.isArray(it.sub) ? it.sub : (it.subitems || [])));
-        return { id, name, sub: (sub || []).map((s: any) => String(s)).filter(Boolean) } as GroupOption;
+        const cats = it.categories ? it.categories.map((c: any) => c._id || c) : (it.category ? [it.category._id || it.category] : []);
+        return { id, name, sub: (sub || []).map((s: any) => String(s)).filter(Boolean), categories: cats } as GroupOption;
       }).filter(Boolean) as GroupOption[];
 
       setOccasionsList(normalizeGroups(occ));
@@ -736,6 +745,13 @@ const Products = () => {
     </div>
   );
 
+  const activeCategoryId = categoriesData.find(c => c.name === form.category)?.id;
+  const filteredWeights = weightsList.filter(w => !activeCategoryId || (w.categories && w.categories.includes(activeCategoryId)));
+  const filteredTypes = typesList.filter(t => !activeCategoryId || (t.categories && t.categories.includes(activeCategoryId)));
+  const filteredOccasions = occasionsList.filter(o => !activeCategoryId || (o.categories && o.categories.includes(activeCategoryId)));
+  const filteredShapes = shapesList.filter(s => !activeCategoryId || (s.categories && s.categories.includes(activeCategoryId)));
+  const filteredThemes = themesList.filter(t => !activeCategoryId || (t.categories && t.categories.includes(activeCategoryId)));
+
   return (
     <div className="space-y-8 animate-in fade-in duration-700 font-lora">
 
@@ -940,7 +956,51 @@ const Products = () => {
                         <label className="text-xs font-bold text-chocolate/60 uppercase tracking-widest px-1">Category</label>
                         <Select
                           value={form.category}
-                          onValueChange={(val) => setForm({ ...form, category: val })}
+                          onValueChange={(val) => {
+                            const nextForm: ProductForm = { ...form, category: val };
+                            const selectedCat = categoriesData.find(c => c.name === val);
+                            const catId = selectedCat?.id;
+
+                            if (catId) {
+                              // Reset Flavor if not compatible
+                              const currentFlavor = flavorsList.find(f => f.id === String(form.flavor));
+                              if (currentFlavor && currentFlavor.categories && currentFlavor.categories.length > 0) {
+                                if (!currentFlavor.categories.includes(catId)) {
+                                  nextForm.flavor = "";
+                                }
+                              }
+
+                              // Filter multi-select fields (type, occasion, shape, theme)
+                              const filterIncompatible = (selectedIds: string[], list: any[]) => {
+                                return selectedIds.filter(id => {
+                                  const item = list.find(it => it.id === id);
+                                  // If item has categories and doesn't match current, remove it
+                                  if (item && item.categories && item.categories.length > 0) {
+                                    return item.categories.includes(catId);
+                                  }
+                                  return true; // Keep if no categories defined (fallback)
+                                });
+                              };
+
+                              nextForm.type = filterIncompatible(form.type || [], typesList);
+                              nextForm.occasion = filterIncompatible(form.occasion || [], occasionsList);
+                              nextForm.shape = filterIncompatible(form.shape || [], shapesList);
+                              nextForm.theme = filterIncompatible(form.theme || [], themesList);
+
+                              // Filter variants weight - keep only compatible ones
+                              if (Array.isArray(form.variants)) {
+                                nextForm.variants = form.variants.filter(v => {
+                                  const w = weightsList.find(wt => wt.id === v.weight);
+                                  if (w && w.categories && w.categories.length > 0) {
+                                    return w.categories.includes(catId);
+                                  }
+                                  return true;
+                                });
+                              }
+                            }
+                            
+                            setForm(nextForm);
+                          }}
                         >
                           <SelectTrigger className="w-full p-6 h-auto rounded-2xl bg-white border border-chocolate/10 outline-none shadow-sm transition-all focus:ring-4 focus:ring-strawberry/5 focus:border-strawberry/30 text-chocolate font-medium group">
                             <div className="flex items-center gap-2">
@@ -1003,7 +1063,7 @@ const Products = () => {
                                       <SelectValue placeholder="Weight" />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl border-chocolate/5 shadow-bakery-xl font-lora">
-                                      {weightsList.map((w) => (
+                                      {filteredWeights.map((w) => (
                                         <SelectItem key={w.id} value={w.id} className="py-2 text-xs">{w.name}</SelectItem>
                                       ))}
                                       {/* Handle case where current value is not in weightsList (e.g. legacy name or deleted ID) */}
@@ -1176,9 +1236,11 @@ const Products = () => {
                             </SelectTrigger>
                             <SelectContent className="rounded-2xl border-chocolate/10 shadow-bakery-xl font-lora">
                               <SelectItem value="none" disabled className="text-chocolate/20 text-[10px] uppercase font-bold tracking-widest py-2">Signature Flavors</SelectItem>
-                              {flavorsList.map((f) => (
-                                <SelectItem key={f.id} value={f.id} className="focus:bg-strawberry/5 focus:text-strawberry py-3">{f.name}</SelectItem>
-                              ))}
+                              {flavorsList
+                                .filter(f => !activeCategoryId || (f.categories && f.categories.includes(activeCategoryId)))
+                                .map((f) => (
+                                  <SelectItem key={f.id} value={f.id} className="focus:bg-strawberry/5 focus:text-strawberry py-3">{f.name}</SelectItem>
+                                ))}
                               {form.flavor && !flavorsList.some(f => f.id === form.flavor) && (
                                 <SelectItem value={form.flavor} className="py-3">{form.flavor}</SelectItem>
                               )}
@@ -1456,26 +1518,26 @@ const Products = () => {
                     <div className="space-y-8 overflow-y-auto max-h-[350px] pr-2 no-scrollbar">
                       <SelectableBadgeGroup
                         label="Artistry Types"
-                        options={typesList}
+                        options={filteredTypes}
                         selected={form.type || []}
                         onChange={(next) => setForm({ ...form, type: next })}
                       />
                       <GroupedSelectableBadgeGroup
                         label="Tailored Occasions"
-                        options={occasionsList}
+                        options={filteredOccasions}
                         selected={form.occasion || []}
                         onChange={(next) => setForm({ ...form, occasion: next })}
                       />
                       <div className="grid grid-cols-1 gap-6">
                         <SelectableBadgeGroup
                           label="Shapes"
-                          options={shapesList}
+                          options={filteredShapes}
                           selected={form.shape || []}
                           onChange={(next) => setForm({ ...form, shape: next })}
                         />
                         <GroupedSelectableBadgeGroup
                           label="Themes"
-                          options={themesList}
+                          options={filteredThemes}
                           selected={form.theme || []}
                           onChange={(next) => setForm({ ...form, theme: next })}
                         />
