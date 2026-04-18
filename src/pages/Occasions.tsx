@@ -52,7 +52,7 @@ const Occasions = () => {
 					id: o._id || o.id,
 					name: sanitizeName(o.name),
 					description: o.description || "",
-          subOccasions: Array.isArray(o.subOccasions) ? o.subOccasions : [],
+          subOccasions: Array.isArray(o.subOccasions) ? o.subOccasions : (Array.isArray(o.suboccasions) ? o.suboccasions : []),
           categories: o.categories ? o.categories.map((cat:any)=>cat._id||cat) : (o.category ? [o.category._id || o.category] : []),
 				}));
 				setOccasions(normalized);
@@ -259,6 +259,7 @@ const Occasions = () => {
 							<TableHead className="w-20 pl-8 h-16 font-bold text-chocolate italic uppercase tracking-widest text-[10px]">Icon</TableHead>
 							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px]">Occasion Name</TableHead>
 							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px]">Category</TableHead>
+							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px] hidden md:table-cell">Sub-Occasions</TableHead>
 							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px] hidden md:table-cell">Description</TableHead>
 							<TableHead className="pr-8 h-16 font-bold text-chocolate italic uppercase tracking-widest text-[10px] text-right">Actions</TableHead>
 						</TableRow>
@@ -275,15 +276,6 @@ const Occasions = () => {
 									<span className="font-bold text-chocolate text-lg tracking-tight group-hover:text-strawberry transition-colors leading-none">
 										{occasion.name}
 									</span>
-                  {occasion.subOccasions && occasion.subOccasions.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1.5">
-                      {occasion.subOccasions.map(so => (
-                        <span key={so} className="px-2 py-0.5 bg-strawberry/5 text-[9px] font-bold text-strawberry rounded-md uppercase tracking-tighter">
-                          {so}
-                        </span>
-                      ))}
-                    </div>
-                  )}
 								</TableCell>
                 <TableCell className="py-6">
                   <div className="flex flex-wrap gap-1">
@@ -293,6 +285,17 @@ const Occasions = () => {
                       </span>
                     )) : (
                       <span className="text-chocolate/20 text-[10px] italic">Not Tagged</span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="py-6 hidden md:table-cell">
+                  <div className="flex flex-wrap gap-1">
+                    {occasion.subOccasions && occasion.subOccasions.length > 0 ? occasion.subOccasions.map(so => (
+                      <span key={so} className="px-3 py-1 bg-strawberry/[0.03] border border-strawberry/10 rounded-full text-[10px] font-bold text-strawberry uppercase tracking-tighter">
+                        {so}
+                      </span>
+                    )) : (
+                      <span className="text-chocolate/20 text-[10px] italic">No Sub-items</span>
                     )}
                   </div>
                 </TableCell>
