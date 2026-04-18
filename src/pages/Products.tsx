@@ -625,7 +625,7 @@ const Products = () => {
       setFlavorsList((flvs || []).map((it: any) => ({
         id: it._id || it.id || String(it),
         name: it.name || it.title || it.label || it.type || String(it),
-        categories: it.categories ? it.categories.map((c: any) => c._id || c) : []
+        categories: it.categories ? it.categories.map((c: any) => c._id || c) : (it.category ? [it.category._id || it.category] : [])
       })).filter(it => it.id && it.name));
       setWeightsList(toObjects(wts));
       setTypesList(toObjects(typesRes));
