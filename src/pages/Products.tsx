@@ -550,6 +550,9 @@ const Products = () => {
         stock: 0
       }));
 
+    const flavorIds = getIds(p.flavor);
+    const flavors = [...flavorIds, ...(p.flavorLabels || [])];
+
     return {
       // preserve all original properties
       ...p,
@@ -559,9 +562,12 @@ const Products = () => {
       // prefer base64 image coming from backend (imgBase64) then first gallery base64 then fallback to stored paths
       image: p.imgBase64 || imgs.find((i: any) => i.base64)?.base64 || p.img || imgs.find((i: any) => i.url)?.url || p.image || '/placeholder.svg',
       // for the table display: extract name(s)
-      flavorDisplay: p.flavor ? (Array.isArray(p.flavor) ? p.flavor.map(it => getVal(it)).join(', ') : getVal(p.flavor)) : '',
+      flavorDisplay: [
+        ...(Array.isArray(p.flavor) ? p.flavor.map(it => getVal(it)) : (p.flavor ? [getVal(p.flavor)] : [])),
+        ...(p.flavorLabels || [])
+      ].filter(Boolean).join(', '),
       // ensure we store the clean ID array for components & updates
-      flavor: getIds(p.flavor),
+      flavor: flavors,
       ingredients: Array.isArray(p.ingredients) ? p.ingredients.map((i: any) => {
         // new shape: { ingredient: {_id, name}, qty }
         const ingObj = i?.ingredient || i;
@@ -572,11 +578,11 @@ const Products = () => {
       }).filter((i: any) => i.id) : [],
       tasteDescription: p.tasteDescription || p.description || '',
       // ensure shape/theme are arrays of IDs for components
-      shape: getIds(p.shape),
-      theme: getIds(p.theme),
+      shape: [...getIds(p.shape), ...(p.shapeLabels || [])],
+      theme: [...getIds(p.theme), ...(p.themeLabels || [])],
       weight: getIds(p.weight),
-      occasion: getIds(p.occasion),
-      type: getIds(p.type),
+      occasion: [...getIds(p.occasion), ...(p.occasionLabels || [])],
+      type: [...getIds(p.type), ...(p.typeLabels || [])],
       variants: normalizedVariants,
       mrp: p.mrp || (normalizedVariants.length > 0 ? normalizedVariants[0].mrp : 0) || Number(p.price) || 0,
       sellingPrice: p.sellingPrice || (normalizedVariants.length > 0 ? normalizedVariants[0].sellingPrice : 0) || Number(p.price) || 0,
