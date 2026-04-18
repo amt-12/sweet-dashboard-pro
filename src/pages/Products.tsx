@@ -6,6 +6,9 @@ import { api } from "../services/api";
 import axiosInstance from "../services/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
+import { Checkbox } from "../components/ui/checkbox";
+import { ScrollArea } from "../components/ui/scroll-area";
 import { toast } from "sonner";
 import { Link } from 'react-router-dom';
 
@@ -54,7 +57,7 @@ const emptyForm: ProductForm = {
   stock: 0,
   image: "",
   images: [],
-  flavor: "",
+  flavor: [],
   ingredients: [],
   type: [],
   weight: [],
@@ -167,6 +170,82 @@ const SelectableBadgeGroup = ({
   );
 };
 
+// MultiSelect Dropdown for a cleaner UI
+const MultiSelectDropdown = ({
+  options,
+  selected,
+  onChange,
+  label,
+  placeholder = "Select options"
+}: {
+  options: { id: string, name: string }[],
+  selected: string[],
+  onChange: (next: string[]) => void,
+  label: string,
+  placeholder?: string
+}) => {
+  const toggle = (optId: string) => {
+    if (selected.includes(optId)) {
+      onChange(selected.filter(s => s !== optId));
+    } else {
+      onChange([...selected, optId]);
+    }
+  };
+
+  const selectedNames = options
+    .filter(o => selected.includes(o.id))
+    .map(o => o.name);
+
+  return (
+    <div className="space-y-2">
+      <label className="text-xs font-bold text-chocolate uppercase tracking-wider px-1">{label}</label>
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="w-full flex items-center justify-between p-4 rounded-2xl bg-white border border-chocolate/30 hover:border-strawberry/30 transition-all shadow-sm min-h-[54px] text-left"
+          >
+            <div className="flex flex-wrap gap-1.5 items-center overflow-hidden">
+              {selectedNames.length > 0 ? (
+                selectedNames.map((name, i) => (
+                  <span key={i} className="bg-strawberry text-[10px] font-bold text-white px-2 py-1 rounded-lg border border-strawberry/10 shadow-sm animate-in zoom-in-95 duration-200">
+                    {name}
+                  </span>
+                ))
+              ) : (
+                <span className="text-sm text-chocolate/40 font-medium">{placeholder}</span>
+              )}
+            </div>
+            <ChevronDown size={14} className="text-chocolate/40 shrink-0 ml-2" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[--radix-popover-trigger-width] p-2 bg-white rounded-2xl border border-chocolate/10 shadow-bakery-xl font-lora" align="start">
+          <div className="space-y-1 max-h-[300px] overflow-y-auto no-scrollbar p-1">
+            {options.length === 0 && <p className="text-xs italic text-chocolate/60 p-4 text-center">No options available</p>}
+            {options.map((opt) => {
+              const isSelected = selected.includes(opt.id);
+              return (
+                <div
+                  key={opt.id}
+                  onClick={() => toggle(opt.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all hover:bg-strawberry/5 group cursor-pointer ${isSelected ? 'text-strawberry bg-strawberry/5' : 'text-chocolate'}`}
+                >
+                  <Checkbox 
+                    checked={isSelected} 
+                    onCheckedChange={() => toggle(opt.id)}
+                    className={`border-chocolate/20 data-[state=checked]:bg-strawberry data-[state=checked]:border-strawberry`}
+                  />
+                  <span>{opt.name}</span>
+                </div>
+              );
+            })}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+};
+
 interface GroupOption {
   id: string;
   name: string;
@@ -265,6 +344,123 @@ const GroupedSelectableBadgeGroup = ({
   );
 };
 
+// Grouped MultiSelect Dropdown
+const GroupedMultiSelectDropdown = ({
+  options,
+  selected,
+  onChange,
+  label,
+  placeholder = "Select options"
+}: {
+  options: GroupOption[];
+  selected: string[];
+  onChange: (next: string[]) => void;
+  label: string;
+  placeholder?: string;
+}) => {
+  const toggleSelect = (id: string) => {
+    if (!id) return;
+    if (selected.includes(id)) onChange(selected.filter(s => s !== id));
+    else onChange([...selected, id]);
+  };
+
+  const getSelectedNames = () => {
+    const names: string[] = [];
+    options.forEach(opt => {
+      if (selected.includes(opt.id)) names.push(opt.name);
+      const subs: string[] = Array.isArray(opt.sub) ? opt.sub : (Array.isArray(opt.suboccasions) ? opt.suboccasions : (Array.isArray(opt.subthemes) ? opt.subthemes : (Array.isArray(opt.subitems) ? opt.subitems : (opt.sub || [])))) as string[];
+      subs.forEach(s => {
+        if (selected.includes(s)) names.push(s);
+      });
+    });
+    return names;
+  };
+
+  const selectedNames = getSelectedNames();
+
+  return (
+    <div className="space-y-2">
+      <label className="text-xs font-bold text-chocolate uppercase tracking-wider px-1">{label}</label>
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="w-full flex items-center justify-between p-4 rounded-2xl bg-white border border-chocolate/30 hover:border-strawberry/30 transition-all shadow-sm min-h-[54px] text-left"
+          >
+            <div className="flex flex-wrap gap-1.5 items-center overflow-hidden">
+              {selectedNames.length > 0 ? (
+                <>
+                  {selectedNames.slice(0, 3).map((name, i) => (
+                    <span key={i} className="bg-strawberry text-[10px] font-bold text-white px-2 py-1 rounded-lg border border-strawberry/10 shadow-sm animate-in zoom-in-95 duration-200">
+                      {name}
+                    </span>
+                  ))}
+                  {selectedNames.length > 3 && (
+                    <span className="text-[10px] font-black text-strawberry/60 ml-1">+{selectedNames.length - 3} more</span>
+                  )}
+                </>
+              ) : (
+                <span className="text-sm text-chocolate/40 font-medium">{placeholder}</span>
+              )}
+            </div>
+            <ChevronDown size={14} className="text-chocolate/40 shrink-0 ml-2" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[320px] p-2 bg-white rounded-2xl border border-chocolate/10 shadow-bakery-xl font-lora" align="start">
+          <ScrollArea className="h-80 w-full pr-2">
+            <div className="space-y-3 p-1">
+              {options.length === 0 && <p className="text-xs italic text-chocolate/60 p-4 text-center">No options available</p>}
+              {options.map((opt) => {
+                const id = opt.id;
+                const name = opt.name;
+                const subs: string[] = Array.isArray(opt.sub) ? opt.sub : (Array.isArray(opt.suboccasions) ? opt.suboccasions : (Array.isArray(opt.subthemes) ? opt.subthemes : (Array.isArray(opt.subitems) ? opt.subitems : (opt.sub || [])))) as string[];
+                const isParentSelected = selected.includes(id);
+
+                return (
+                  <div key={id} className="space-y-1">
+                    <div
+                      onClick={() => toggleSelect(id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-black transition-all hover:bg-strawberry/5 cursor-pointer ${isParentSelected ? 'text-strawberry bg-strawberry/5' : 'text-chocolate'}`}
+                    >
+                      <Checkbox 
+                        checked={isParentSelected} 
+                        onCheckedChange={() => toggleSelect(id)}
+                        className={`border-chocolate/20 data-[state=checked]:bg-strawberry data-[state=checked]:border-strawberry`}
+                      />
+                      <span>{name}</span>
+                    </div>
+                    {subs && subs.length > 0 && (
+                      <div className="pl-8 grid grid-cols-1 gap-1">
+                        {subs.map((s) => {
+                          const isSel = selected.includes(s);
+                          return (
+                            <div
+                              key={s}
+                              onClick={() => toggleSelect(s)}
+                              className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:bg-strawberry/5 cursor-pointer ${isSel ? 'text-strawberry' : 'text-chocolate/60'}`}
+                            >
+                               <Checkbox 
+                                checked={isSel} 
+                                onCheckedChange={() => toggleSelect(s)}
+                                className={`h-3.5 w-3.5 border-chocolate/20 data-[state=checked]:bg-strawberry data-[state=checked]:border-strawberry`}
+                              />
+                              <span>{s}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </ScrollArea>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+};
+
 
 const Products = () => {
   const dispatch = useAppDispatch();
@@ -305,8 +501,6 @@ const Products = () => {
   const [showReasonModal, setShowReasonModal] = useState(false);
   const [stockReason, setStockReason] = useState('');
   const [originalProduct, setOriginalProduct] = useState<Product | null>(null);
-  const [adjustmentHistory, setAdjustmentHistory] = useState<any[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
 
   // Prevent background scrolling when modal is open
   useEffect(() => {
@@ -336,20 +530,25 @@ const Products = () => {
   const normalizeSingle = useCallback((p: any) => {
     const imgs = (p.images || []).map((it: any) => normalizeImage(it));
     const getVal = (it: any) => it?.name || it?.title || String(it || '');
-    const getIds = (arr: any) => (Array.isArray(arr) ? arr : []).map(it => it?._id || it?.id || String(it || '')).filter(Boolean);
-    const normalizedVariants = Array.isArray(p.variants) 
-      ? p.variants.map((v: any) => ({ 
-          weight: v.weight?._id || v.weight?.id || String(v.weight || ''), 
-          mrp: Number(v.mrp || v.price) || 0, 
-          sellingPrice: Number(v.sellingPrice) || 0, 
-          stock: Number(v.stock) || 0 
-        })) 
-      : (p.weight || []).map((w: any, i: number) => ({ 
-          weight: w?._id || w?.id || String(w || ''), 
-          mrp: (p.pricesByWeight && p.pricesByWeight[i]) || Number(p.price) || 0, 
-          sellingPrice: 0, 
-          stock: 0 
-        }));
+    const getId = (val: any) => val?._id || val?.id || (typeof val === 'string' ? val : '');
+    const getIds = (val: any) => {
+      if (!val) return [];
+      const arr = Array.isArray(val) ? val : [val];
+      return arr.map(it => getId(it)).filter(Boolean);
+    };
+    const normalizedVariants = Array.isArray(p.variants)
+      ? p.variants.map((v: any) => ({
+        weight: v.weight?._id || v.weight?.id || String(v.weight || ''),
+        mrp: Number(v.mrp || v.price) || 0,
+        sellingPrice: Number(v.sellingPrice) || 0,
+        stock: Number(v.stock) || 0
+      }))
+      : (p.weight || []).map((w: any, i: number) => ({
+        weight: w?._id || w?.id || String(w || ''),
+        mrp: (p.pricesByWeight && p.pricesByWeight[i]) || Number(p.price) || 0,
+        sellingPrice: 0,
+        stock: 0
+      }));
 
     return {
       // preserve all original properties
@@ -359,8 +558,10 @@ const Products = () => {
       images: imgs,
       // prefer base64 image coming from backend (imgBase64) then first gallery base64 then fallback to stored paths
       image: p.imgBase64 || imgs.find((i: any) => i.base64)?.base64 || p.img || imgs.find((i: any) => i.url)?.url || p.image || '/placeholder.svg',
-      // for the table display: extract name
-      flavor: p.flavor ? (Array.isArray(p.flavor) ? getVal(p.flavor[0]) : getVal(p.flavor)) : '',
+      // for the table display: extract name(s)
+      flavorDisplay: p.flavor ? (Array.isArray(p.flavor) ? p.flavor.map(it => getVal(it)).join(', ') : getVal(p.flavor)) : '',
+      // ensure we store the clean ID array for components & updates
+      flavor: getIds(p.flavor),
       ingredients: Array.isArray(p.ingredients) ? p.ingredients.map((i: any) => {
         // new shape: { ingredient: {_id, name}, qty }
         const ingObj = i?.ingredient || i;
@@ -455,29 +656,20 @@ const Products = () => {
     setForm(emptyForm);
     setErrors({});
     setEditingId(null);
-    setAdjustmentHistory([]);
     setShowModal(true);
   };
 
-  const fetchAdjustmentHistory = async (productId: string) => {
-    try {
-      setLoadingHistory(true);
-      // Use the correct base path since axiosInstance already has /api
-      const res = await axiosInstance.get(`/stock-adjustments?productId=${productId}`);
-      setAdjustmentHistory(res.data.data || res.data || []);
-    } catch (err) {
-      console.error("Failed to fetch history:", err);
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
+
 
   const openEdit = (p: Product) => {
     const id = p.id || p._id;
-    if (id) fetchAdjustmentHistory(id);
     const imgs = (p.images || []).map((it: any) => normalizeImage(it));
-    const getId = (val: any) => val?._id || val?.id || String(val || '');
-    const getIds = (arr: any) => (Array.isArray(arr) ? arr : []).map(it => getId(it)).filter(Boolean);
+    const getId = (val: any) => val?._id || val?.id || (typeof val === 'string' ? val : '');
+    const getIds = (val: any) => {
+      if (!val) return [];
+      const arr = Array.isArray(val) ? val : [val];
+      return arr.map(it => getId(it)).filter(Boolean);
+    };
 
     setForm({
       name: p.name || '',
@@ -486,7 +678,7 @@ const Products = () => {
       stock: Number(p.stock) || 0,
       image: p.imgBase64 || imgs.find(i => i.base64)?.base64 || p.image || p.img || imgs.find(i => i.url)?.url || '/placeholder.svg',
       images: imgs,
-      flavor: p.flavor ? (Array.isArray(p.flavor) ? getId(p.flavor[0]) : getId(p.flavor)) : '',
+      flavor: getIds(p.flavor),
       ingredients: Array.isArray(p.ingredients) ? p.ingredients.map((i: any) => {
         // new shape: { ingredient: {_id, name}, qty }
         const ingObj = i?.ingredient || i;
@@ -504,11 +696,11 @@ const Products = () => {
       shape: getIds(p.shape),
       theme: getIds(p.theme),
       variants: Array.isArray(p.variants)
-        ? p.variants.map((v: any) => ({ 
-            mrp: Number(v.mrp || v.price) || 0, 
-            sellingPrice: Number(v.sellingPrice) || 0, 
-            stock: Number(v.stock) || 0 
-          }))
+        ? p.variants.map((v: any) => ({
+          mrp: Number(v.mrp || v.price) || 0,
+          sellingPrice: Number(v.sellingPrice) || 0,
+          stock: Number(v.stock) || 0
+        }))
         : [],
     });
     setErrors({});
@@ -539,9 +731,10 @@ const Products = () => {
   };
 
   const buildDisplayFields = () => {
-    const flav = flavorsList.find(f => f.id === form.flavor);
+    const selectedFlavors = Array.isArray(form.flavor) ? form.flavor : (form.flavor ? [form.flavor] : []);
+    const flvs = selectedFlavors.map(id => flavorsList.find(f => f.id === id)?.name).filter(Boolean).join(', ');
     return {
-      flavor: flav ? flav.name : (form.flavor || ''),
+      flavor: flvs || (form.flavor && typeof form.flavor === 'string' ? form.flavor : ''),
       ingredients: (form.ingredients || []).map((i: any) => ({ ...i }))
     };
   };
@@ -606,16 +799,16 @@ const Products = () => {
       const payload: any = {
         name: form.name,
         category: form.category,
-        price: cleanedVariants.length > 0 ? cleanedVariants[0].sellingPrice : 0,
+        price: cleanedVariants.length > 0 ? Number(cleanedVariants[0].sellingPrice) || 0 : 0,
         // Total stock = sum of all variant stocks
-        stock: cleanedVariants.reduce((s, v) => s + v.stock, 0) || Number(form.stock) || 0,
-        flavor: form.flavor ? [form.flavor] : [],
-        type: form.type || [],
+        stock: cleanedVariants.reduce((s, v) => s + (Number(v.stock) || 0), 0) || Number(form.stock) || 0,
+        flavor: Array.isArray(form.flavor) ? form.flavor.filter(Boolean) : (form.flavor ? [form.flavor] : []),
+        type: Array.isArray(form.type) ? form.type.filter(Boolean) : [],
         weight: cleanedVariants.map(v => v.weight).filter(Boolean),
         pricesByWeight: cleanedVariants.map(v => v.mrp),
-        occasion: form.occasion || [],
-        shape: form.shape || [],
-        theme: form.theme || [],
+        occasion: Array.isArray(form.occasion) ? form.occasion.filter(Boolean) : [],
+        shape: Array.isArray(form.shape) ? form.shape.filter(Boolean) : [],
+        theme: Array.isArray(form.theme) ? form.theme.filter(Boolean) : [],
         variants: cleanedVariants.map(v => ({
           weight: v.weight,
           mrp: v.mrp,
@@ -660,11 +853,7 @@ const Products = () => {
             .update(editingId, payload)
             .then((res) => {
               const saved = normalizeSingle(res || (res as any)?.data || {});
-              // The save response has raw IDs (not populated). Preserve display names
-              // by overlaying the form's already-resolved display fields.
-              const displayFields = buildDisplayFields();
-              const updated = { ...saved, ...displayFields };
-              const next = products.map((it: any) => (it.id === editingId ? { ...it, ...updated } : it));
+              const next = products.map((it: any) => (it.id === editingId ? saved : it));
               dispatch(setProducts(next));
               toast.success("Product updated successfully! 🎂");
               closeModal();
@@ -839,8 +1028,8 @@ const Products = () => {
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
                 className={`px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 border ${isActive
-                    ? 'bg-chocolate text-white border-chocolate shadow-bakery shadow-chocolate/20 scale-105'
-                    : 'bg-white text-chocolate/60 border-chocolate/10 hover:border-strawberry/30 hover:text-strawberry hover:bg-white'
+                  ? 'bg-chocolate text-white border-chocolate shadow-bakery shadow-chocolate/20 scale-105'
+                  : 'bg-white text-chocolate/60 border-chocolate/10 hover:border-strawberry/30 hover:text-strawberry hover:bg-white'
                   }`}
               >
                 {cat}
@@ -887,7 +1076,7 @@ const Products = () => {
                     </td>
                     <td className="p-4 font-bold text-chocolate whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px] md:max-w-[200px]">{product.name}</td>
                     <td className="p-4 text-chocolate/70">{product.category}</td>
-                    <td className="p-4 text-chocolate/70">{product.flavor || (product.ingredients?.length ? 'Crafted' : 'Classic')}</td>
+                    <td className="p-4 text-chocolate/70">{product.flavorDisplay || (product.ingredients?.length ? 'Crafted' : 'Classic')}</td>
                     <td className="p-4 text-chocolate/40 line-through decoration-strawberry/30 text-xs">CA${(Number(product.mrp) || 0).toLocaleString()}</td>
                     <td className="p-4 text-strawberry font-bold">CA${(Number(product.sellingPrice) || 0).toLocaleString()}</td>
                     <td className="p-4 font-bold text-chocolate">{Number(product.stock) || 0}</td>
@@ -988,12 +1177,12 @@ const Products = () => {
                             const catId = selectedCat?.id;
 
                             if (catId) {
-                              // Reset Flavor if not compatible
-                              const currentFlavor = flavorsList.find(f => f.id === String(form.flavor));
-                              if (currentFlavor && currentFlavor.categories && currentFlavor.categories.length > 0) {
-                                if (!currentFlavor.categories.includes(catId)) {
-                                  nextForm.flavor = "";
-                                }
+                              // Filter Flavor if not compatible
+                              if (Array.isArray(form.flavor)) {
+                                nextForm.flavor = form.flavor.filter(id => {
+                                  const f = flavorsList.find(flv => flv.id === id);
+                                  return !f || !f.categories || f.categories.length === 0 || f.categories.includes(catId);
+                                });
                               }
 
                               // Filter multi-select fields (type, occasion, shape, theme)
@@ -1219,110 +1408,10 @@ const Products = () => {
                           )}
                         </div>
                       </div>
-
-                      <div className="grid grid-cols-1 gap-6">
-                        <div className="space-y-2">
-                           <label className="text-xs font-bold text-chocolate uppercase tracking-wider px-1">Primary Flavor</label>
-                           <Select
-                             value={form.flavor}
-                             onValueChange={(val) => setForm({ ...form, flavor: val })}
-                           >
-                            <SelectTrigger className="w-full p-4 h-auto rounded-2xl bg-white border border-chocolate/30 outline-none shadow-sm transition-all focus:ring-4 focus:ring-strawberry/5 focus:border-strawberry/30 text-chocolate font-bold text-sm group">
-                              <SelectValue placeholder="Select Flavor" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-2xl border-chocolate/30 shadow-bakery-xl font-lora">
-                              <SelectItem value="none" disabled className="text-chocolate/50 text-[10px] uppercase font-bold tracking-widest py-2">Signature Flavors</SelectItem>
-                              {flavorsList
-                                .filter(f => !activeCategoryId || (f.categories && f.categories.includes(activeCategoryId)))
-                                .map((f) => (
-                                  <SelectItem key={f.id} value={f.id} className="focus:bg-strawberry/5 focus:text-strawberry py-3">{f.name}</SelectItem>
-                                ))}
-                              {form.flavor && !flavorsList.some(f => f.id === form.flavor) && (
-                                <SelectItem value={form.flavor} className="py-3">{form.flavor}</SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
                     </div>
                   </div>
 
-                  {/* 1.1 Stock Adjustment History (Audit Trail) */}
-                  {editingId && (
-                    <div className="mt-8 space-y-6 bg-cream/10 p-8 rounded-[2.5rem] border border-chocolate/5 border-dashed">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="p-3 bg-chocolate text-white rounded-2xl shadow-lg rotate-3 group-hover:rotate-0 transition-transform">
-                            <Eye size={20} />
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-bold uppercase tracking-[0.2em] text-chocolate/80">Inventory Audit History</h4>
-                            <p className="text-[10px] text-chocolate/40 font-medium mt-0.5">Historical record of manual stock adjustments</p>
-                          </div>
-                        </div>
-                        {adjustmentHistory.length > 0 && (
-                          <div className="px-3 py-1 bg-strawberry/10 text-strawberry rounded-full text-[9px] font-black uppercase tracking-widest">
-                            {adjustmentHistory.length} Record(s)
-                          </div>
-                        )}
-                      </div>
 
-                      <div className="space-y-4 max-h-[400px] overflow-y-auto no-scrollbar pr-2">
-                        {loadingHistory ? (
-                          <div className="flex flex-col items-center justify-center p-20 space-y-4 opacity-50 grayscale animate-pulse">
-                            <div className="w-10 h-10 border-4 border-chocolate/10 border-t-chocolate rounded-full animate-spin" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-chocolate/40 tracking-[0.2em]">Retrieving Audit Logs...</p>
-                          </div>
-                        ) : adjustmentHistory.length === 0 ? (
-                          <div className="text-center py-16 px-8 border-2 border-white/50 rounded-[2rem] bg-white/30 backdrop-blur-sm">
-                            <div className="w-16 h-16 bg-cream/50 rounded-full flex items-center justify-center mx-auto mb-4 border border-white">
-                              <Package size={24} className="text-chocolate/10" />
-                            </div>
-                            <p className="text-xs text-chocolate/40 font-bold uppercase tracking-widest leading-relaxed">No history found</p>
-                            <p className="text-[10px] text-chocolate/20 font-medium italic mt-1">Manual adjustments will appear here after they occur.</p>
-                          </div>
-                        ) : (
-                          <div className="grid grid-cols-1 gap-4">
-                            {adjustmentHistory.map((log, idx) => (
-                              <div key={idx} className="group relative bg-white/80 hover:bg-white p-6 rounded-3xl border border-white/50 hover:border-chocolate/10 transition-all shadow-sm hover:shadow-bakery-xl">
-                                <div className="flex items-start justify-between gap-6">
-                                  <div className="space-y-3 flex-1">
-                                    <div className="flex items-center gap-2">
-                                      <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${log.difference < 0 ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-500'}`}>
-                                        {log.difference > 0 ? '+' : ''}{log.difference} Units
-                                      </span>
-                                      <span className="text-[11px] font-black text-chocolate-light uppercase tracking-widest">
-                                        {log.variantWeight || 'Base'} Adjustment
-                                      </span>
-                                    </div>
-                                    <p className="text-sm font-medium text-chocolate leading-relaxed">
-                                      "{log.reason}"
-                                    </p>
-                                    <div className="flex items-center gap-5 pt-2 border-t border-chocolate/5">
-                                      <span className="text-[10px] font-bold text-chocolate/30 uppercase tracking-[0.15em] flex items-center gap-1.5">
-                                        <Info size={12} className="text-strawberry/40" /> {log.adjustedBy || 'Admin'}
-                                      </span>
-                                      <span className="text-[10px] font-bold text-chocolate/30 uppercase tracking-[0.15em] flex items-center gap-1.5">
-                                        {new Date(log.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className="text-right shrink-0 bg-cream/20 p-4 rounded-2xl border border-white">
-                                    <div className="text-[9px] font-black text-chocolate-light uppercase tracking-widest mb-1.5 opacity-40">Stock Bridge</div>
-                                    <div className="flex items-baseline justify-end gap-1.5 font-black text-chocolate tracking-tighter">
-                                      <span className="text-base text-chocolate/40 line-through decoration-strawberry/30">{log.oldStock}</span>
-                                      <ChevronRight size={12} className="text-strawberry/30" />
-                                      <span className="text-2xl text-strawberry font-dancing">{log.newStock}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
 
 
 
@@ -1511,33 +1600,42 @@ const Products = () => {
                         </div>
                         <h4 className="text-sm font-bold uppercase tracking-[0.2em] text-chocolate/80">Specifications</h4>
                       </div>
-                      <div className="space-y-8 overflow-y-auto max-h-[350px] pr-2 no-scrollbar">
-                        <SelectableBadgeGroup
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto max-h-[450px] pr-2 no-scrollbar p-1">
+                        <MultiSelectDropdown
+                          label="Flavor Palette"
+                          options={flavorsList.filter(f => !activeCategoryId || (f.categories && f.categories.includes(activeCategoryId)))}
+                          selected={Array.isArray(form.flavor) ? form.flavor : []}
+                          onChange={(next) => setForm({ ...form, flavor: next })}
+                          placeholder="Select flavors..."
+                        />
+                        <MultiSelectDropdown
                           label="Artistry Types"
                           options={filteredTypes}
                           selected={form.type || []}
                           onChange={(next) => setForm({ ...form, type: next })}
+                          placeholder="Select artistry types..."
                         />
-                        <GroupedSelectableBadgeGroup
+                        <MultiSelectDropdown
+                          label="Shapes"
+                          options={filteredShapes}
+                          selected={form.shape || []}
+                          onChange={(next) => setForm({ ...form, shape: next })}
+                          placeholder="Select shapes..."
+                        />
+                        <GroupedMultiSelectDropdown
                           label="Tailored Occasions"
                           options={filteredOccasions}
                           selected={form.occasion || []}
                           onChange={(next) => setForm({ ...form, occasion: next })}
+                          placeholder="Select occasions..."
                         />
-                        <div className="grid grid-cols-1 gap-6">
-                          <SelectableBadgeGroup
-                            label="Shapes"
-                            options={filteredShapes}
-                            selected={form.shape || []}
-                            onChange={(next) => setForm({ ...form, shape: next })}
-                          />
-                          <GroupedSelectableBadgeGroup
-                            label="Themes"
-                            options={filteredThemes}
-                            selected={form.theme || []}
-                            onChange={(next) => setForm({ ...form, theme: next })}
-                          />
-                        </div>
+                        <GroupedMultiSelectDropdown
+                          label="Themes"
+                          options={filteredThemes}
+                          selected={form.theme || []}
+                          onChange={(next) => setForm({ ...form, theme: next })}
+                          placeholder="Select themes..."
+                        />
                       </div>
                     </div>
                   </div>
@@ -1691,8 +1789,8 @@ const Products = () => {
                         toast.success("Reason captured. You can now finalize your edits.");
                       }}
                       className={`w-full py-5 rounded-full text-xs font-black shadow-lg transition-all uppercase tracking-[0.2em] ${stockReason.trim()
-                          ? 'bg-chocolate text-white hover:bg-strawberry shadow-chocolate/20 scale-[1.02]'
-                          : 'bg-chocolate/10 text-chocolate/30 cursor-not-allowed'
+                        ? 'bg-chocolate text-white hover:bg-strawberry shadow-chocolate/20 scale-[1.02]'
+                        : 'bg-chocolate/10 text-chocolate/30 cursor-not-allowed'
                         }`}
                     >
                       Confirm Reason
