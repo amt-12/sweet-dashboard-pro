@@ -52,7 +52,7 @@ const Themes = () => {
 					id: t._id || t.id,
 					name: sanitizeName(t.name),
 					description: t.description || "",
-          subThemes: Array.isArray(t.subThemes) ? t.subThemes : [],
+          subThemes: Array.isArray(t.subThemes) ? t.subThemes : (Array.isArray(t.subthemes) ? t.subthemes : []),
           categories: t.categories ? t.categories.map((cat:any)=>cat._id||cat) : (t.category ? [t.category._id || t.category] : []),
 				}));
 				setThemes(normalized);
@@ -259,6 +259,7 @@ const Themes = () => {
 							<TableHead className="w-20 pl-8 h-16 font-bold text-chocolate italic uppercase tracking-widest text-[10px]">Icon</TableHead>
 							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px]">Theme Name</TableHead>
 							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px]">Category</TableHead>
+							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px] hidden md:table-cell">Sub-Themes</TableHead>
 							<TableHead className="h-16 font-bold text-chocolate/80 uppercase tracking-widest text-[10px] hidden md:table-cell">Description</TableHead>
 							<TableHead className="pr-8 h-16 font-bold text-chocolate italic uppercase tracking-widest text-[10px] text-right">Actions</TableHead>
 						</TableRow>
@@ -275,15 +276,6 @@ const Themes = () => {
 									<span className="font-bold text-chocolate text-lg tracking-tight group-hover:text-strawberry transition-colors leading-none">
 										{theme.name}
 									</span>
-                  {theme.subThemes && theme.subThemes.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1.5">
-                      {theme.subThemes.map(st => (
-                        <span key={st} className="px-2 py-0.5 bg-strawberry/5 text-[9px] font-bold text-strawberry rounded-md uppercase tracking-tighter">
-                          {st}
-                        </span>
-                      ))}
-                    </div>
-                  )}
 								</TableCell>
                 <TableCell className="py-6">
                   <div className="flex flex-wrap gap-1">
@@ -293,6 +285,17 @@ const Themes = () => {
                       </span>
                     )) : (
                       <span className="text-chocolate/20 text-[10px] italic">Not Tagged</span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="py-6 hidden md:table-cell">
+                  <div className="flex flex-wrap gap-1">
+                    {theme.subThemes && theme.subThemes.length > 0 ? theme.subThemes.map(st => (
+                      <span key={st} className="px-3 py-1 bg-strawberry/[0.03] border border-strawberry/10 rounded-full text-[10px] font-bold text-strawberry uppercase tracking-tighter">
+                        {st}
+                      </span>
+                    )) : (
+                      <span className="text-chocolate/20 text-[10px] italic">No Sub-items</span>
                     )}
                   </div>
                 </TableCell>
