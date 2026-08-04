@@ -12,7 +12,7 @@ export default function OriginStoryEditor() {
 
   useEffect(() => {
     let mounted = true;
-    const apiBase = (import.meta.env && import.meta.env.VITE_API_URL) || 'https://bakery-bakend.onrender.com';
+    const apiBase = (import.meta.env && import.meta.env.VITE_API_URL) || 'https://api.hangrysweet.com';
     fetch(`${apiBase}/api/origin-story`)
       .then((res) => res.ok ? res.json() : Promise.reject(new Error('Failed')))
 
@@ -41,7 +41,7 @@ export default function OriginStoryEditor() {
 
   function save() {
     setSaving(true);
-    const apiBase = (import.meta.env && import.meta.env.VITE_API_URL) || 'https://bakery-bakend.onrender.com';
+    const apiBase = (import.meta.env && import.meta.env.VITE_API_URL) || 'https://api.hangrysweet.com';
     fetchWithAuth(`${apiBase}/api/origin-story`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },

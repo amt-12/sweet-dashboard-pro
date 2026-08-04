@@ -3,7 +3,7 @@
 import axios from 'axios';
 import { getToken } from './auth';
 
-const API_BASE_URL = 'https://bakery-bakend.onrender.com/api';
+const API_BASE_URL = 'https://api.hangrysweet.com/api';
 
 export const axiosInstance = axios.create({
   baseURL: API_BASE_URL,

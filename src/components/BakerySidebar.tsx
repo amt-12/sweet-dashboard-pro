@@ -23,7 +23,7 @@ import {
   History,
   Sparkles,
 } from "lucide-react";
-import bakeryLogo from "@/assets/CircleLogo.png";
+import bakeryLogo from "@/assets/logo.jpg";
 import { getRole, hasAccessToPath } from '@/services/auth';
 
 const menuItems = [

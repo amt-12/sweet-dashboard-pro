@@ -28,7 +28,7 @@ function decodeJwt(token: string | null) {
 }
 
 export async function login(email: string, password: string) {
-  const res = await fetch('https://bakery-bakend.onrender.com/api/auth/login', {
+  const res = await fetch('https://api.hangrysweet.com/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),

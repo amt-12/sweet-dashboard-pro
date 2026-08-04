@@ -93,7 +93,7 @@ const Roles = () => {
   const loadRoles = async () => {
     setLoading(true);
     try {
-      const res = await fetchWithAuth('https://bakery-bakend.onrender.com/api/roles');
+      const res = await fetchWithAuth('https://api.hangrysweet.com/api/roles');
       if (!res.ok) throw new Error('Failed to load roles');
       const data = await res.json();
       setRoles(data.roles || []);
@@ -108,7 +108,7 @@ const Roles = () => {
   const loadPermissions = async () => {
     setPermissionsLoading(true);
     try {
-      const res = await fetchWithAuth('https://bakery-bakend.onrender.com/api/permissions');
+      const res = await fetchWithAuth('https://api.hangrysweet.com/api/permissions');
       if (!res.ok) throw new Error('Failed to load permissions');
       const data = await res.json();
       setPermissions(data.permissions || []);
@@ -160,7 +160,7 @@ const Roles = () => {
 
     setSubmitting(true);
     try {
-      const url = editingRole ? `https://bakery-bakend.onrender.com/api/roles/${editingRole._id}` : 'https://bakery-bakend.onrender.com/api/roles';
+      const url = editingRole ? `https://api.hangrysweet.com/api/roles/${editingRole._id}` : 'https://api.hangrysweet.com/api/roles';
       const method = editingRole ? 'PATCH' : 'POST';
 
       const res = await fetchWithAuth(url, {
@@ -193,7 +193,7 @@ const Roles = () => {
     if (!confirm(`Delete role "${role.name}"? This cannot be undone.`)) return;
 
     try {
-      const res = await fetchWithAuth(`https://bakery-bakend.onrender.com/api/roles/${role._id}`, { method: 'DELETE' });
+      const res = await fetchWithAuth(`https://api.hangrysweet.com/api/roles/${role._id}`, { method: 'DELETE' });
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));

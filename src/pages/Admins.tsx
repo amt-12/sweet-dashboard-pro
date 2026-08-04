@@ -121,7 +121,7 @@ const Admins = () => {
   const load = async () => {
     setLoading(true);
     try {
-      const res = await fetchWithAuth('https://bakery-bakend.onrender.com/api/admins');
+      const res = await fetchWithAuth('https://api.hangrysweet.com/api/admins');
       if (!res.ok) throw new Error('Failed to load circle members');
       const data = await res.json();
       setAdmins(data.users || []);
@@ -135,7 +135,7 @@ const Admins = () => {
   const loadPermissions = async () => {
     setPermissionsLoading(true);
     try {
-      const res = await fetchWithAuth('https://bakery-bakend.onrender.com/api/permissions');
+      const res = await fetchWithAuth('https://api.hangrysweet.com/api/permissions');
       if (!res.ok) throw new Error('Failed to load permission realms');
       const data = await res.json().catch(() => ({}));
       setPermissionCatalog(data.permissions || []);
@@ -150,7 +150,7 @@ const Admins = () => {
   const loadRoles = async () => {
     setRolesLoading(true);
     try {
-      const res = await fetchWithAuth('https://bakery-bakend.onrender.com/api/roles');
+      const res = await fetchWithAuth('https://api.hangrysweet.com/api/roles');
       if (!res.ok) throw new Error('Failed to load circle roles');
       const data = await res.json();
       setRoles(data.roles || []);
@@ -176,7 +176,7 @@ const Admins = () => {
 
     setPermissionSubmitting(true);
     try {
-      const res = await fetchWithAuth('https://bakery-bakend.onrender.com/api/permissions', {
+      const res = await fetchWithAuth('https://api.hangrysweet.com/api/permissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: permissionForm.name.trim(), url: permissionForm.url.trim(), group: permissionForm.group }),
@@ -196,7 +196,7 @@ const Admins = () => {
   const deletePermission = async (permission: PermissionItem) => {
     if (!confirm(`Revoke permissionrealm \"${permission.name}\"? This affects the entire circle.`)) return;
     try {
-      const res = await fetchWithAuth(`https://bakery-bakend.onrender.com/api/permissions/${permission._id}`, { method: 'DELETE' });
+      const res = await fetchWithAuth(`https://api.hangrysweet.com/api/permissions/${permission._id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to revoke');
       toast.success('Realm revoked');
       await loadPermissions();
@@ -210,7 +210,7 @@ const Admins = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetchWithAuth('https://bakery-bakend.onrender.com/api/admins', {
+      const res = await fetchWithAuth('https://api.hangrysweet.com/api/admins', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
@@ -230,7 +230,7 @@ const Admins = () => {
   const remove = async (id: string) => {
     if (!confirm('Exile this member from the circle? Access vanishes instantly.')) return;
     try {
-      const res = await fetchWithAuth(`https://bakery-bakend.onrender.com/api/admins/${id}`, { method: 'DELETE' });
+      const res = await fetchWithAuth(`https://api.hangrysweet.com/api/admins/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Exile failed');
       setAdmins((prev) => prev.filter((a) => a._id !== id));
       toast.success('Member removed from records.');
@@ -243,7 +243,7 @@ const Admins = () => {
   const savePermissions = async (permissions: string[]) => {
     if (!selectedAdmin?._id) return;
     try {
-      const res = await fetchWithAuth(`https://bakery-bakend.onrender.com/api/admins/${selectedAdmin._id}/permissions`, {
+      const res = await fetchWithAuth(`https://api.hangrysweet.com/api/admins/${selectedAdmin._id}/permissions`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ permissions }),
@@ -262,7 +262,7 @@ const Admins = () => {
     if (!selectedAdmin?._id) return;
     setUpdatingRole(true);
     try {
-      const res = await fetchWithAuth(`https://bakery-bakend.onrender.com/api/admins/${selectedAdmin._id}/role`, {
+      const res = await fetchWithAuth(`https://api.hangrysweet.com/api/admins/${selectedAdmin._id}/role`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ roleName: roleData.name, permissions: roleData.permissions }),
